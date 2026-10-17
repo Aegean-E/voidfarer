@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOIDFARER // Tactical Cockpit & Autonomous Galaxy Simulator</title>
+    <meta name="description" content="Autonomous deep-space fleet, procedural galaxy, and holographic cockpit simulation engine with real-time orbital mechanics, commodity trading, and anomaly resolution.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="cockpit-theme">
+    <!-- Starfield Backdrop -->
+    <div class="stars-layer-1"></div>
+    <div class="stars-layer-2"></div>
+    <div class="scanline-overlay"></div>
+
+    <!-- Cockpit Frame -->
+    <div class="cockpit-frame" id="cockpitContainer">
+        
+        <!-- Top Status HUD -->
+        <header class="hud-topbar" id="hudTopBar">
+            <div class="hud-brand">
+                <div class="hud-logo-icon">VF</div>
+                <div class="hud-title-group">
+                    <h1 class="hud-glitch-title" data-text="VOIDFARER">VOIDFARER</h1>
+                    <span class="hud-sub">DEEP-SPACE SIMULATION DECK // v0.1.0</span>
+                </div>
+            </div>
+
+            <!-- Vital Telemetry Meters -->
+            <div class="vitals-row">
+                <div class="vital-card" id="vitalHullCard">
+                    <div class="vital-label">
+                        <span>HULL INTEGRITY</span>
+                        <strong id="hullVal">100%</strong>
+                    </div>
+                    <div class="vital-meter"><div class="meter-fill hull-fill" id="hullBar" style="width: 100%;"></div></div>
+                </div>
+
+                <div class="vital-card" id="vitalShieldCard">
+                    <div class="vital-label">
+                        <span>SHIELD CAPACITANCE</span>
+                        <strong id="shieldVal">100%</strong>
+                    </div>
+                    <div class="vital-meter"><div class="meter-fill shield-fill" id="shieldBar" style="width: 100%;"></div></div>
+                </div>
+
+                <div class="vital-card" id="vitalFuelCard">
+                    <div class="vital-label">
+                        <span>QUANTUM FUEL</span>
+                        <strong id="fuelVal">60/60</strong>
+                    </div>
+                    <div class="vital-meter"><div class="meter-fill fuel-fill" id="fuelBar" style="width: 100%;"></div></div>
+                </div>
+
+                <div class="vital-card credits-card" id="vitalCreditsCard">
+                    <div class="vital-label">
+                        <span>TREASURY</span>
+                        <strong class="gold-text" id="creditsVal">2,000 CR</strong>
+                    </div>
+                    <div class="vital-subtext" id="cargoSummary">HOLD: 15/40</div>
+                </div>
+            </div>
+
+            <!-- Quick Action & Audio Controls -->
+            <div class="hud-top-actions">
+                <button class="btn-hud" id="audioToggleBtn" title="Toggle Synthesized Audio">
+                    <span class="icon" id="audioIcon">🔊</span> SOUND FX
+                </button>
+                <button class="btn-hud btn-cyan" id="quickScanBtn">
+                    <span class="icon">📡</span> SENSOR SCAN
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace Deck Grid -->
+        <main class="cockpit-grid">
+            
+            <!-- Left Deck: Navigation, Starmap & Orbit Canvas -->
+            <section class="deck-panel panel-left" id="panelNav">
+                <div class="panel-header">
+                    <div class="panel-tag"><span class="badge-dot"></span> NAV-RADAR</div>
+                    <h2 class="panel-title" id="radarTitle">SOL SYSTEM ORBITS</h2>
+                    <div class="view-toggle-group">
+                        <button class="tab-btn active" id="viewOrbitBtn">ORBITS</button>
+                        <button class="tab-btn" id="viewGalaxyBtn">GALAXY MAP</button>
+                    </div>
+                </div>
+
+                <!-- Canvas Radar Display -->
+                <div class="canvas-radar-container">
+                    <canvas id="radarCanvas" width="560" height="420"></canvas>
+                    <div class="radar-crosshair"></div>
+                    <div class="radar-sweep"></div>
+                    <div class="radar-coords" id="radarCoords">COORDS: [0.00, 0.00] // SECTOR 01</div>
+                    <div class="radar-controls">
+                        <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
+                        <button class="ctrl-btn" id="btnZoomOut" title="Zoom Out">-</button>
+                        <button class="ctrl-btn" id="btnResetView" title="Center Flagship">⊙</button>
+                    </div>
+                </div>
+
+                <!-- Selected Body / System Card -->
+                <div class="nav-target-card" id="navTargetCard">
+                    <div class="target-badge" id="targetType">TARGET: CELESTIAL BODY</div>
+                    <div class="target-title-row">
+                        <h3 class="target-name" id="targetName">Select a target on radar</h3>
+                        <span class="target-dist" id="targetDist">-- AU</span>
+                    </div>
+                    <p class="target-desc" id="targetDesc">Click on any celestial planet, orbital station, or star in the radar to plot trajectory.</p>
+                    <div class="target-actions" id="targetActions">
+                        <button class="btn-action btn-cyan" id="btnOrbitTarget" disabled>ENTER ORBIT</button>
+                        <button class="btn-action btn-purple" id="btnJumpTarget" style="display:none;" disabled>HYPERSPACE JUMP</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Center Deck: Subsystem Reactor & Tactical Log -->
+            <section class="deck-panel panel-center" id="panelCenter">
+                
+                <!-- Reactor Power Matrix -->
+                <div class="sub-panel reactor-panel">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot dot-amber"></span> POWER-ROUTING</div>
+                        <h2 class="panel-title">REACTOR DISTRIBUTION</h2>
+                        <span class="power-total" id="powerTotal">100% ALLOCATED</span>
+                    </div>
+
+                    <div class="power-matrix">
+                        <!-- Engines -->
+                        <div class="power-slider-row">
+                            <div class="power-header">
+                                <span class="pwr-label cyan-glow">ENGINES (Sub-light & Warp)</span>
+                                <span class="pwr-val" id="pwrEngVal">30%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="30" class="pwr-slider cyan-range" id="sliderEng">
+                            <span class="pwr-hint">Increases warp jump fuel efficiency</span>
+                        </div>
+
+                        <!-- Shields -->
+                        <div class="power-slider-row">
+                            <div class="power-header">
+                                <span class="pwr-label blue-glow">SHIELDS (Hazard Dispersion)</span>
+                                <span class="pwr-val" id="pwrShdVal">25%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="25" class="pwr-slider blue-range" id="sliderShd">
+                            <span class="pwr-hint">Protects against solar flares & anomaly radiation</span>
+                        </div>
+
+                        <!-- Sensors -->
+                        <div class="power-slider-row">
+                            <div class="power-header">
+                                <span class="pwr-label magenta-glow">SENSORS (Science Analysis)</span>
+                                <span class="pwr-val" id="pwrSenVal">25%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="25" class="pwr-slider magenta-range" id="sliderSen">
+                            <span class="pwr-hint">Multiplies research credits earned from scans</span>
+                        </div>
+
+                        <!-- Weapons -->
+                        <div class="power-slider-row">
+                            <div class="power-header">
+                                <span class="pwr-label red-glow">WEAPONS (Laser Pulse Array)</span>
+                                <span class="pwr-val" id="pwrWepVal">20%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="20" class="pwr-slider red-range" id="sliderWep">
+                            <span class="pwr-hint">Cleaves exotic minerals from hazardous vortexes</span>
+                        </div>
+                    </div>
+
+                    <div class="power-action-row">
+                        <button class="btn-hud" id="presetBalanced">PRESET: BALANCED</button>
+                        <button class="btn-hud" id="presetSprint">PRESET: SPEED</button>
+                        <button class="btn-hud" id="presetScience">PRESET: SCIENCE</button>
+                        <button class="btn-hud btn-green" id="applyPowerBtn">APPLY REACTOR ROUTE</button>
+                    </div>
+                </div>
+
+                <!-- Tactical Flight Telemetry Log -->
+                <div class="sub-panel log-panel">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot dot-green"></span> TELEMETRY</div>
+                        <h2 class="panel-title">TACTICAL FLIGHT LOG</h2>
+                        <button class="text-btn" id="clearLogBtn">CLEAR</button>
+                    </div>
+                    <div class="flight-log-stream" id="flightLogStream">
+                        <div class="log-line log-system">[SYS] Sub-space uplink online. Telemetry sync active.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Deck: Commodity Exchange & Anomaly Terminal -->
+            <section class="deck-panel panel-right" id="panelRight">
+                
+                <!-- Anomaly Modal / Card (Prominent when active) -->
+                <div class="anomaly-alert-card" id="anomalyCard" style="display: none;">
+                    <div class="anomaly-header">
+                        <span class="alert-icon">⚠️</span>
+                        <div class="alert-text">
+                            <span class="alert-tag">PROXIMITY HAZARD</span>
+                            <h3 class="alert-title" id="anomalyTitle">Anomaly Detected</h3>
+                        </div>
+                    </div>
+                    <p class="anomaly-desc" id="anomalyDesc">Spatial sensors detected an exotic spatial disruption.</p>
+                    <div class="anomaly-choices" id="anomalyChoices">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Station Dock / Market Terminal -->
+                <div class="market-panel" id="marketPanel">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot dot-cyan"></span> COMMERCE-HUD</div>
+                        <h2 class="panel-title" id="marketTitle">LOCAL EXCHANGE</h2>
+                        <span class="badge-arch" id="marketArch">HIGH_TECH</span>
+                    </div>
+
+                    <!-- Station Services -->
+                    <div class="station-services-bar" id="stationServicesBar">
+                        <button class="btn-service" id="btnDrydockRepair">
+                            <span class="icon">🛠️</span>
+                            <div class="service-meta">
+                                <span>REPAIR HULL (+25)</span>
+                                <small id="repairCostLabel">100 CR</small>
+                            </div>
+                        </button>
+                        <button class="btn-service" id="btnRefuelTanks">
+                            <span class="icon">⛽</span>
+                            <div class="service-meta">
+                                <span>REFUEL (+20)</span>
+                                <small id="refuelCostLabel">120 CR</small>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Cargo Hold Meter -->
+                    <div class="cargo-capacity-box">
+                        <div class="cargo-header">
+                            <span>CARGO HOLD CAPACITY</span>
+                            <strong id="cargoDetailed">15 / 40 UNITS</strong>
+                        </div>
+                        <div class="cargo-meter">
+                            <div class="cargo-meter-fill" id="cargoMeterFill" style="width: 37.5%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Commodity Exchange List -->
+                    <div class="commodity-table-container">
+                        <table class="market-table">
+                            <thead>
+                                <tr>
+                                    <th>COMMODITY</th>
+                                    <th>BUY</th>
+                                    <th>SELL</th>
+                                    <th>HOLD</th>
+                                    <th>TRADE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="marketTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Non-docked guidance message -->
+                    <div class="no-market-message" id="noMarketMsg" style="display: none;">
+                        <span class="big-icon">🪐</span>
+                        <h4>NO ORBITAL EXCHANGE</h4>
+                        <p>Ship is currently orbiting an unpopulated body or in deep space. Orbit a space station or colony to access trade goods and drydocks.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Footer Ticker -->
+        <footer class="hud-footer">
+            <div class="footer-stats">
+                <span class="stat-item">JUMPS: <strong id="statJumps">0</strong></span>
+                <span class="stat-item">SCANS: <strong id="statScans">0</strong></span>
+                <span class="stat-item">TRADES: <strong id="statTrades">0</strong></span>
+                <span class="stat-item">ANOMALIES RESOLVED: <strong id="statAnomalies">0</strong></span>
+            </div>
+            <div class="footer-status">
+                <span class="signal-indicator"></span> SUB-SPACE QUANTUM LINK: NOMINAL
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>

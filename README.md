@@ -34,7 +34,8 @@ voidfarer/
 │   ├── project.json          <- stack and gate configuration
 │   └── task_ledger.json      <- power-loss safe task state
 ├── docs/                     <- comprehensive system design & research
-│   └── ATTENTION_MECHANICS_LITERATURE_REVIEW.md <- behavioral psychology review
+│   ├── ATTENTION_MECHANICS_LITERATURE_REVIEW.md <- behavioral psychology review
+│   └── NARRATIVE_AND_TUTORIAL_LITERATURE_REVIEW.md <- cognitive load & narrative review
 ├── .gitignore                <- transient state & python caches excluded
 ├── pyproject.toml            <- build and package configuration
 ├── README.md                 <- living documentation
@@ -44,6 +45,7 @@ voidfarer/
 │   ├── galaxy.py             <- procedural star system & hyperlane generator
 │   ├── engine.py             <- deterministic state machine & coordinator
 │   ├── retention.py          <- relics, dynamic contracts & pilot mastery
+│   ├── story.py              <- cadet academy & precursor cipher campaign
 │   ├── upgrades.py           <- hardware upgrades catalog & drone templates
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
@@ -59,7 +61,8 @@ voidfarer/
     ├── test_engine.py        <- state transitions, fleet & combat mechanics
     ├── test_storage.py       <- power-loss safety & corruption quarantine
     ├── test_server.py        <- REST API request/response contracts
-    └── test_cli.py           <- command dispatch & argument parsing
+    ├── test_cli.py           <- command dispatch & argument parsing
+    └── test_story.py         <- academy onboarding & story campaign tests
 ```
 
 ---
@@ -172,18 +175,39 @@ python -m voidfarer.cli repair --amount 25
 python -m voidfarer.cli refuel --amount 20
 ```
 
-### 12. Interactive Terminal Cockpit REPL
+### 12. Cadet Flight Academy (Situated Scaffolding)
+```bash
+# Check current tutorial milestone and curriculum progress
+python -m voidfarer.cli tutorial
+
+# Skip tutorial prompts or reset onboarding curriculum
+python -m voidfarer.cli tutorial skip
+python -m voidfarer.cli tutorial reset
+```
+
+### 13. The Precursor Cipher Narrative Campaign (Space Opera)
+```bash
+# Display active chapter synopsis, transmissions log, and moral choices
+python -m voidfarer.cli story
+
+# Resolve an episodic narrative dilemma
+python -m voidfarer.cli story choose choice_vance_telemetry
+```
+
+### 14. Interactive Terminal Cockpit REPL
 ```bash
 python -m voidfarer.cli repl
 ```
-Inside the interactive REPL, you can execute all commands (`status`, `chart`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
+Inside the interactive REPL, you can execute all commands (`status`, `chart`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
-### 13. Holographic Web Cockpit Interface
+### 15. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 ```bash
 python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
+- **Cadet Flight Academy Ribbon**: Persistent top-of-HUD progressive instruction banner with milestone progress, step hints, rewards, and one-click dismiss.
+- **COMMS LOG Subspace Radio Tab**: Subspace transmissions stream with animated character avatars (Admiral Vance, Cipher, Archon Prime), faction alignment chips, and interactive moral choice cards.
 - **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom.
 - **Galaxy Sector Chart**: Hyperlane corridor network visualization and jump routing.
 - **Contracts & Bounties Tab**: Active operational task cards with live progress bars, Zeigarnik task renewal, and reward claim buttons.
@@ -192,7 +216,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Station Arsenal Tab**: Modular hardware upgrades shop with real-time stat bonuses.
 - **Fleet Command Tab**: Roster of autonomous mining/scout drones with live harvest buttons.
 - **Tactical Combat Overlay**: Battle HUD with tactical maneuvers, tactical combo counter, and critical overcharge state.
-- **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, level-up arpeggios, bounty chimes, and alarms.
+- **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, level-up arpeggios, bounty chimes, radio dispatches, and alarms.
 - **Reactor Power Matrix**: Dynamic power allocation sliders with instant subsystem re-routing.
 
 ---
@@ -201,5 +225,5 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Sub-Second Test Verification**: Comprehensive 44-test suite runs in under 0.8 seconds (`python -m unittest discover`).
+3. **Sub-Second Test Verification**: Comprehensive 56-test suite runs in under 1.5 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.

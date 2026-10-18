@@ -13,6 +13,12 @@ from voidfarer.models import (
     ShipState,
     ShipUpgrade,
     StarSystem,
+    StoryChapter,
+    StoryChoice,
+    StoryState,
+    StoryTransmission,
+    TutorialState,
+    TutorialStep,
 )
 
 
@@ -247,6 +253,70 @@ class TestModels(unittest.TestCase):
         self.assertEqual(len(restored.ship.active_contracts), 1)
         self.assertEqual(restored.ship.tactical_combo, 2)
         self.assertAlmostEqual(restored.ship.near_miss_scanner_bonus, 0.25)
+
+    def test_tutorial_and_story_models_serialization(self):
+        step = TutorialStep(
+            id="step_test",
+            title="Test Step",
+            instruction="Test instructions.",
+            hint="Test hint.",
+            reward_credits=500,
+            reward_xp=150,
+        )
+        step_d = step.to_dict()
+        step_restored = TutorialStep.from_dict(step_d)
+        self.assertEqual(step_restored.id, "step_test")
+        self.assertEqual(step_restored.action_target, "test")
+        self.assertEqual(step_restored.reward_credits, 500)
+
+        tut_state = TutorialState(
+            active=True,
+            current_step_index=0,
+            steps=(step,),
+            completed=False,
+            skipped=False,
+        )
+        self.assertTrue(tut_state.is_active)
+        self.assertEqual(tut_state.current_step.id, "step_test")
+        tut_d = tut_state.to_dict()
+        tut_restored = TutorialState.from_dict(tut_d)
+        self.assertTrue(tut_restored.is_active)
+        self.assertEqual(len(tut_restored.steps), 1)
+
+        choice = StoryChoice(
+            id="c1",
+            text="Make a stand",
+            faction_alignment="coalition",
+            reward_credits=1000,
+            outcome_text="Loyalty proven.",
+        )
+        tx = StoryTransmission(
+            speaker="Admiral",
+            callsign="Command",
+            channel="Secure",
+            message="Stand by.",
+        )
+        chapter = StoryChapter(
+            chapter_index=0,
+            title="Act 1",
+            target_system_id="sol",
+            objective="Meet contact.",
+            transmission=tx,
+            choices=(choice,),
+        )
+        story_state = StoryState(
+            campaign_title="Test Campaign",
+            current_chapter_index=0,
+            chapters=(chapter,),
+            transmission_log=(tx,),
+            reputation={"coalition": 10},
+        )
+        story_d = story_state.to_dict()
+        story_restored = StoryState.from_dict(story_d)
+        self.assertEqual(story_restored.active_act, 1)
+        self.assertEqual(story_restored.current_chapter.title, "Act 1")
+        self.assertEqual(story_restored.reputation["coalition"], 10)
+        self.assertEqual(len(story_restored.transmission_log), 1)
 
 
 if __name__ == "__main__":

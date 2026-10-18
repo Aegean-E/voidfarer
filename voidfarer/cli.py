@@ -111,6 +111,21 @@ def cmd_status(engine: SimulationEngine) -> int:
     print(f"╠════ AUTONOMOUS FLEET ASSETS ════════════════════════════════════════╣{RESET}")
     print(f"║ {GREEN}{drone_summary:<67}{RESET} ║")
 
+    # Cadet Academy & Story progression
+    tut = ship.tutorial
+    if tut.is_active:
+        step = tut.current_step
+        tut_msg = f"Milestone {tut.current_step_index + 1}/{len(tut.steps)}: {step.title} -> {step.hint}"
+        print(f"╠════ CADET FLIGHT ACADEMY ═══════════════════════════════════════════╣{RESET}")
+        print(f"║ {YELLOW}{tut_msg[:67]:<67}{RESET} ║")
+
+    story = ship.story
+    chap = story.current_chapter
+    chap_status = "COMPLETED" if chap.completed else f"TARGET: {chap.target_system_id}"
+    chap_msg = f"Act {story.active_act}: {chap.title} [{chap_status}]"
+    print(f"╠════ THE PRECURSOR CIPHER (STORY) ════════════════════════════════════╣{RESET}")
+    print(f"║ {MAGENTA}{chap_msg[:67]:<67}{RESET} ║")
+
     print(f"╠════ NAVIGATION COORDINATES ═════════════════════════════════════════╣{RESET}")
     print(f"║ System:    {CYAN}{cur_sys.name:<22}{RESET} Faction:  {cur_sys.faction:<22} ║")
     print(f"║ Security:  {GREEN if cur_sys.security > 0.5 else RED}{cur_sys.security * 100:>5.1f}% [{('HIGH' if cur_sys.security > 0.7 else ('MED' if cur_sys.security > 0.3 else 'ANARCHY'))}]{RESET}       Corridors: {', '.join(cur_sys.connections):<22} ║")
@@ -436,6 +451,102 @@ def cmd_streak(engine: SimulationEngine) -> int:
     return 0
 
 
+def cmd_tutorial(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Cadet Flight Academy progressive tutorial system."""
+    tut = engine.state.ship.tutorial
+    if len(parts) > 1:
+        sub = parts[1].lower()
+        if sub == "skip":
+            ok, msg = engine.skip_tutorial()
+            print((GREEN if ok else RED) + msg + RESET)
+            if ok:
+                storage.save(engine.state)
+            return 0 if ok else 1
+        elif sub == "reset":
+            ok, msg = engine.reset_tutorial()
+            print((GREEN if ok else RED) + msg + RESET)
+            if ok:
+                storage.save(engine.state)
+            return 0 if ok else 1
+        else:
+            print(f"{RED}Unknown tutorial command '{sub}'. Options: skip, reset.{RESET}")
+            return 1
+
+    print(f"\n{BOLD}{CYAN}=== CADET FLIGHT ACADEMY: ONBOARDING SCRIPT ==={RESET}")
+    if tut.completed:
+        print(f"{GREEN}★ Status: GRADUATED{RESET} - All academy milestones mastered.")
+        print(f"{DIM}You hold the Cadet Wings relic granting permanent scan and XP bonuses.{RESET}")
+        print(f"Type {CYAN}tutorial reset{RESET} if you wish to run through the academy again.")
+        return 0
+
+    if tut.skipped:
+        print(f"{YELLOW}★ Status: SKIPPED{RESET} - Independent Pilot Protocol active.")
+        print(f"Type {CYAN}tutorial reset{RESET} to reactivate Cadet Academy guidance.")
+        return 0
+
+    step = tut.current_step
+    print(f"Current Milestone: {YELLOW}{tut.current_step_index + 1}/{len(tut.steps)}{RESET} - {BOLD}{step.title}{RESET}")
+    print(f"{CYAN}Instruction:{RESET} {step.description}")
+    print(f"{DIM}Hint / Goal:{RESET} {step.hint}")
+    print(f"Reward on completion: {YELLOW}+{step.reward_credits} cr{RESET}, {CYAN}+{step.reward_xp} XP{RESET}\n")
+
+    print(f"{BOLD}Curriculum Progress:{RESET}")
+    for i, s in enumerate(tut.steps):
+        marker = f"{GREEN}[✓]{RESET}" if s.completed else (f"{YELLOW}[▶]{RESET}" if i == tut.current_step_index else f"{DIM}[ ]{RESET}")
+        print(f"  {marker} {i + 1}. {s.title} ({s.action_target})")
+    print(f"\n{DIM}Tip: Perform the required action naturally (e.g. orbit, scan, power, trade, fleet, jump).{RESET}")
+    print(f"{DIM}You can skip academy prompts at any time using: tutorial skip{RESET}")
+    return 0
+
+
+def cmd_story(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """The Precursor Cipher: Branching episodic space opera campaign."""
+    ship = engine.state.ship
+    story = ship.story
+
+    if len(parts) > 1 and parts[1].lower() in ("choose", "choice", "select"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} story choose <choice_id>")
+            return 1
+        cid = parts[2].lower()
+        ok, msg = engine.make_story_choice(cid)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    chap = story.current_chapter
+    print(f"\n{BOLD}{MAGENTA}╔════ THE PRECURSOR CIPHER: NARRATIVE CAMPAIGN ════════════════════════╗{RESET}")
+    print(f"║ {BOLD}Act {story.active_act}: {chap.title:<58}{RESET} ║")
+    target_str = str(chap.target_system_id or "DEEP SPACE")[:12]
+    status_label = "COMPLETED" if chap.completed else f"TARGET: {target_str}"
+    print(f"║ Sector Target: {CYAN}{target_str:<12}{RESET} Status: {status_label:<34} ║")
+    print(f"╠════ FACTION ALIGNMENT & REPUTATION ══════════════════════════════════╣{RESET}")
+    rep = story.faction_reputation
+    print(f"║ Sol Coalition: {CYAN}{rep.get('coalition', 0):>+4}{RESET}  │  Free Spacers Syndicate: {YELLOW}{rep.get('syndicate', 0):>+4}{RESET}  │  Precursor Watch: {MAGENTA}{rep.get('precursor', 0):>+4}{RESET} ║")
+    print(f"╠════ SYNOPSIS ════════════════════════════════════════════════════════╣{RESET}")
+    print(f"  {chap.synopsis}")
+    print(f"\n{BOLD}Subspace Transmissions Log ({len(story.transmission_log)} recorded):{RESET}")
+
+    recent = story.transmission_log[-3:] if story.transmission_log else []
+    for tx in recent:
+        speaker_color = CYAN if "Vance" in tx.speaker else (YELLOW if "Cipher" in tx.speaker else MAGENTA)
+        print(f"\n  {speaker_color}[{tx.callsign.upper()} // {tx.speaker}]{RESET}")
+        print(f"  \"{tx.message}\"")
+
+    if not chap.completed and chap.choices:
+        print(f"\n{BOLD}{YELLOW}⚡ CRITICAL MORAL DECISION REQUIRED:{RESET}")
+        for c in chap.choices:
+            cost_str = f" [Cost: {c.cost_credits} cr]" if c.cost_credits > 0 else ""
+            print(f"  • {BOLD}{c.id}{RESET}{cost_str}: {c.label}")
+            print(f"    {DIM}{c.consequence_summary}{RESET}")
+        print(f"\n{CYAN}Type: story choose <choice_id>{RESET} to resolve this encounter.")
+    elif chap.completed:
+        print(f"\n{GREEN}Chapter completed.{RESET} Follow navigational beacons to advance.")
+
+    return 0
+
+
 def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
     """Launch interactive terminal command session."""
     # Print status upon entry
@@ -495,6 +606,10 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             cmd_relics(engine)
         elif cmd in ("streak", "fire"):
             cmd_streak(engine)
+        elif cmd in ("tutorial", "academy", "cadet"):
+            cmd_tutorial(engine, storage, parts)
+        elif cmd in ("story", "campaign", "act", "lore", "comms"):
+            cmd_story(engine, storage, parts)
         elif cmd in ("serve", "web", "gui", "hud"):
             port = 8080
             for i, p in enumerate(parts):
@@ -600,6 +715,8 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             print("  scan                           - Sensor sweep of orbiting body (relic discovery)")
             print("  contracts [claim <id>]         - Active sector bounty contracts (Zeigarnik loop)")
             print("  mastery [unlock <id>]          - Pilot rank, XP progression, and talent tree")
+            print("  tutorial [skip|reset]          - Cadet Flight Academy onboarding and guidance")
+            print("  story [choose <id>]            - The Precursor Cipher narrative campaign")
             print("  relics                         - Ancient Precursor Relic vault & passive fleet buffs")
             print("  streak                         - Expedition jump streak & multiplier status")
             print("  market                         - Check commodity trade prices")
@@ -659,6 +776,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     subparsers.add_parser("relics", help="Display ancient Precursor Relics and passive modifiers")
     subparsers.add_parser("streak", help="Display expedition jump streak and multiplier")
+
+    tut_p = subparsers.add_parser("tutorial", help="Cadet Flight Academy onboarding and guidance")
+    tut_p.add_argument("action", nargs="?", default="status", choices=["status", "skip", "reset"])
+
+    story_p = subparsers.add_parser("story", help="The Precursor Cipher narrative campaign")
+    story_p.add_argument("action", nargs="?", default="status", choices=["status", "choose"])
+    story_p.add_argument("choice_id", nargs="?", help="Choice ID to select")
 
     jump_p = subparsers.add_parser("jump", help="Jump to adjacent star system")
     jump_p.add_argument("system_id", help="Target star system ID")
@@ -742,6 +866,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         return cmd_relics(engine)
     elif args.command == "streak":
         return cmd_streak(engine)
+    elif args.command == "tutorial":
+        parts = ["tutorial"]
+        if args.action != "status":
+            parts.append(args.action)
+        return cmd_tutorial(engine, storage, parts)
+    elif args.command == "story":
+        parts = ["story"]
+        if args.action != "status":
+            parts.append(args.action)
+            if args.choice_id:
+                parts.append(args.choice_id)
+        return cmd_story(engine, storage, parts)
     elif args.command == "scan":
         ok, msg, _ = engine.scan()
         print((GREEN if ok else RED) + msg + RESET)

@@ -392,6 +392,299 @@ class PilotMastery:
 
 
 @dataclass(frozen=True)
+class TutorialStep:
+    """A progressive instructional milestone in the Cadet Flight Academy."""
+
+    id: str  # e.g., 'step_orbit', 'step_scan', 'step_trade', 'step_jump', 'step_drone', 'step_combat'
+    title: str
+    instruction: str
+    hint: str
+    description: str = ""
+    action_target: str = ""
+    reward_credits: int = 250
+    reward_xp: int = 100
+    completed: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.description and self.instruction:
+            object.__setattr__(self, "description", self.instruction)
+        elif not self.instruction and self.description:
+            object.__setattr__(self, "instruction", self.description)
+        if not self.action_target and "_" in self.id:
+            object.__setattr__(self, "action_target", self.id.split("_", 1)[1])
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "instruction": self.instruction,
+            "description": self.description or self.instruction,
+            "hint": self.hint,
+            "action_target": self.action_target or (self.id.split("_", 1)[1] if "_" in self.id else ""),
+            "reward_credits": self.reward_credits,
+            "reward_xp": self.reward_xp,
+            "completed": self.completed,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TutorialStep:
+        inst = str(data.get("instruction") or data.get("description") or "")
+        step_id = str(data["id"])
+        target = str(data.get("action_target") or (step_id.split("_", 1)[1] if "_" in step_id else ""))
+        return cls(
+            id=step_id,
+            title=str(data["title"]),
+            instruction=inst,
+            description=inst,
+            hint=str(data.get("hint", "")),
+            action_target=target,
+            reward_credits=int(data.get("reward_credits", 250)),
+            reward_xp=int(data.get("reward_xp", 100)),
+            completed=bool(data.get("completed", False)),
+        )
+
+
+@dataclass(frozen=True)
+class TutorialState:
+    """State of the Cadet Flight Academy onboarding progression."""
+
+    active: bool = True
+    current_step_index: int = 0
+    steps: tuple[TutorialStep, ...] = ()
+    completed: bool = False
+    skipped: bool = False
+
+    @property
+    def is_active(self) -> bool:
+        return self.active and not self.completed and not self.skipped and (self.current_step_index < len(self.steps))
+
+    @property
+    def current_step(self) -> TutorialStep:
+        if self.steps and 0 <= self.current_step_index < len(self.steps):
+            return self.steps[self.current_step_index]
+        return TutorialStep(id="none", title="Graduated", instruction="", hint="")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "active": self.active,
+            "is_active": self.is_active,
+            "current_step_index": self.current_step_index,
+            "steps": [s.to_dict() for s in self.steps],
+            "completed": self.completed,
+            "skipped": self.skipped,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TutorialState:
+        raw_steps = data.get("steps") or ()
+        steps = tuple(TutorialStep.from_dict(s) for s in raw_steps)
+
+        return cls(
+            active=bool(data.get("active", True)),
+            current_step_index=int(data.get("current_step_index", 0)),
+            steps=steps,
+            completed=bool(data.get("completed", False)),
+            skipped=bool(data.get("skipped", False)),
+        )
+
+
+@dataclass(frozen=True)
+class StoryChoice:
+    """Branching story decision impacting faction alignment, rewards, and narrative path."""
+
+    id: str
+    text: str
+    faction_alignment: str  # 'coalition', 'syndicate', 'precursor', 'independent'
+    reward_credits: int = 0
+    reward_relic_id: str | None = None
+    outcome_text: str = ""
+    cost_credits: int = 0
+
+    @property
+    def label(self) -> str:
+        return self.text
+
+    @property
+    def consequence_summary(self) -> str:
+        return self.outcome_text
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "text": self.text,
+            "label": self.label,
+            "faction_alignment": self.faction_alignment,
+            "reward_credits": self.reward_credits,
+            "reward_relic_id": self.reward_relic_id,
+            "outcome_text": self.outcome_text,
+            "consequence_summary": self.consequence_summary,
+            "cost_credits": self.cost_credits,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StoryChoice:
+        return cls(
+            id=str(data["id"]),
+            text=str(data.get("text") or data.get("label") or ""),
+            faction_alignment=str(data.get("faction_alignment", "independent")),
+            reward_credits=int(data.get("reward_credits", 0)),
+            reward_relic_id=data.get("reward_relic_id"),
+            outcome_text=str(data.get("outcome_text") or data.get("consequence_summary") or ""),
+            cost_credits=int(data.get("cost_credits", 0)),
+        )
+
+
+@dataclass(frozen=True)
+class StoryTransmission:
+    """Character audio dispatch received across the subspace radio array."""
+
+    speaker: str
+    callsign: str
+    channel: str
+    message: str
+    timestamp_system: str = "sol"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StoryTransmission:
+        return cls(
+            speaker=str(data["speaker"]),
+            callsign=str(data.get("callsign", "UNKNOWN")),
+            channel=str(data.get("channel", "Subspace Broad-Band")),
+            message=str(data["message"]),
+            timestamp_system=str(data.get("timestamp_system", "sol")),
+        )
+
+
+@dataclass(frozen=True)
+class StoryChapter:
+    """An episodic narrative chapter in the Precursor Cipher campaign."""
+
+    chapter_index: int
+    title: str
+    target_system_id: str | None
+    objective: str
+    transmission: StoryTransmission
+    choices: tuple[StoryChoice, ...] = ()
+    completed: bool = False
+    chosen_id: str | None = None
+
+    @property
+    def id(self) -> str:
+        chapter_ids = {
+            0: "act1_ghost_signal",
+            1: "act2_sirius_forge",
+            2: "act3_eternity_gate",
+        }
+        return chapter_ids.get(self.chapter_index, f"act{self.chapter_index + 1}")
+
+    @property
+    def synopsis(self) -> str:
+        return self.objective
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "chapter_index": self.chapter_index,
+            "title": self.title,
+            "target_system_id": self.target_system_id,
+            "objective": self.objective,
+            "synopsis": self.synopsis,
+            "transmission": self.transmission.to_dict(),
+            "choices": [c.to_dict() for c in self.choices],
+            "completed": self.completed,
+            "chosen_id": self.chosen_id,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StoryChapter:
+        raw_tx = data.get("transmission") or {"speaker": "System", "callsign": "AI", "channel": "Local", "message": ""}
+        return cls(
+            chapter_index=int(data.get("chapter_index", 0)),
+            title=str(data.get("title", "Prologue")),
+            target_system_id=data.get("target_system_id"),
+            objective=str(data.get("objective") or data.get("synopsis") or ""),
+            transmission=StoryTransmission.from_dict(raw_tx),
+            choices=tuple(StoryChoice.from_dict(c) for c in data.get("choices", ())),
+            completed=bool(data.get("completed", False)),
+            chosen_id=data.get("chosen_id"),
+        )
+
+
+@dataclass(frozen=True)
+class StoryState:
+    """Master progression tracker for narrative campaign and faction standings."""
+
+    campaign_title: str = "The Precursor Cipher"
+    current_chapter_index: int = 0
+    chapters: tuple[StoryChapter, ...] = ()
+    transmission_log: tuple[StoryTransmission, ...] = ()
+    reputation: dict[str, int] = field(default_factory=lambda: {"coalition": 0, "syndicate": 0, "precursor": 0})
+    completed: bool = False
+
+    @property
+    def active_act(self) -> int:
+        return self.current_chapter_index + 1
+
+    @property
+    def current_chapter_id(self) -> str:
+        if self.chapters and 0 <= self.current_chapter_index < len(self.chapters):
+            return self.chapters[self.current_chapter_index].id
+        return f"act{self.active_act}"
+
+    @property
+    def current_chapter(self) -> StoryChapter:
+        if self.chapters and 0 <= self.current_chapter_index < len(self.chapters):
+            return self.chapters[self.current_chapter_index]
+        return StoryChapter(
+            chapter_index=0,
+            title="Epilogue",
+            target_system_id=None,
+            objective="All narrative objectives fulfilled.",
+            transmission=StoryTransmission("Archon", "Archon-Prime", "Subspace Void", "The galaxy awakens."),
+        )
+
+    @property
+    def faction_reputation(self) -> dict[str, int]:
+        return self.reputation
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "campaign_title": self.campaign_title,
+            "current_chapter_index": self.current_chapter_index,
+            "active_act": self.active_act,
+            "current_chapter_id": self.current_chapter_id,
+            "chapters": [c.to_dict() for c in self.chapters],
+            "transmission_log": [t.to_dict() for t in self.transmission_log],
+            "reputation": dict(self.reputation),
+            "faction_reputation": dict(self.reputation),
+            "completed": self.completed,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> StoryState:
+        raw_chapters = data.get("chapters") or ()
+        chapters = tuple(StoryChapter.from_dict(c) for c in raw_chapters)
+
+        raw_tx = data.get("transmission_log")
+        if not raw_tx and chapters:
+            transmission_log = (chapters[0].transmission,)
+        else:
+            transmission_log = tuple(StoryTransmission.from_dict(t) for t in (raw_tx or ()))
+
+        return cls(
+            campaign_title=str(data.get("campaign_title", "The Precursor Cipher")),
+            current_chapter_index=int(data.get("current_chapter_index", 0)),
+            chapters=chapters,
+            transmission_log=transmission_log,
+            reputation=dict(data.get("reputation") or data.get("faction_reputation") or {"coalition": 0, "syndicate": 0, "precursor": 0}),
+            completed=bool(data.get("completed", False)),
+        )
+
+
+@dataclass(frozen=True)
 class ShipState:
     """Complete telemetry, resource inventory, and status of the player's flagship."""
 
@@ -420,6 +713,8 @@ class ShipState:
     active_contracts: tuple[BountyContract, ...] = ()
     tactical_combo: int = 0
     near_miss_scanner_bonus: float = 0.0
+    tutorial: TutorialState = field(default_factory=TutorialState)
+    story: StoryState = field(default_factory=StoryState)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -448,6 +743,8 @@ class ShipState:
             "active_contracts": [c.to_dict() for c in self.active_contracts],
             "tactical_combo": self.tactical_combo,
             "near_miss_scanner_bonus": self.near_miss_scanner_bonus,
+            "tutorial": self.tutorial.to_dict(),
+            "story": self.story.to_dict(),
         }
 
     @classmethod
@@ -478,6 +775,8 @@ class ShipState:
             active_contracts=tuple(BountyContract.from_dict(c) for c in data.get("active_contracts", [])),
             tactical_combo=int(data.get("tactical_combo", 0)),
             near_miss_scanner_bonus=float(data.get("near_miss_scanner_bonus", 0.0)),
+            tutorial=TutorialState.from_dict(data.get("tutorial", {})),
+            story=StoryState.from_dict(data.get("story", {})),
         )
 
 

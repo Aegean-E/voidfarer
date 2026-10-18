@@ -1,18 +1,18 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-v3-retention-mechanics",
+    "task_id": "task-voidfarer-v4-tutorial-narrative",
     "last_phase": "phase 2",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792339503.0014536,
+    "updated_at": 1792340984.6455238,
     "impact_assessment": {
-      "why": "Incorporate behavioral psychology literature on game retention and attention mechanics into VoidFarer",
-      "benefits": "Transforms VoidFarer with deep dopaminergic feedback, Zeigarnik goal tension, loss aversion streaks, and player competence loops",
-      "risks": "contract: model schema backward compatibility; dependency: zero external packages; concurrency: thread-safe engine mutations; state: savegame backward compatibility",
-      "mitigation": "Default field values in frozen dataclasses, pure stdlib algorithms, sub-second test coverage, and non-destructive JSON state migration"
+      "why": "Incorporate literature review on cognitive scaffolding, tutorial design, and narrative transportation into VoidFarer, integrating an interactive Cadet Flight Academy and branching story campaign",
+      "benefits": "Dramatically flattens onboarding learning curve, immerses player in compelling sci-fi mystery, maximizes attention retention, and rewards progression through story relics",
+      "risks": "contract: API/CLI backward compatibility with existing save states; dependency: zero external packages allowed; concurrency: thread-safe engine mutations for story choices and tutorial advancement; state: seamless migration of existing saved ships without tutorial/story fields",
+      "mitigation": "Default field values in frozen dataclasses, pure standard library implementation, thread mutex locks on story resolution, and comprehensive unit test coverage"
     },
-    "completed_at": 1792340866.9926949
+    "completed_at": 1792342758.0341218
   },
   "checkpoints": [
     {
@@ -99,6 +99,31 @@
       "status": "completed",
       "timestamp": 1792340866.992696,
       "timestamp_str": "2026-10-18 19:27:46"
+    },
+    {
+      "task_id": "task-voidfarer-v4-tutorial-narrative",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/6] Architectural design & literature review for interactive tutorial, narrative transportation, and story campaign",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792340984.6455238,
+      "timestamp_str": "2026-10-18 19:29:44",
+      "impact_assessment": {
+        "why": "Incorporate literature review on cognitive scaffolding, tutorial design, and narrative transportation into VoidFarer, integrating an interactive Cadet Flight Academy and branching story campaign",
+        "benefits": "Dramatically flattens onboarding learning curve, immerses player in compelling sci-fi mystery, maximizes attention retention, and rewards progression through story relics",
+        "risks": "contract: API/CLI backward compatibility with existing save states; dependency: zero external packages allowed; concurrency: thread-safe engine mutations for story choices and tutorial advancement; state: seamless migration of existing saved ships without tutorial/story fields",
+        "mitigation": "Default field values in frozen dataclasses, pure standard library implementation, thread mutex locks on story resolution, and comprehensive unit test coverage"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-v4-tutorial-narrative",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-v4-tutorial-narrative' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792342758.034123,
+      "timestamp_str": "2026-10-18 19:59:18"
     }
   ]
 }

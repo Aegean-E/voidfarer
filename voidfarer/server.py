@@ -89,6 +89,18 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "relics": relics})
             return
 
+        if path == "/api/tutorial":
+            with self.engine.lock:
+                tut = self.engine.state.ship.tutorial.to_dict()
+            self._send_json({"ok": True, "tutorial": tut})
+            return
+
+        if path == "/api/story":
+            with self.engine.lock:
+                story = self.engine.state.ship.story.to_dict()
+            self._send_json({"ok": True, "story": story})
+            return
+
         # Serve static assets
         if path == "/" or path == "":
             rel_path = "index.html"
@@ -248,6 +260,25 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             dt = float(body.get("delta_time", 1.0))
             self.engine.step_orbits(dt)
             self._send_json({"ok": True, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/tutorial/skip":
+            ok, msg = self.engine.skip_tutorial()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/tutorial/reset":
+            ok, msg = self.engine.reset_tutorial()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/story/choice":
+            choice_id = str(body.get("choice_id", ""))
+            ok, msg = self.engine.make_story_choice(choice_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
         if path == "/api/reset":

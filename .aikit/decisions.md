@@ -38,5 +38,17 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   5. Add Tactical Combat Combo Counters and Critical Overcharge to induce Flow State (Csikszentmihalyi 1990) with procedural Web Audio synthesis for kinesthetic juice (Swink 2008).
 - **Consequences**: Player engagement is deeply reinforced through cognitive resonance, tangible meta-progression, and responsive sensory feedback while maintaining 100% standard library compliance and test execution in <1.0s.
 
+### ADR-004: Cognitive Scaffolding, Situated Cadet Flight Academy, and Narrative Transportation Space Opera Campaign
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: The game's multi-layered simulation systems (orbital flight, sensor scanning, reactor power distribution, station commerce, autonomous fleet drones, tactical corsair encounters, pilot talents) presented an intimidating cognitive barrier to entry for novice players, risking early drop-off (Sweller's Cognitive Load Theory). Furthermore, purely mechanical systems lacked emotional immersion and extrinsic-to-intrinsic meaning (Green & Brock's Narrative Transportation Theory, Loewenstein's Information Gap Theory).
+- **Decision**:
+  1. Implement a 6-step non-intrusive Cadet Flight Academy (`models.py`, `story.py`, `engine.py`) grounded in Vygotsky's Zone of Proximal Development (ZPD) and Gee's Situated Learning principles. The academy passively monitors natural player actions (`orbit`, `scan`, `power`, `trade`, `drone`, `jump`) rather than imposing modal tutorial prisons, granting incremental credits and XP upon completion, culminating in graduation honors and the `relic_cadet_wings` artifact.
+  2. Embed "The Precursor Cipher" space opera campaign (`story.py`, `engine.py`), featuring a 3-act episodic mystery spanning Sol, Sirius, and the Vega Gateway. Each act introduces rich character dispatches across an encrypted subspace radio array (Admiral Vance of the Sol Coalition, Cipher of the Free Spacers Syndicate, and Archon Prime of the Precursor Watch) and presents high-stakes moral dilemmas altering faction standings, economy, and unique story relics.
+  3. Expand the Web Cockpit HUD (`index.html`, `style.css`, `app.js`) with an always-visible Cadet Flight Academy progress ribbon and a dedicated COMMS LOG interface complete with faction reputation chips, animated speaker avatars, and Web Audio synthesized subspace transmissions.
+  4. Provide full CLI and REPL parity (`voidfarer tutorial [skip|reset]` and `voidfarer story [choose <id>]`).
+  5. Preserve strict architectural decoupling between data DTOs (`models.py`) and story content templates (`story.py`), maintaining zero circular dependencies, backward compatibility with legacy save states, and sub-second test execution.
+- **Consequences**: Radically flattens player onboarding friction, establishes compelling narrative stakes, maximizes player attention and retention through parasocial agency and narrative transportation, and maintains 100% standard library compliance across all platforms.
+
 
 

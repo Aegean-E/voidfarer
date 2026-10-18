@@ -115,6 +115,25 @@ class SoundController {
         } catch (e) {}
     }
 
+    playTransmission() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            [880, 1174, 987, 1318].forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+                gain.gain.setValueAtTime(0.12, now + idx * 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + idx * 0.05);
+                osc.stop(now + idx * 0.05 + 0.09);
+            });
+        } catch (e) {}
+    }
+
     playLaser() {
         if (!this.enabled || !this.ctx) return;
         try {
@@ -313,19 +332,42 @@ class CockpitApp {
         this.masteryBar = document.getElementById("masteryBar");
         this.masterySubtext = document.getElementById("masterySubtext");
 
+        // Cadet Academy Ribbon
+        this.cadetBanner = document.getElementById("cadetBanner");
+        this.cadetMilestoneTitle = document.getElementById("cadetMilestoneTitle");
+        this.cadetMilestoneDesc = document.getElementById("cadetMilestoneDesc");
+        this.cadetMilestoneHint = document.getElementById("cadetMilestoneHint");
+        this.cadetMilestoneReward = document.getElementById("cadetMilestoneReward");
+        this.btnSkipCadet = document.getElementById("btnSkipCadet");
+
         // Right Deck Tabs
         this.tabBtnMarket = document.getElementById("tabBtnMarket");
         this.tabBtnArsenal = document.getElementById("tabBtnArsenal");
         this.tabBtnFleet = document.getElementById("tabBtnFleet");
         this.tabBtnContracts = document.getElementById("tabBtnContracts");
         this.tabBtnMastery = document.getElementById("tabBtnMastery");
+        this.tabBtnStory = document.getElementById("tabBtnStory");
         this.contractsBadge = document.getElementById("contractsBadge");
+        this.storyBadge = document.getElementById("storyBadge");
 
         this.tabContentMarket = document.getElementById("tabContentMarket");
         this.tabContentArsenal = document.getElementById("tabContentArsenal");
         this.tabContentFleet = document.getElementById("tabContentFleet");
         this.tabContentContracts = document.getElementById("tabContentContracts");
         this.tabContentMastery = document.getElementById("tabContentMastery");
+        this.tabContentStory = document.getElementById("tabContentStory");
+
+        // Story Comms Elements
+        this.storyChapterTitle = document.getElementById("storyChapterTitle");
+        this.storyTargetBadge = document.getElementById("storyTargetBadge");
+        this.scoreCoalition = document.getElementById("scoreCoalition");
+        this.scoreSyndicate = document.getElementById("scoreSyndicate");
+        this.scorePrecursor = document.getElementById("scorePrecursor");
+        this.storySynopsisText = document.getElementById("storySynopsisText");
+        this.storyChoiceContainer = document.getElementById("storyChoiceContainer");
+        this.storyChoicesList = document.getElementById("storyChoicesList");
+        this.transmissionsStream = document.getElementById("transmissionsStream");
+        this.commsLogCount = document.getElementById("commsLogCount");
 
         // Contracts & Mastery Containers
         this.contractsList = document.getElementById("contractsList");
@@ -439,6 +481,8 @@ class CockpitApp {
         this.tabBtnFleet.addEventListener("click", () => this.switchRightTab("fleet"));
         this.tabBtnContracts.addEventListener("click", () => this.switchRightTab("contracts"));
         this.tabBtnMastery.addEventListener("click", () => this.switchRightTab("mastery"));
+        this.tabBtnStory.addEventListener("click", () => this.switchRightTab("story"));
+        this.btnSkipCadet.addEventListener("click", () => this.handleSkipCadet());
 
         // Combat Buttons
         this.btnCombatFire.addEventListener("click", () => this.handleCombat("fire_lasers"));
@@ -501,17 +545,20 @@ class CockpitApp {
         this.tabBtnFleet.classList.toggle("active", tabName === "fleet");
         this.tabBtnContracts.classList.toggle("active", tabName === "contracts");
         this.tabBtnMastery.classList.toggle("active", tabName === "mastery");
+        this.tabBtnStory.classList.toggle("active", tabName === "story");
 
         this.tabContentMarket.style.display = (tabName === "market") ? "flex" : "none";
         this.tabContentArsenal.style.display = (tabName === "arsenal") ? "flex" : "none";
         this.tabContentFleet.style.display = (tabName === "fleet") ? "flex" : "none";
         this.tabContentContracts.style.display = (tabName === "contracts") ? "flex" : "none";
         this.tabContentMastery.style.display = (tabName === "mastery") ? "flex" : "none";
+        this.tabContentStory.style.display = (tabName === "story") ? "flex" : "none";
 
         if (tabName === "arsenal") this.renderArsenal();
         if (tabName === "fleet") this.renderFleet();
         if (tabName === "contracts") this.renderContracts();
         if (tabName === "mastery") this.renderMastery();
+        if (tabName === "story") this.renderStory();
     }
 
     setPowerSliders(e, sh, se, w) {
@@ -681,6 +728,32 @@ class CockpitApp {
             this.anomalyCard.style.display = "none";
         }
 
+        // Cadet Academy Ribbon render
+        const tut = ship.tutorial;
+        if (tut && !tut.completed && !tut.skipped && tut.steps && tut.steps.length > 0) {
+            const step = tut.steps[tut.current_step_index] || tut.steps[0];
+            this.cadetBanner.style.display = "flex";
+            this.cadetMilestoneTitle.textContent = `Milestone ${tut.current_step_index + 1}/${tut.steps.length}: ${step.title}`;
+            this.cadetMilestoneDesc.textContent = step.description;
+            this.cadetMilestoneHint.textContent = step.hint;
+            this.cadetMilestoneReward.textContent = `+${step.reward_credits} CR / +${step.reward_xp} XP`;
+        } else {
+            this.cadetBanner.style.display = "none";
+        }
+
+        // Story Comms Badge
+        const story = ship.story;
+        if (story) {
+            const curChap = this.state.story_chapters ? this.state.story_chapters[story.current_chapter_id] : null;
+            const hasPendingChoices = curChap && !curChap.completed && curChap.choices && curChap.choices.length > 0;
+            if (hasPendingChoices) {
+                this.storyBadge.style.display = "inline-block";
+                this.storyBadge.textContent = "!";
+            } else {
+                this.storyBadge.style.display = "none";
+            }
+        }
+
         // Render Active Tab Content
         if (this.activeRightTab === "market") {
             if (orbBody && orbBody.station_dockable) {
@@ -702,6 +775,124 @@ class CockpitApp {
             this.renderContracts();
         } else if (this.activeRightTab === "mastery") {
             this.renderMastery();
+        } else if (this.activeRightTab === "story") {
+            this.renderStory();
+        }
+    }
+
+    renderStory() {
+        if (!this.state || !this.state.ship || !this.state.ship.story) return;
+        const story = this.state.ship.story;
+        const chapters = this.state.story_chapters || {};
+        const curChap = chapters[story.current_chapter_id];
+        if (!curChap) return;
+
+        this.storyChapterTitle.textContent = `ACT ${story.active_act}: ${curChap.title.toUpperCase()}`;
+        this.storyTargetBadge.textContent = curChap.completed ? "ACT OBJECTIVE COMPLETE" : `TARGET: ${curChap.target_system_id.toUpperCase()}`;
+        this.storySynopsisText.textContent = curChap.synopsis;
+
+        // Faction alignment meters
+        const rep = story.faction_reputation || { coalition: 0, syndicate: 0, precursor: 0 };
+        this.scoreCoalition.textContent = (rep.coalition >= 0 ? "+" : "") + rep.coalition;
+        this.scoreSyndicate.textContent = (rep.syndicate >= 0 ? "+" : "") + rep.syndicate;
+        this.scorePrecursor.textContent = (rep.precursor >= 0 ? "+" : "") + rep.precursor;
+
+        // Story Choices
+        if (!curChap.completed && curChap.choices && curChap.choices.length > 0) {
+            this.storyChoiceContainer.style.display = "flex";
+            this.storyChoicesList.innerHTML = "";
+            curChap.choices.forEach(c => {
+                const card = document.createElement("button");
+                card.className = "story-choice-card";
+                const costBadge = c.cost_credits > 0 ? `<span class="choice-cost-badge">COST: ${c.cost_credits} CR</span>` : "";
+                card.innerHTML = `
+                    <div class="choice-header-row">
+                        <span class="choice-label-text">${c.label}</span>
+                        ${costBadge}
+                    </div>
+                    <p class="choice-consequence-preview">${c.consequence_summary}</p>
+                `;
+                card.addEventListener("click", () => this.handleStoryChoice(c.id));
+                this.storyChoicesList.appendChild(card);
+            });
+        } else {
+            this.storyChoiceContainer.style.display = "none";
+        }
+
+        // Subspace Transmissions Feed
+        const logs = story.transmission_log || [];
+        this.commsLogCount.textContent = `${logs.length} TRANSMISSION${logs.length !== 1 ? 'S' : ''}`;
+        this.transmissionsStream.innerHTML = "";
+
+        logs.forEach(tx => {
+            const item = document.createElement("div");
+            item.className = "transmission-item";
+
+            let avatarClass = "avatar-generic";
+            let initials = "TX";
+            if (tx.speaker.includes("Vance")) {
+                avatarClass = "avatar-vance";
+                initials = "AV";
+            } else if (tx.speaker.includes("Cipher")) {
+                avatarClass = "avatar-cipher";
+                initials = "CP";
+            } else if (tx.speaker.includes("Archon")) {
+                avatarClass = "avatar-archon";
+                initials = "AP";
+            }
+
+            item.innerHTML = `
+                <div class="speaker-avatar ${avatarClass}">${initials}</div>
+                <div class="transmission-body">
+                    <div class="transmission-header-row">
+                        <span class="speaker-title">${tx.speaker}</span>
+                        <span class="callsign-pill">${tx.callsign.toUpperCase()}</span>
+                    </div>
+                    <div class="transmission-bubble">"${tx.message}"</div>
+                </div>
+            `;
+            this.transmissionsStream.appendChild(item);
+        });
+        this.transmissionsStream.scrollTop = this.transmissionsStream.scrollHeight;
+    }
+
+    async handleStoryChoice(choiceId) {
+        this.sound.init();
+        this.sound.playTransmission();
+        try {
+            const res = await fetch("/api/story/choice", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ choice_id: choiceId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(`[STORY] ${json.message}`, "reward");
+                this.state = json.state;
+                this.renderHUD();
+                this.renderStory();
+            } else {
+                this.appendLog(`[STORY ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Transmission choice failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleSkipCadet() {
+        this.sound.init();
+        this.sound.playBeep(700);
+        try {
+            const res = await fetch("/api/tutorial/skip", { method: "POST" });
+            const json = await res.json();
+            if (json.ok) {
+                this.appendLog(json.message, "system");
+                this.state = json.state;
+                this.renderHUD();
+            }
+        } catch (e) {
+            console.error("Error skipping tutorial:", e);
         }
     }
 

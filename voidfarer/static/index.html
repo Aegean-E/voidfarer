@@ -92,6 +92,31 @@
             </div>
         </header>
 
+        <!-- Cadet Flight Academy Ribbon -->
+        <div class="cadet-academy-banner" id="cadetBanner" style="display: none;">
+            <div class="cadet-badge">
+                <span class="academy-icon">🎓</span>
+                <div class="cadet-meta">
+                    <span class="cadet-tag">CADET FLIGHT ACADEMY // ONBOARDING</span>
+                    <h3 class="cadet-milestone-title" id="cadetMilestoneTitle">Milestone 1/6: Orbital Insertion</h3>
+                </div>
+            </div>
+            <div class="cadet-desc-box">
+                <p class="cadet-desc" id="cadetMilestoneDesc">Plot flight trajectory to any celestial body in Sol System.</p>
+                <div class="cadet-hint-row">
+                    <span class="cadet-hint-label">HINT:</span>
+                    <span class="cadet-hint-text" id="cadetMilestoneHint">Click Earth or Luna on radar and hit 'ENTER ORBIT'.</span>
+                </div>
+            </div>
+            <div class="cadet-reward-preview">
+                <span class="reward-tag">REWARD:</span>
+                <strong class="reward-val" id="cadetMilestoneReward">+250 CR / +100 XP</strong>
+            </div>
+            <div class="cadet-actions">
+                <button class="btn-cadet-skip" id="btnSkipCadet" title="Dismiss flight academy tutorial">SKIP TUTORIAL</button>
+            </div>
+        </div>
+
         <!-- Main Workspace Deck Grid -->
         <main class="cockpit-grid">
             
@@ -258,6 +283,7 @@
                     <button class="deck-tab-btn" id="tabBtnFleet">FLEET</button>
                     <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnMastery">MASTERY & RELICS</button>
+                    <button class="deck-tab-btn" id="tabBtnStory">COMMS LOG <span class="tab-badge" id="storyBadge" style="display: none;">!</span></button>
                 </div>
 
                 <!-- Tab 1: Station Market / Exchange -->
@@ -402,6 +428,55 @@
                     <p class="panel-intro-text">Alien artifacts recovered via sensor sweeps, hazardous anomalies, and contracts. Provide permanent fleet bonuses.</p>
                     <div class="relics-grid" id="relicsGrid">
                         <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Tab 6: The Precursor Cipher Narrative Comms -->
+                <div class="story-panel tab-content" id="tabContentStory" style="display: none;">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot dot-magenta"></span> SPACE-OPERA CAMPAIGN</div>
+                        <h2 class="panel-title" id="storyChapterTitle">ACT I: THE GHOST TRANSMISSION</h2>
+                        <span class="badge-arch" id="storyTargetBadge">TARGET: ALPHA CENTAURI</span>
+                    </div>
+
+                    <!-- Faction Alignment Meter Row -->
+                    <div class="factions-meter-bar">
+                        <div class="faction-chip" id="factionCoalition">
+                            <span class="faction-name">SOL COALITION</span>
+                            <strong class="faction-score" id="scoreCoalition">+0</strong>
+                        </div>
+                        <div class="faction-chip" id="factionSyndicate">
+                            <span class="faction-name">SPACERS SYNDICATE</span>
+                            <strong class="faction-score" id="scoreSyndicate">+0</strong>
+                        </div>
+                        <div class="faction-chip" id="factionPrecursor">
+                            <span class="faction-name">PRECURSOR WATCH</span>
+                            <strong class="faction-score" id="scorePrecursor">+0</strong>
+                        </div>
+                    </div>
+
+                    <div class="story-synopsis-box">
+                        <p class="story-synopsis-text" id="storySynopsisText">Decrypting subspace telemetry...</p>
+                    </div>
+
+                    <!-- Critical Moral Choice Card -->
+                    <div class="story-choice-container" id="storyChoiceContainer" style="display: none;">
+                        <div class="choice-prompt-header">
+                            <span class="choice-alert-icon">⚡</span>
+                            <h4>TACTICAL TRANSMISSION DECISION REQUIRED</h4>
+                        </div>
+                        <div class="story-choices-list" id="storyChoicesList"></div>
+                    </div>
+
+                    <!-- Radio Subspace Transmissions Log -->
+                    <div class="story-transmissions-feed">
+                        <div class="feed-header">
+                            <span>DECRYPTED COMMS STREAM</span>
+                            <small id="commsLogCount">0 TRANSMISSIONS</small>
+                        </div>
+                        <div class="transmissions-stream" id="transmissionsStream">
+                            <!-- Populated dynamically with character avatars, badges, and typewriter effect -->
+                        </div>
                     </div>
                 </div>
 

@@ -24,6 +24,12 @@ from voidfarer.models import (
     ShipState,
     ShipUpgrade,
     StarSystem,
+    StoryChapter,
+    StoryChoice,
+    StoryState,
+    StoryTransmission,
+    TutorialState,
+    TutorialStep,
 )
 from voidfarer.retention import (
     CATALOG_RELICS,
@@ -32,6 +38,13 @@ from voidfarer.retention import (
     generate_contract,
     generate_initial_contracts,
     roll_relic_drop,
+)
+from voidfarer.story import (
+    CAMPAIGN_CHAPTERS,
+    INITIAL_TUTORIAL_STEPS,
+    STORY_RELICS,
+    generate_initial_story,
+    generate_initial_tutorial,
 )
 from voidfarer.upgrades import (
     CATALOG_DRONE_TEMPLATES,
@@ -51,7 +64,27 @@ class SimulationEngine:
         self.rng = random.Random(seed)
 
         if state is not None:
-            self.state = state
+            ship = state.ship
+            tut = ship.tutorial
+            if not tut.steps and not tut.completed and not tut.skipped:
+                tut = generate_initial_tutorial()
+            st = ship.story
+            if not st.chapters:
+                st = generate_initial_story()
+            if tut != ship.tutorial or st != ship.story:
+                self.state = state
+                self.state = GameState(
+                    version=state.version,
+                    galaxy_seed=state.galaxy_seed,
+                    ship=self._clone_ship(tutorial=tut, story=st),
+                    systems=state.systems,
+                    visited_systems=state.visited_systems,
+                    active_anomaly=state.active_anomaly,
+                    active_combat=state.active_combat,
+                    stats=state.stats,
+                )
+            else:
+                self.state = state
         else:
             self.state = self._create_initial_state(seed)
 
@@ -84,7 +117,69 @@ class SimulationEngine:
             active_contracts=kwargs.get("active_contracts", cur.active_contracts),
             tactical_combo=kwargs.get("tactical_combo", cur.tactical_combo),
             near_miss_scanner_bonus=kwargs.get("near_miss_scanner_bonus", cur.near_miss_scanner_bonus),
+            tutorial=kwargs.get("tutorial", cur.tutorial),
+            story=kwargs.get("story", cur.story),
         )
+
+    def _progress_tutorial(self, action_type: str) -> tuple[TutorialState, int, int, list[PrecursorRelic], list[str]]:
+        """Advance the Cadet Flight Academy if current step requirement is satisfied."""
+        cur = self.state.ship.tutorial
+        if not cur.active or cur.completed or cur.skipped:
+            return cur, 0, 0, [], []
+
+        if cur.current_step_index >= len(cur.steps):
+            return cur, 0, 0, [], []
+
+        current_step = cur.steps[cur.current_step_index]
+        match_map = {
+            "step_orbit": "orbit",
+            "step_scan": "scan",
+            "step_power": "power",
+            "step_trade": "trade",
+            "step_drone": "drone",
+            "step_jump": "jump",
+        }
+
+        if match_map.get(current_step.id) != action_type:
+            return cur, 0, 0, [], []
+
+        updated_steps = list(cur.steps)
+        updated_steps[cur.current_step_index] = TutorialStep(
+            id=current_step.id,
+            title=current_step.title,
+            instruction=current_step.instruction,
+            hint=current_step.hint,
+            reward_credits=current_step.reward_credits,
+            reward_xp=current_step.reward_xp,
+            completed=True,
+        )
+
+        credits_awarded = current_step.reward_credits
+        xp_awarded = current_step.reward_xp
+        relics_awarded: list[PrecursorRelic] = []
+        logs: list[str] = [
+            f"ACADEMY STEP COMPLETE: [{current_step.title}] finished (+{current_step.reward_credits} cr, +{current_step.reward_xp} XP)!"
+        ]
+
+        next_idx = cur.current_step_index + 1
+        is_all_done = next_idx >= len(cur.steps)
+
+        if is_all_done:
+            credits_awarded += 1500
+            xp_awarded += 400
+            cadet_wings = STORY_RELICS.get("relic_cadet_wings")
+            if cadet_wings:
+                relics_awarded.append(cadet_wings)
+            logs.append("🎓 ACADEMY GRADUATION: Commander Astraea has graduated from the Cadet Flight Academy! Awarded Cadet Honor Wings (+1,500 cr, +400 XP).")
+
+        new_tutorial = TutorialState(
+            active=cur.active,
+            current_step_index=next_idx,
+            steps=tuple(updated_steps),
+            completed=is_all_done,
+            skipped=cur.skipped,
+        )
+        return new_tutorial, credits_awarded, xp_awarded, relics_awarded, logs
 
     def _award_pilot_xp(self, amount: int, current_mastery: PilotMastery) -> tuple[PilotMastery, list[str]]:
         """Award experience points and compute level promotions and talent points."""
@@ -177,6 +272,8 @@ class SimulationEngine:
             active_contracts=initial_contracts,
             tactical_combo=0,
             near_miss_scanner_bonus=0.0,
+            tutorial=generate_initial_tutorial(),
+            story=generate_initial_story(),
         )
 
         return GameState(
@@ -328,16 +425,45 @@ class SimulationEngine:
                 anomaly = GalaxyGenerator.get_random_anomaly(self.rng.randint(1, 99999))
                 new_log.append(f"WARNING: Deep-space anomaly detected! [{anomaly.title}]")
 
+            # Tutorial progression on hyperspace jump
+            new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("jump")
+            new_log.extend(tut_logs)
+            if tut_xp > 0:
+                new_mastery, xp_logs = self._award_pilot_xp(tut_xp, new_mastery)
+                new_log.extend(xp_logs)
+
+            # Story transmission alert if arrived in chapter target system
+            story = self.state.ship.story
+            new_story = story
+            if not story.completed and story.current_chapter_index < len(story.chapters):
+                cur_chap = story.chapters[story.current_chapter_index]
+                if cur_chap.target_system_id == target_system_id and not cur_chap.completed:
+                    new_log.append(f"📡 INCOMING SUBSPACE TRANSMISSION: [{cur_chap.transmission.speaker}] '{cur_chap.title}'")
+                    existing_msgs = {t.message for t in story.transmission_log}
+                    if cur_chap.transmission.message not in existing_msgs:
+                        new_story = StoryState(
+                            campaign_title=story.campaign_title,
+                            current_chapter_index=story.current_chapter_index,
+                            chapters=story.chapters,
+                            transmission_log=tuple(list(story.transmission_log) + [cur_chap.transmission]),
+                            reputation=story.reputation,
+                            completed=story.completed,
+                        )
+
             new_ship = self._clone_ship(
                 fuel=new_fuel,
+                credits=self.state.ship.credits + tut_cr,
                 current_system_id=target_system_id,
                 orbiting_body_id=target_sys.bodies[0].id if target_sys.bodies else None,
                 fleet_drones=updated_drones,
                 flight_log=tuple(new_log[-20:]),
                 streak=new_streak,
                 mastery=new_mastery,
+                relics=tuple(list(self.state.ship.relics) + tut_relics),
                 active_contracts=updated_contracts,
                 tactical_combo=0,
+                tutorial=new_tut,
+                story=new_story,
             )
 
             stats = dict(self.state.stats)
@@ -375,9 +501,18 @@ class SimulationEngine:
             log_entry = f"Orbital capture achieved around {matched.name}."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
+            new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("orbit")
+            new_log.extend(tut_logs)
+            new_mastery, xp_logs = self._award_pilot_xp(tut_xp, self.state.ship.mastery) if tut_xp > 0 else (self.state.ship.mastery, [])
+            new_log.extend(xp_logs)
+
             new_ship = self._clone_ship(
                 orbiting_body_id=body_id,
-                flight_log=tuple(new_log),
+                credits=self.state.ship.credits + tut_cr,
+                mastery=new_mastery,
+                relics=tuple(list(self.state.ship.relics) + tut_relics),
+                tutorial=new_tut,
+                flight_log=tuple(new_log[-20:]),
             )
 
             self.state = GameState(
@@ -473,12 +608,19 @@ class SimulationEngine:
             new_mastery, xp_logs = self._award_pilot_xp(50, self.state.ship.mastery)
             new_log.extend(xp_logs)
 
+            new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("scan")
+            new_log.extend(tut_logs)
+            if tut_xp > 0:
+                new_mastery, tut_xp_logs = self._award_pilot_xp(tut_xp, new_mastery)
+                new_log.extend(tut_xp_logs)
+
             new_ship = self._clone_ship(
-                credits=new_credits,
-                relics=tuple(new_relics),
+                credits=new_credits + tut_cr,
+                relics=tuple(new_relics + tut_relics),
                 near_miss_scanner_bonus=new_near_miss,
                 mastery=new_mastery,
                 active_contracts=updated_contracts,
+                tutorial=new_tut,
                 flight_log=tuple(new_log[-20:]),
             )
 
@@ -519,9 +661,18 @@ class SimulationEngine:
             log_entry = f"Reactor power redistributed: ENG {engines}%, SHD {shields}%, SEN {sensors}%, WEP {weapons}%."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
+            new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("power")
+            new_log.extend(tut_logs)
+            new_mastery, xp_logs = self._award_pilot_xp(tut_xp, self.state.ship.mastery) if tut_xp > 0 else (self.state.ship.mastery, [])
+            new_log.extend(xp_logs)
+
             new_ship = self._clone_ship(
                 power=new_power,
-                flight_log=tuple(new_log),
+                credits=self.state.ship.credits + tut_cr,
+                mastery=new_mastery,
+                relics=tuple(list(self.state.ship.relics) + tut_relics),
+                tutorial=new_tut,
+                flight_log=tuple(new_log[-20:]),
             )
 
             self.state = GameState(
@@ -597,11 +748,19 @@ class SimulationEngine:
             new_mastery, xp_logs = self._award_pilot_xp(25, self.state.ship.mastery)
             new_log.extend(xp_logs)
 
+            new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("trade")
+            new_log.extend(tut_logs)
+            if tut_xp > 0:
+                new_mastery, tut_xp_logs = self._award_pilot_xp(tut_xp, new_mastery)
+                new_log.extend(tut_xp_logs)
+
             new_ship = self._clone_ship(
-                credits=new_credits,
+                credits=new_credits + tut_cr,
                 cargo=cargo,
                 mastery=new_mastery,
+                relics=tuple(list(self.state.ship.relics) + tut_relics),
                 active_contracts=updated_contracts,
+                tutorial=new_tut,
                 flight_log=tuple(new_log[-20:]),
             )
 
@@ -712,10 +871,18 @@ class SimulationEngine:
             log_entry = f"Fleet expansion: Commissioned {new_drone.name} deployed to {target_sys}."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
+            new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("drone")
+            new_log.extend(tut_logs)
+            new_mastery, xp_logs = self._award_pilot_xp(tut_xp, self.state.ship.mastery) if tut_xp > 0 else (self.state.ship.mastery, [])
+            new_log.extend(xp_logs)
+
             new_ship = self._clone_ship(
-                credits=new_credits,
+                credits=new_credits + tut_cr,
                 fleet_drones=tuple(drones),
-                flight_log=tuple(new_log),
+                mastery=new_mastery,
+                relics=tuple(list(self.state.ship.relics) + tut_relics),
+                tutorial=new_tut,
+                flight_log=tuple(new_log[-20:]),
             )
 
             self.state = GameState(
@@ -1346,6 +1513,140 @@ class SimulationEngine:
 
             return True, f"Specialization unlocked: {talent['name']}."
 
+    def make_story_choice(self, choice_id: str) -> tuple[bool, str]:
+        """Resolve a branching story dilemma in the active campaign chapter."""
+        with self.lock:
+            story = self.state.ship.story
+            if story.completed or story.current_chapter_index >= len(story.chapters):
+                return False, "Campaign storyline is already complete."
+
+            current_chapter = story.chapters[story.current_chapter_index]
+            if current_chapter.completed:
+                return False, f"Chapter '{current_chapter.title}' is already resolved."
+
+            found_choice = None
+            for ch in current_chapter.choices:
+                if ch.id == choice_id:
+                    found_choice = ch
+                    break
+
+            if not found_choice:
+                avail = ", ".join(c.id for c in current_chapter.choices)
+                return False, f"Choice '{choice_id}' not found. Available choices: {avail}."
+
+            cost = getattr(found_choice, "cost_credits", 0)
+            if cost > 0 and self.state.ship.credits < cost:
+                return False, f"Insufficient credits ({self.state.ship.credits} available, {cost} required)."
+
+            new_credits = self.state.ship.credits + found_choice.reward_credits - cost
+            new_relics = list(self.state.ship.relics)
+            awarded_relic = None
+            if found_choice.reward_relic_id and found_choice.reward_relic_id in STORY_RELICS:
+                awarded_relic = STORY_RELICS[found_choice.reward_relic_id]
+                new_relics.append(awarded_relic)
+
+            new_rep = dict(story.reputation)
+            align = found_choice.faction_alignment
+            new_rep[align] = new_rep.get(align, 0) + 25
+
+            updated_chapters = list(story.chapters)
+            updated_chapters[story.current_chapter_index] = StoryChapter(
+                chapter_index=current_chapter.chapter_index,
+                title=current_chapter.title,
+                target_system_id=current_chapter.target_system_id,
+                objective=current_chapter.objective,
+                transmission=current_chapter.transmission,
+                choices=current_chapter.choices,
+                completed=True,
+                chosen_id=choice_id,
+            )
+
+            next_idx = story.current_chapter_index + 1
+            is_campaign_done = next_idx >= len(story.chapters)
+            new_transmissions = list(story.transmission_log)
+
+            if not is_campaign_done:
+                next_ch = updated_chapters[next_idx]
+                new_transmissions.append(next_ch.transmission)
+
+            new_story = StoryState(
+                campaign_title=story.campaign_title,
+                current_chapter_index=next_idx,
+                chapters=tuple(updated_chapters),
+                transmission_log=tuple(new_transmissions),
+                reputation=new_rep,
+                completed=is_campaign_done,
+            )
+
+            relic_msg = f" Acquired unique relic [{awarded_relic.name}]!" if awarded_relic else ""
+            log_entry = f"STORY DECISION: [{found_choice.text}] resolved. +{found_choice.reward_credits} cr.{relic_msg}"
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+
+            new_ship = self._clone_ship(
+                credits=new_credits,
+                relics=tuple(new_relics),
+                story=new_story,
+                flight_log=tuple(new_log[-20:]),
+            )
+
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=new_ship,
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                stats=self.state.stats,
+            )
+
+            msg = f"Decision resolved: {found_choice.outcome_text}{relic_msg}"
+            if is_campaign_done:
+                msg += " CAMPAIGN FINALE: The Precursor Cipher storyline concluded!"
+
+            return True, msg
+
+    def skip_tutorial(self) -> tuple[bool, str]:
+        """Skip Cadet Flight Academy and unlock unrestricted operational status."""
+        with self.lock:
+            cur = self.state.ship.tutorial
+            new_tut = TutorialState(
+                active=False,
+                current_step_index=cur.current_step_index,
+                steps=cur.steps,
+                completed=False,
+                skipped=True,
+            )
+            new_log = list(self.state.ship.flight_log[-19:]) + ["ACADEMY: Cadet Flight Academy skipped by commander."]
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=self._clone_ship(tutorial=new_tut, flight_log=tuple(new_log[-20:])),
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                stats=self.state.stats,
+            )
+            return True, "Cadet Flight Academy skipped. Full operational control active."
+
+    def reset_tutorial(self) -> tuple[bool, str]:
+        """Reset Cadet Flight Academy to step 1 for revision or retraining."""
+        with self.lock:
+            new_tut = generate_initial_tutorial()
+            new_log = list(self.state.ship.flight_log[-19:]) + ["ACADEMY: Cadet Flight Academy restarted."]
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=self._clone_ship(tutorial=new_tut, flight_log=tuple(new_log[-20:])),
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                stats=self.state.stats,
+            )
+            return True, "Cadet Flight Academy reset to Step 1."
+
     def get_status_snapshot(self) -> dict[str, Any]:
         """Produce a comprehensive JSON serializable telemetry snapshot for the HUD."""
         with self.lock:
@@ -1380,4 +1681,5 @@ class SimulationEngine:
                 "catalog_drones": CATALOG_DRONE_TEMPLATES,
                 "catalog_talents": PILOT_TALENTS,
                 "catalog_relics": [r.to_dict() for r in CATALOG_RELICS],
+                "story_chapters": [c.to_dict() for c in CAMPAIGN_CHAPTERS],
             }

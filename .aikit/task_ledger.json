@@ -1,65 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-v9-hardening",
-    "last_phase": "verification",
+    "task_id": "task-voidfarer-v10-economy-trading-upgrades",
+    "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792347266.7196364,
-    "completed_at": 1792347270.858492
+    "updated_at": 1792354681.57056,
+    "completed_at": 1792354736.5307915
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-v5-audit-hardening",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/4] Audit strengths/weaknesses and design hardening fixes for story, tutorial, passives, and HUD",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792343105.786874,
-      "timestamp_str": "2026-10-18 20:05:05",
-      "impact_assessment": {
-        "why": "Fulfill user /goal request: analyze changes for strengths, weaknesses, bugs, and gaps, and fix whatever is necessary",
-        "benefits": "Fixes Web HUD array/dict lookup bug, prevents story choice execution outside target system, connects story relic passives to core stats, adds graduation celebration and reset controls, and polishes CLI/HUD end-game campaign states",
-        "risks": "contract: REST API and CLI contracts remain unchanged; dependency: zero external packages; concurrency: thread-safe engine mutations; state: savegame backward compatibility preserved",
-        "mitigation": "Pure stdlib, thread locking, backward compatible defaults, and 100% test pass rate"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-v5-audit-hardening",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-v5-audit-hardening' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792343401.4263446,
-      "timestamp_str": "2026-10-18 20:10:01"
-    },
-    {
-      "task_id": "task-voidfarer-v6-factions-corps-enemies",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/5] Architectural domain modeling for factions, corporations, and enemy archetypes",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792343626.0378473,
-      "timestamp_str": "2026-10-18 20:13:46",
-      "impact_assessment": {
-        "why": "Expand Voidfarer with dynamic galaxy factions, megacorporations, and rich tactical enemy encounters as requested by the user",
-        "benefits": "Deep strategic gameplay, meaningful faction allegiances, corporate market economies and contracts, diverse combat challenges with shields and abilities",
-        "risks": "contract: Backward-compatible serialization for GameState, ShipState, CombatEncounter, and StoryState; dependency: None, strictly zero third-party packages; concurrency: Engine lock protects all faction and combat mutations; state: Migration defaults for existing save games with default faction standings and combat structures.",
-        "mitigation": "Default fallback values in all deserializers, comprehensive unit tests for old and new structures, atomic state saves."
-      }
-    },
-    {
-      "task_id": "task-voidfarer-v6-factions-corps-enemies",
-      "phase": "implementation",
-      "phase_num": 3,
-      "description": "[2/5] Galaxy generator and market economy integration with factions and corporations",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792343806.476479,
-      "timestamp_str": "2026-10-18 20:16:46"
-    },
     {
       "task_id": "task-voidfarer-v6-factions-corps-enemies",
       "phase": "implementation",
@@ -233,6 +182,51 @@
       "status": "completed",
       "timestamp": 1792347270.8584933,
       "timestamp_str": "2026-10-18 21:14:30"
+    },
+    {
+      "task_id": "task-voidfarer-v10-economy-trading-upgrades",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/5] Architectural domain modeling for global economy, trade routes, inventory, and shipyards",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792347415.216381,
+      "timestamp_str": "2026-10-18 21:16:55",
+      "impact_assessment": {
+        "why": "Implement deep trading, consumable inventory, tiered ship upgrades/chassis, and dynamic tick-based global economy",
+        "benefits": "Deep space trading sim mechanics, living dynamic galactic supply/demand markets, consumable items usable in space, modular ship customization and chassis upgrades",
+        "risks": "contract: existing REST and CLI return types preserved; dependency: pure stdlib only; concurrency: thread mutex locks on economy and inventory mutations; state: backward-compatible default factories for GameState",
+        "mitigation": "Default fallbacks in dataclasses, pure standard library, thread-safe state cloning, comprehensive unit tests"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-v10-economy-trading-upgrades",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/5] Stabilization of in-flight v10 economy/inventory work: fix combat tick rebuild TypeError, volume-based cargo gate, chassis listing + starter repurchase, sell_upgrade manifest removal, CLI numeric guards; add station consumable purchases; add economy/inventory tests + regressions; clear hygiene findings; align market display with dynamic quotes; update README + ADR-010",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792354428.5636568,
+      "timestamp_str": "2026-10-18 23:13:48"
+    },
+    {
+      "task_id": "task-voidfarer-v10-economy-trading-upgrades",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[5/5] Stabilization verified: 120/120 tests green (2.0s), aikit check voidfarer 4/4 gates (test, hygiene, guidelines, secrets), all 7 hygiene findings cleared, README claims + tree updated, ADR-010 recorded; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792354681.57056,
+      "timestamp_str": "2026-10-18 23:18:01"
+    },
+    {
+      "task_id": "task-voidfarer-v10-economy-trading-upgrades",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-v10-economy-trading-upgrades' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792354736.5307932,
+      "timestamp_str": "2026-10-18 23:18:56"
     }
   ]
 }

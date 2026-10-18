@@ -81,6 +81,28 @@
                 </div>
             </div>
 
+            <!-- Cosmic Chronometer & Time Controls -->
+            <div class="hud-time-deck" id="hudTimeDeck">
+                <div class="time-readout-group">
+                    <div class="time-label-row">
+                        <span class="time-tag">CHRONO</span>
+                        <span class="time-status-badge badge-active" id="timeStatusBadge">1x SPEED</span>
+                    </div>
+                    <div class="time-stardate-row">
+                        <strong class="stardate-text" id="chronoStardate">SD 3024.00</strong>
+                        <span class="tick-badge" id="chronoTick">TICK #0</span>
+                    </div>
+                </div>
+                <div class="time-controls-group">
+                    <button class="btn-time-ctrl btn-time-pause" id="btnTimePause" title="Pause / Resume Chrono Stream (Hotkey: Space)">⏸</button>
+                    <button class="btn-time-ctrl btn-time-speed active" id="btnTime1x" data-speed="1.0" title="Normal 1x Speed (Hotkey: 1)">1x</button>
+                    <button class="btn-time-ctrl btn-time-speed" id="btnTime2x" data-speed="2.0" title="Fast 2x Speed (Hotkey: 2)">2x</button>
+                    <button class="btn-time-ctrl btn-time-speed" id="btnTime5x" data-speed="5.0" title="Sub-Warp 5x Speed (Hotkey: 3)">5x</button>
+                    <button class="btn-time-ctrl btn-time-speed" id="btnTime10x" data-speed="10.0" title="Hyper-Warp 10x Speed (Hotkey: 4)">10x</button>
+                    <button class="btn-time-ctrl btn-time-step" id="btnTimeStep" title="Advance +1 Simulation Tick (Hotkey: T)">⏭ +1</button>
+                </div>
+            </div>
+
             <!-- Quick Action & Audio Controls -->
             <div class="hud-top-actions">
                 <button class="btn-hud" id="audioToggleBtn" title="Toggle Synthesized Audio">

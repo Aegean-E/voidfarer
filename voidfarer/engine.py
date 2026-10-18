@@ -42,6 +42,7 @@ from voidfarer.models import (
     StoryChoice,
     StoryState,
     StoryTransmission,
+    TimeState,
     TutorialState,
     TutorialStep,
 )
@@ -1877,6 +1878,7 @@ class SimulationEngine:
                 "visited_systems": list(self.state.visited_systems),
                 "active_anomaly": self.state.active_anomaly.to_dict() if self.state.active_anomaly else None,
                 "active_combat": self.state.active_combat.to_dict() if self.state.active_combat else None,
+                "time": self.state.time.to_dict(),
                 "stats": dict(self.state.stats),
                 "market_quotes": market_quotes,
                 "catalog_upgrades": [u.to_dict() for u in CATALOG_UPGRADES],
@@ -1903,3 +1905,216 @@ class SimulationEngine:
                 },
                 "enemy_archetypes": {aid: asdict(a) for aid, a in ENEMY_ARCHETYPES.items()},
             }
+
+    def tick(self, num_ticks: int = 1) -> dict[str, Any]:
+        """Advance the simulation universe by num_ticks."""
+        with self.lock:
+            if num_ticks <= 0:
+                return {
+                    "ticks_advanced": 0,
+                    "stardate": round(self.state.time.stardate, 2),
+                    "tick": self.state.time.tick,
+                    "time_scale": self.state.time.time_scale,
+                    "is_paused": self.state.time.is_paused,
+                }
+
+            cur_time = self.state.time
+            new_tick = cur_time.tick + num_ticks
+            new_days = cur_time.elapsed_days + num_ticks * 0.25
+            new_stardate = 3042.0 + (new_days / 365.25)
+            new_time = TimeState(
+                tick=new_tick,
+                stardate=new_stardate,
+                speed=cur_time.speed,
+                is_paused=cur_time.is_paused,
+                time_scale=cur_time.time_scale,
+                elapsed_days=new_days,
+            )
+
+            # 1. Orbital revolution: advance current_angle for every body in every star system
+            updated_systems = {}
+            for sys_id, system in self.state.systems.items():
+                updated_bodies = []
+                for body in system.bodies:
+                    d_angle = body.orbit_speed * 0.05 * num_ticks
+                    updated_bodies.append(
+                        CelestialBody(
+                            id=body.id,
+                            name=body.name,
+                            body_type=body.body_type,
+                            orbit_radius=body.orbit_radius,
+                            orbit_speed=body.orbit_speed,
+                            current_angle=(body.current_angle + d_angle) % (2.0 * math.pi),
+                            radius_km=body.radius_km,
+                            color=body.color,
+                            hazards=body.hazards,
+                            station_dockable=body.station_dockable,
+                            market_archetype=body.market_archetype,
+                            scan_completed=body.scan_completed,
+                            scan_discovery=body.scan_discovery,
+                        )
+                    )
+                updated_systems[sys_id] = StarSystem(
+                    id=system.id,
+                    name=system.name,
+                    seed=system.seed,
+                    x=system.x,
+                    y=system.y,
+                    spectral_type=system.spectral_type,
+                    color=system.color,
+                    security=system.security,
+                    faction=system.faction,
+                    bodies=tuple(updated_bodies),
+                    connections=system.connections,
+                    dominant_corp=system.dominant_corp,
+                )
+
+            # 2. Autonomous fleet drone harvesting over time
+            cur_ship = self.state.ship
+            new_drones = cur_ship.fleet_drones
+            drone_cycles = max(1, num_ticks // 4) if num_ticks >= 4 else (1 if new_tick % 4 == 0 else 0)
+            if drone_cycles > 0 and cur_ship.fleet_drones:
+                for _ in range(min(drone_cycles, 10)):
+                    new_drones = self._process_drone_cycle(
+                        self._clone_ship(fleet_drones=new_drones)
+                    )
+
+            # 3. Passive shield capacitor regeneration
+            new_shield = cur_ship.shield
+            shield_recharged = 0
+            if not self.state.active_combat and cur_ship.shield < cur_ship.max_shield:
+                shield_gain = int(max(1, (cur_ship.power.shields / 25.0) * num_ticks))
+                new_shield = min(cur_ship.max_shield, cur_ship.shield + shield_gain)
+                shield_recharged = new_shield - cur_ship.shield
+
+            # 4. Combat ability cooldown decay
+            new_combat = self.state.active_combat
+            if new_combat and new_combat.ability_cooldown > 0:
+                new_cooldown = max(0, new_combat.ability_cooldown - num_ticks)
+                new_combat = CombatEncounter(
+                    enemy_name=new_combat.enemy_name,
+                    enemy_type=new_combat.enemy_type,
+                    enemy_hull=new_combat.enemy_hull,
+                    enemy_max_hull=new_combat.enemy_max_hull,
+                    enemy_shield=new_combat.enemy_shield,
+                    enemy_max_shield=new_combat.enemy_max_shield,
+                    enemy_weapons=new_combat.enemy_weapons,
+                    threat_level=new_combat.threat_level,
+                    tactical_turn=new_combat.tactical_turn,
+                    combat_log=new_combat.combat_log,
+                    faction_id=new_combat.faction_id,
+                    special_ability=new_combat.special_ability,
+                    ability_cooldown=new_cooldown,
+                    telegraphed_action=new_combat.telegraphed_action,
+                )
+
+            new_ship = self._clone_ship(
+                shield=new_shield,
+                fleet_drones=new_drones,
+            )
+
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=new_ship,
+                systems=updated_systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=new_combat,
+                time=new_time,
+                stats=self.state.stats,
+            )
+
+            return {
+                "ticks_advanced": num_ticks,
+                "stardate": round(new_stardate, 2),
+                "tick": new_tick,
+                "elapsed_days": round(new_days, 2),
+                "shield_recharged": shield_recharged,
+                "time_scale": new_time.time_scale,
+                "is_paused": new_time.is_paused,
+            }
+
+    def pause_time(self) -> tuple[bool, str]:
+        """Pause simulation temporal clock."""
+        with self.lock:
+            cur = self.state.time
+            new_time = TimeState(
+                tick=cur.tick,
+                stardate=cur.stardate,
+                speed=0.0,
+                is_paused=True,
+                time_scale="PAUSED",
+                elapsed_days=cur.elapsed_days,
+            )
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=self.state.ship,
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                time=new_time,
+                stats=self.state.stats,
+            )
+            return True, "Simulation clock paused."
+
+    def resume_time(self) -> tuple[bool, str]:
+        """Resume simulation temporal clock at 1.0x normal speed."""
+        with self.lock:
+            cur = self.state.time
+            new_time = TimeState(
+                tick=cur.tick,
+                stardate=cur.stardate,
+                speed=1.0,
+                is_paused=False,
+                time_scale="1x",
+                elapsed_days=cur.elapsed_days,
+            )
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=self.state.ship,
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                time=new_time,
+                stats=self.state.stats,
+            )
+            return True, "Simulation clock resumed at 1.0x speed."
+
+    def set_time_speed(self, speed: float) -> tuple[bool, str]:
+        """Set simulation speed multiplier (0.0x to 10.0x)."""
+        with self.lock:
+            cur = self.state.time
+            clamped = max(0.0, min(10.0, float(speed)))
+            is_paused = (clamped == 0.0)
+            time_scale = "PAUSED" if is_paused else (f"{int(clamped)}x" if clamped.is_integer() else f"{clamped}x")
+            new_time = TimeState(
+                tick=cur.tick,
+                stardate=cur.stardate,
+                speed=clamped,
+                is_paused=is_paused,
+                time_scale=time_scale,
+                elapsed_days=cur.elapsed_days,
+            )
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=self.state.ship,
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                time=new_time,
+                stats=self.state.stats,
+            )
+            return True, f"Simulation clock speed set to {time_scale}."
+
+    def step_time(self, num_ticks: int = 1) -> tuple[bool, str, dict[str, Any]]:
+        """Advance simulation by a discrete number of ticks."""
+        summary = self.tick(max(1, int(num_ticks)))
+        return True, f"Advanced {summary['ticks_advanced']} tick(s). Stardate: {summary['stardate']}.", summary
+

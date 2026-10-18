@@ -74,7 +74,8 @@ voidfarer/
     ├── test_storage.py       <- power-loss safety & corruption quarantine
     ├── test_server.py        <- REST API request/response contracts
     ├── test_cli.py           <- command dispatch & argument parsing
-    └── test_story.py         <- academy onboarding & story campaign tests
+    ├── test_story.py         <- academy onboarding & story campaign tests
+    └── test_time_and_ticks.py <- cosmic stardate, tick simulation & time controls
 ```
 
 ---
@@ -218,22 +219,39 @@ python -m voidfarer.cli factions
 python -m voidfarer.cli corporations
 ```
 
-### 15. Interactive Terminal Cockpit REPL
+### 15. Cosmic Stardate & Temporal Clock Controls
+```bash
+# Check cosmic time, stardate, and active simulation tick
+python -m voidfarer.cli time status
+
+# Pause or resume the cosmic simulation clock
+python -m voidfarer.cli time pause
+python -m voidfarer.cli time resume
+
+# Adjust simulation speed multiplier (1x normal, 2x fast, 5x sub-warp, 10x hyper-warp)
+python -m voidfarer.cli time speed 5
+
+# Advance cosmic simulation by a discrete number of ticks (+1, +4, +10)
+python -m voidfarer.cli time step 4
+```
+
+### 16. Interactive Terminal Cockpit REPL
 ```bash
 python -m voidfarer.cli repl
 ```
-Inside the interactive REPL, you can execute all commands (`status`, `chart`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
+Inside the interactive REPL, you can execute all commands (`status`, `chart`, `time`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
-### 16. Holographic Web Cockpit Interface
+### 17. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 ```bash
 python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
+- **Cosmic Chronometer & Time Control Deck**: Top-of-HUD cybernetic panel featuring live Stardate (`SD 3042.xx`), tick badge (`TICK #N`), 1-click Pause/Resume button (`Spacebar`), 1x-10x speed multiplier toggles (`1-4`), and step advance button (`T`).
 - **Cadet Flight Academy Ribbon**: Persistent top-of-HUD progressive instruction banner with milestone progress, step hints, rewards, and one-click dismiss.
 - **COMMS LOG Subspace Radio Tab**: Subspace transmissions stream with animated character avatars (Admiral Vance, Cipher, Archon Prime), faction alignment chips, and interactive moral choice cards.
 - **Factions & Megacorporations Tab**: Live diplomatic standings (-100 to +100), territorial headquarters, tariff discounts, and corporate specialty trade margins.
-- **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom.
+- **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom, synchronized with simulated tick angular progression.
 - **Galaxy Sector Chart**: Hyperlane corridor network visualization and jump routing.
 - **Contracts & Bounties Tab**: Active operational task cards with live progress bars, Zeigarnik task renewal, and reward claim buttons.
 - **Mastery & Relics Tab**: Pilot rank progression, talent perk allocation grid, and ancient Precursor Relic vault.
@@ -250,6 +268,6 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Sub-Second Test Verification**: Comprehensive 68-test suite runs in under 1.5 seconds (`python -m unittest discover`).
+3. **Sub-Second Test Verification**: Comprehensive 84-test suite runs in under 1.5 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 

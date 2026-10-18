@@ -83,3 +83,23 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   2. Implement `voidfarer.bat` as a fast passthrough batch launcher in both project root and workspace root.
   3. Enhance `server.py` and `cli.py` with an `--open` flag that utilizes the standard `webbrowser` module via a non-blocking timer thread to automatically launch the default browser upon server readiness.
 - **Consequences**: Enables instantaneous 1-click game startup on Windows without any external pip packages, preserving 100% standard library compliance and sub-second automated test execution.
+
+### ADR-008: Cosmic Stardate, Simulation Ticks, and Universal Time Control Architecture
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: Voidfarer's galaxy simulation previously relied partly on asynchronous wall-clock intervals or static turns, lacking an explicit universal simulation clock, orbital angular velocity updates for celestial bodies, autonomous fleet drone time-based yield accumulation, passive shield capacitance recharge, and player temporal control mechanics (pause, speed acceleration, manual discrete tick stepping).
+- **Decision**:
+  1. Introduce `TimeState` immutable DTO in `models.py` tracking `tick: int`, `stardate: float`, `speed: float`, `is_paused: bool`, `time_scale: str`, and `elapsed_days: float`, serialized with backward-compatible defaults in `GameState`.
+  2. Implement `SimulationEngine.tick(num_ticks: int = 1)` advancing:
+     - Cosmic stardate and elapsed days (1 tick = 0.25 days = 6 hours; stardate = 3042.0 + elapsed_days / 365.25).
+     - Circular/Keplerian orbital positions (`current_angle = (current_angle + orbit_speed * 0.05 * num_ticks) % (2*pi)`) across all celestial bodies in the galaxy.
+     - Autonomous fleet drone harvest yield cycles across star systems.
+     - Passive deflector shield capacitor regeneration out of combat.
+     - Combat ability cooldown decay during active tactical encounters.
+  3. Implement temporal control primitives: `pause_time()`, `resume_time()`, `set_time_speed(speed: float)` (0x, 1x, 2x, 5x, 10x), and `step_time(num_ticks: int)`.
+  4. Implement REST API endpoints in `server.py`: `GET /api/time`, `POST /api/time/step`, `POST /api/time/speed`, `POST /api/time/pause`, and `POST /api/time/resume`, accompanied by a background `SimulationTicker` daemon loop scaling tick sleep intervals by `1.0 / speed` when unpaused.
+  5. Provide terminal CLI and REPL parity: `voidfarer time [status|pause|resume|speed <val>|step [n]]` and interactive REPL aliases (`chrono`, `tick`, `wait`).
+  6. Provide Web Cockpit HUD parity: sleek cybernetic `hud-time-deck` with glowing live stardate and tick badge, interactive pause/speed/step buttons, Spacebar/1-4/T hotkeys, and synchronized canvas radar planet orbital positions.
+  7. Maintain thread safety via re-entrant engine locking and sub-second test execution across 84 automated unit tests.
+- **Consequences**: Gives players full god-like temporal command over cosmic simulation flow, deepens orbital and fleet autonomy dynamics, aligns canvas radar motion with physics state, and preserves zero third-party dependencies.
+

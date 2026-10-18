@@ -1,58 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-v7-launcher",
-    "last_phase": "testing",
+    "task_id": "task-voidfarer-v8-time-and-ticks",
+    "last_phase": "in_progress",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792345522.7327461,
-    "completed_at": 1792345527.607002
+    "updated_at": 1792346554.3339112,
+    "completed_at": 1792346558.0425427
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/6] Core simulation models, procedural galaxy, and CLI REPL implemented",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792275105.9885828,
-      "timestamp_str": "2026-10-18 01:11:45"
-    },
-    {
-      "task_id": "task-voidfarer-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792275415.5476918,
-      "timestamp_str": "2026-10-18 01:16:55"
-    },
-    {
-      "task_id": "task-voidfarer-v2-evolution",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/5] Architectural audit, gap analysis, and planning for fleet management, ship upgrades, tactical combat, and publication",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792314429.5820296,
-      "timestamp_str": "2026-10-18 12:07:09",
-      "impact_assessment": {
-        "why": "Fulfill user /goal request: deeply analyze strengths, weaknesses, and gaps; implement autonomous fleet drones, equipment upgrades shop, tactical pirate encounters, and REPL usability fixes; then publish to GitHub",
-        "benefits": "Transforms VoidFarer into a complete fleet simulation with modular ship upgrades, automated mining/combat drones, tactical combat, friction-free REPL, and a public GitHub presence",
-        "risks": "contract: REST API and CLI backward compatibility; dependency: zero external packages allowed; concurrency: thread-safe drone and state updates; state: schema migration for existing savegames",
-        "mitigation": "Default field values in frozen dataclasses for backward-compatible deserialization, thread mutex locking, zero external dependencies, and rigorous test coverage"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-v2-evolution",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-v2-evolution' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792315042.251475,
-      "timestamp_str": "2026-10-18 12:17:22"
-    },
     {
       "task_id": "task-voidfarer-v3-retention-mechanics",
       "phase": "phase 2",
@@ -237,6 +193,51 @@
       "status": "completed",
       "timestamp": 1792345527.6070037,
       "timestamp_str": "2026-10-18 20:45:27"
+    },
+    {
+      "task_id": "task-voidfarer-v8-time-and-ticks",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/5] Architectural domain modeling for time, ticks, orbital mechanics, and time controls",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792345722.454504,
+      "timestamp_str": "2026-10-18 20:48:42",
+      "impact_assessment": {
+        "why": "Add simulation time, cosmic stardate ticks, orbital motion, drone time-harvesting, and player time controls as requested by the user",
+        "benefits": "Deepens simulation realism with dynamic planetary orbits, autonomous fleet background production over time, dynamic market ebb/flow, and full player agency with pause/speed controls",
+        "risks": "contract: REST API and CLI backward-compatible serialization with existing save files; dependency: zero third-party packages, pure stdlib; concurrency: thread-safe engine tick lock during background server ticker; state: save state migration for missing time field",
+        "mitigation": "Frozen dataclass TimeState with default factory, engine mutex locking on tick, and comprehensive automated unit tests"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-v8-time-and-ticks",
+      "phase": "in_progress",
+      "phase_num": 3,
+      "description": "[2/4] Implementation of TimeState, engine tick dynamics, REST API endpoints, CLI, and Web HUD time deck",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792346549.9992998,
+      "timestamp_str": "2026-10-18 21:02:29"
+    },
+    {
+      "task_id": "task-voidfarer-v8-time-and-ticks",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[3/4] Automated unit tests, ADR-008, documentation update, and full gate verification",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792346554.3339112,
+      "timestamp_str": "2026-10-18 21:02:34"
+    },
+    {
+      "task_id": "task-voidfarer-v8-time-and-ticks",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-v8-time-and-ticks' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792346558.0425444,
+      "timestamp_str": "2026-10-18 21:02:38"
     }
   ]
 }

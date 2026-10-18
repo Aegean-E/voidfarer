@@ -822,6 +822,41 @@ class ShipState:
 
 
 @dataclass(frozen=True)
+class TimeState:
+    """Universal cosmic stardate, simulation ticks, and time control state."""
+
+    tick: int = 0
+    stardate: float = 3042.00
+    speed: float = 1.0  # 0.0=paused, 1.0=normal, 2.0=fast, 5.0=faster, 10.0=warp
+    is_paused: bool = False
+    time_scale: str = "1x"
+    elapsed_days: float = 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tick": self.tick,
+            "stardate": round(self.stardate, 2),
+            "speed": self.speed,
+            "is_paused": self.is_paused,
+            "time_scale": self.time_scale,
+            "elapsed_days": round(self.elapsed_days, 2),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TimeState:
+        if not data:
+            return cls()
+        return cls(
+            tick=int(data.get("tick", 0)),
+            stardate=float(data.get("stardate", 3042.0)),
+            speed=float(data.get("speed", 1.0)),
+            is_paused=bool(data.get("is_paused", False)),
+            time_scale=str(data.get("time_scale", "1x")),
+            elapsed_days=float(data.get("elapsed_days", 0.0)),
+        )
+
+
+@dataclass(frozen=True)
 class GameState:
     """Master simulation universe state container."""
 
@@ -832,6 +867,7 @@ class GameState:
     visited_systems: tuple[str, ...]
     active_anomaly: AnomalyEncounter | None = None
     active_combat: CombatEncounter | None = None
+    time: TimeState = field(default_factory=TimeState)
     stats: dict[str, int] = field(default_factory=lambda: {
         "jumps": 0,
         "scans": 0,
@@ -850,6 +886,7 @@ class GameState:
             "visited_systems": list(self.visited_systems),
             "active_anomaly": self.active_anomaly.to_dict() if self.active_anomaly else None,
             "active_combat": self.active_combat.to_dict() if self.active_combat else None,
+            "time": self.time.to_dict(),
             "stats": dict(self.stats),
         }
 
@@ -877,6 +914,7 @@ class GameState:
             visited_systems=tuple(data.get("visited_systems", ())),
             active_anomaly=active_anomaly,
             active_combat=active_combat,
+            time=TimeState.from_dict(data.get("time", {})),
             stats=dict(data.get("stats", {
                 "jumps": 0,
                 "scans": 0,
@@ -886,3 +924,4 @@ class GameState:
                 "credits_earned": 0,
             })),
         )
+

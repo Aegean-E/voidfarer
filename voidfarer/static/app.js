@@ -255,11 +255,23 @@ class CockpitApp {
         this.refreshState();
         this.fetchGalaxy();
 
-        // Polling interval for live sync
-        setInterval(() => this.refreshState(true), 3000);
+        // Polling interval for live sync (1000ms for responsive tick progression)
+        setInterval(() => this.refreshState(true), 1000);
     }
 
     initDOMElements() {
+        // Cosmic Chronometer & Time Controls
+        this.chronoStardate = document.getElementById("chronoStardate");
+        this.chronoTick = document.getElementById("chronoTick");
+        this.timeStatusBadge = document.getElementById("timeStatusBadge");
+        this.btnTimePause = document.getElementById("btnTimePause");
+        this.btnTime1x = document.getElementById("btnTime1x");
+        this.btnTime2x = document.getElementById("btnTime2x");
+        this.btnTime5x = document.getElementById("btnTime5x");
+        this.btnTime10x = document.getElementById("btnTime10x");
+        this.btnTimeStep = document.getElementById("btnTimeStep");
+        this.timeSpeedButtons = [this.btnTime1x, this.btnTime2x, this.btnTime5x, this.btnTime10x];
+
         // Vitals
         this.hullBar = document.getElementById("hullBar");
         this.hullVal = document.getElementById("hullVal");
@@ -560,6 +572,43 @@ class CockpitApp {
         document.getElementById("clearLogBtn").addEventListener("click", () => {
             this.flightLogStream.innerHTML = `<div class="log-line log-system">[SYS] Telemetry stream cleared.</div>`;
         });
+
+        // Time & Ticks Chrono Controls
+        if (this.btnTimePause) {
+            this.btnTimePause.addEventListener("click", () => this.handleToggleTimePause());
+        }
+        if (this.btnTimeStep) {
+            this.btnTimeStep.addEventListener("click", () => this.handleTimeStep(1));
+        }
+        if (this.timeSpeedButtons) {
+            this.timeSpeedButtons.forEach(btn => {
+                if (btn) {
+                    btn.addEventListener("click", (e) => {
+                        const speed = parseFloat(e.currentTarget.getAttribute("data-speed") || "1.0");
+                        this.handleSetTimeSpeed(speed);
+                    });
+                }
+            });
+        }
+
+        // Global hotkeys for temporal controls (Space = Pause/Resume, 1-4 = Speeds, T = Step)
+        window.addEventListener("keydown", (e) => {
+            if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
+            if (e.code === "Space") {
+                e.preventDefault();
+                this.handleToggleTimePause();
+            } else if (e.key === "1") {
+                this.handleSetTimeSpeed(1.0);
+            } else if (e.key === "2") {
+                this.handleSetTimeSpeed(2.0);
+            } else if (e.key === "3") {
+                this.handleSetTimeSpeed(5.0);
+            } else if (e.key === "4") {
+                this.handleSetTimeSpeed(10.0);
+            } else if (e.key.toLowerCase() === "t") {
+                this.handleTimeStep(1);
+            }
+        });
     }
 
     switchRightTab(tabName) {
@@ -698,6 +747,40 @@ class CockpitApp {
             this.contractsBadge.textContent = readyContracts.length;
         } else {
             this.contractsBadge.style.display = "none";
+        }
+
+        // Render Cosmic Chronometer & Time Controls
+        if (this.state.time) {
+            const t = this.state.time;
+            if (this.chronoStardate) {
+                this.chronoStardate.textContent = `SD ${t.stardate.toFixed(2)}`;
+            }
+            if (this.chronoTick) {
+                this.chronoTick.textContent = `TICK #${t.tick}`;
+            }
+            if (this.btnTimePause && this.timeStatusBadge) {
+                if (t.is_paused) {
+                    this.btnTimePause.textContent = "▶";
+                    this.btnTimePause.classList.add("paused");
+                    this.btnTimePause.title = "Resume Chrono Stream (Hotkey: Space)";
+                    this.timeStatusBadge.textContent = "PAUSED";
+                    this.timeStatusBadge.className = "time-status-badge badge-paused";
+                } else {
+                    this.btnTimePause.textContent = "⏸";
+                    this.btnTimePause.classList.remove("paused");
+                    this.btnTimePause.title = "Pause Chrono Stream (Hotkey: Space)";
+                    this.timeStatusBadge.textContent = `${t.speed}x SPEED`;
+                    this.timeStatusBadge.className = "time-status-badge badge-active";
+                }
+            }
+            if (this.timeSpeedButtons) {
+                this.timeSpeedButtons.forEach(btn => {
+                    if (btn) {
+                        const s = parseFloat(btn.getAttribute("data-speed") || "1.0");
+                        btn.classList.toggle("active", Math.abs(s - t.speed) < 0.01 && !t.is_paused);
+                    }
+                });
+            }
         }
 
         // Nav titles
@@ -1365,6 +1448,71 @@ class CockpitApp {
         }
     }
 
+    async handleToggleTimePause() {
+        this.sound.init();
+        this.sound.playBeep(850, 0.05);
+        if (!this.state || !this.state.time) return;
+        const isPaused = this.state.time.is_paused;
+        const endpoint = isPaused ? "/api/time/resume" : "/api/time/pause";
+        try {
+            const res = await fetch(endpoint, { method: "POST" });
+            const json = await res.json();
+            if (json.ok && json.state) {
+                this.state = json.state;
+                this.renderHUD();
+                this.appendLog(json.message, isPaused ? "system" : "hazard");
+            } else if (json.message) {
+                this.appendLog(`[TIME] ${json.message}`, "system");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Temporal flux error: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleSetTimeSpeed(speed) {
+        this.sound.init();
+        this.sound.playBeep(980, 0.05);
+        try {
+            const res = await fetch("/api/time/speed", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ speed })
+            });
+            const json = await res.json();
+            if (json.ok && json.state) {
+                this.state = json.state;
+                this.renderHUD();
+                this.appendLog(json.message, "system");
+            } else if (json.message) {
+                this.appendLog(`[TIME] ${json.message}`, "system");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Temporal speed error: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleTimeStep(ticks = 1) {
+        this.sound.init();
+        this.sound.playBeep(1150, 0.04);
+        try {
+            const res = await fetch("/api/time/step", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ticks })
+            });
+            const json = await res.json();
+            if (json.ok && json.state) {
+                this.state = json.state;
+                this.renderHUD();
+                this.appendLog(json.message, "system");
+            } else if (json.message) {
+                this.appendLog(`[TIME] ${json.message}`, "system");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Temporal step error: ${e.message}`, "hazard");
+        }
+    }
+
     async handleScan() {
         this.sound.init();
         this.sound.playScan();
@@ -1670,8 +1818,8 @@ class CockpitApp {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Live planetary angle
-            const angle = b.current_angle + b.orbit_speed * now * 0.5;
+            // Live simulated planetary orbital angle
+            const angle = b.current_angle || 0;
             const bx = cx + Math.cos(angle) * orbitR;
             const by = cy + Math.sin(angle) * orbitR;
 
@@ -1785,11 +1933,10 @@ class CockpitApp {
 
         if (this.viewMode === "ORBITS" && this.state) {
             const auScale = 45 * this.zoom;
-            const now = Date.now() * 0.001;
             for (const b of this.state.current_system.bodies) {
                 if (b.body_type === "star") continue;
                 const orbitR = b.orbit_radius * auScale;
-                const angle = b.current_angle + b.orbit_speed * now * 0.5;
+                const angle = b.current_angle || 0;
                 const bx = cx + Math.cos(angle) * orbitR;
                 const by = cy + Math.sin(angle) * orbitR;
                 const dist = Math.hypot(mx - bx, my - by);
@@ -1824,11 +1971,10 @@ class CockpitApp {
 
         if (this.viewMode === "ORBITS" && this.state) {
             const auScale = 45 * this.zoom;
-            const now = Date.now() * 0.001;
             for (const b of this.state.current_system.bodies) {
                 if (b.body_type === "star") continue;
                 const orbitR = b.orbit_radius * auScale;
-                const angle = b.current_angle + b.orbit_speed * now * 0.5;
+                const angle = b.current_angle || 0;
                 const bx = cx + Math.cos(angle) * orbitR;
                 const by = cy + Math.sin(angle) * orbitR;
                 if (Math.hypot(mx - bx, my - by) < 18) {

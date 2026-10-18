@@ -89,6 +89,8 @@ def cmd_status(engine: SimulationEngine) -> int:
     print(BANNER)
     print(f"{BOLD}╔════ COMMANDER DOSSIER ══════════════════════════════════════════════╗{RESET}")
     print(f"║ Commander: {CYAN}{ship.commander_name:<16}{RESET} Callsign: {YELLOW}{ship.callsign:<16}{RESET} Class: {ship.ship_class:<12} ║")
+    t = engine.state.time
+    print(f"║ Stardate:  {YELLOW}{t.stardate:>7.2f}{RESET}  (Tick #{t.tick:<5})   Temporal Clock: {GREEN if not t.is_paused else RED}{t.time_scale:<10}{RESET}       ║")
     print(f"║ Credits:   {YELLOW}{ship.credits:>8} cr{RESET}       Cargo:    {sum(ship.cargo.values()):>2}/{ship.cargo_capacity:<2} units                     ║")
     print(f"╠════ VITAL TELEMETRY ════════════════════════════════════════════════╣{RESET}")
     streak_mult = 1.0 + min(1.5, (ship.streak - 1) * 0.15)
@@ -171,6 +173,70 @@ def cmd_status(engine: SimulationEngine) -> int:
             print(f"  • {BOLD}{ch.choice_id}{RESET}: {ch.text} {DIM}{req}{RESET}")
 
     return 0
+
+
+def cmd_time(engine: SimulationEngine, storage: StorageManager, argv: list[str]) -> int:
+    """Manage simulation cosmic time, ticks, and speed controls."""
+    if not argv or argv[0].lower() in ("status", "info"):
+        t = engine.state.time
+        print(f"\n{BOLD}{CYAN}╔════ COSMIC CHRONOMETRY & TEMPORAL MATRIX ════════════════════════════╗{RESET}")
+        print(f"║ Stardate:       {YELLOW}{t.stardate:.2f}{RESET}               Epoch Tick:     {CYAN}#{t.tick}{RESET}")
+        state_str = "RUNNING" if not t.is_paused else "PAUSED"
+        color = GREEN if not t.is_paused else RED
+        print(f"║ Temporal Speed: {color}{t.time_scale:<18}{RESET} Temporal State: {color}{state_str:<10}{RESET}")
+        print(f"║ Elapsed Time:   {t.elapsed_days:.2f} standard days ({t.tick} ticks elapsed)")
+        print(f"╠════ TEMPORAL COMMANDS ═══════════════════════════════════════════════╣{RESET}")
+        print(f"║  • {CYAN}time pause{RESET}                 Freeze temporal progression (0x)")
+        print(f"║  • {CYAN}time resume{RESET}                Resume normal temporal flow (1.0x)")
+        print(f"║  • {CYAN}time speed <x>{RESET}             Set speed multiplier (0.0 to 10.0x)")
+        print(f"║  • {CYAN}time step [n]{RESET}              Advance simulation by n ticks immediately")
+        print(f"╚══════════════════════════════════════════════════════════════════════╝{RESET}\n")
+        return 0
+
+    sub = argv[0].lower()
+    if sub == "pause":
+        ok, msg = engine.pause_time()
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0
+
+    elif sub in ("resume", "play"):
+        ok, msg = engine.resume_time()
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0
+
+    elif sub == "speed":
+        if len(argv) < 2:
+            print(f"{RED}Usage:{RESET} time speed <0|1|2|5|10>")
+            return 1
+        try:
+            sp = float(argv[1])
+        except ValueError:
+            print(f"{RED}Invalid speed factor '{argv[1]}'. Must be a numeric value.{RESET}")
+            return 1
+        ok, msg = engine.set_time_speed(sp)
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0
+
+    elif sub in ("step", "wait", "tick"):
+        ticks = 1
+        if len(argv) >= 2:
+            try:
+                ticks = max(1, int(argv[1]))
+            except ValueError:
+                print(f"{RED}Invalid tick count '{argv[1]}'. Must be an integer.{RESET}")
+                return 1
+        ok, msg, summary = engine.step_time(ticks)
+        print((GREEN if ok else RED) + msg + RESET)
+        if summary.get("shield_recharged", 0) > 0:
+            print(f"{CYAN}⚡ Deflector shields restored +{summary['shield_recharged']} capacitance over time.{RESET}")
+        storage.save(engine.state)
+        return 0
+
+    print(f"{RED}Unknown time command '{argv[0]}'. Use: time [status|pause|resume|speed <x>|step <n>]{RESET}")
+    return 1
 
 
 def cmd_chart(engine: SimulationEngine) -> int:
@@ -790,9 +856,12 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             cmd_factions(engine, storage, parts)
         elif cmd in ("corps", "corporations", "corp"):
             cmd_corporations(engine, storage, parts)
+        elif cmd in ("time", "chrono", "tick", "wait"):
+            cmd_time(engine, storage, parts[1:])
         elif cmd == "help":
             print(f"{BOLD}Available subcommands:{RESET}")
             print("  status                         - Telemetry, fleet roster, and subsystem readouts")
+            print("  time [status|pause|speed|step] - Cosmic time, ticks, and temporal speed controls")
             print("  chart / map                    - Hyperlane network & orbital bodies")
             print("  factions                       - Galactic factions, sovereign standings & perks")
             print("  corps / corporations           - Megacorporations, specialties & trade bonuses")
@@ -907,6 +976,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers.add_parser("factions", help="Inspect galactic sovereign factions and reputation")
     subparsers.add_parser("corps", help="Inspect interstellar megacorporations and trade perks")
 
+    time_p = subparsers.add_parser("time", help="Inspect and control simulation time and ticks")
+    time_p.add_argument("action", nargs="?", default="status", choices=["status", "pause", "resume", "play", "speed", "step", "wait", "tick"])
+    time_p.add_argument("value", nargs="?", help="Speed multiplier or tick count")
+
     args = parser.parse_args(argv)
     if not args.command:
         parser.print_help()
@@ -916,6 +989,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "status":
         return cmd_status(engine)
+    elif args.command == "time":
+        parts = [args.action]
+        if args.value:
+            parts.append(args.value)
+        return cmd_time(engine, storage, parts)
     elif args.command == "factions":
         return cmd_factions(engine, storage, ["factions"])
     elif args.command == "corps":

@@ -6,6 +6,8 @@ import json
 import mimetypes
 import os
 import sys
+import threading
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -99,6 +101,12 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             with self.engine.lock:
                 story = self.engine.state.ship.story.to_dict()
             self._send_json({"ok": True, "story": story})
+            return
+
+        if path == "/api/time":
+            with self.engine.lock:
+                time_data = self.engine.state.time.to_dict()
+            self._send_json({"ok": True, "time": time_data})
             return
 
         # Serve static assets
@@ -281,6 +289,32 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/time/step":
+            ticks = int(body.get("ticks", 1))
+            ok, msg, summary = self.engine.step_time(ticks)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "summary": summary, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/time/speed":
+            speed = float(body.get("speed", 1.0))
+            ok, msg = self.engine.set_time_speed(speed)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/time/pause":
+            ok, msg = self.engine.pause_time()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/time/resume":
+            ok, msg = self.engine.resume_time()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/reset":
             seed = int(body.get("seed", 42))
             self.engine.state = self.engine._create_initial_state(seed)
@@ -298,8 +332,9 @@ def run_server(
     port: int = 8080,
     host: str = "127.0.0.1",
     open_browser: bool = False,
+    enable_ticker: bool = True,
 ) -> None:
-    """Start local cockpit HTTP server daemon."""
+    """Start local cockpit HTTP server daemon with background temporal ticker."""
     static_dir = Path(__file__).parent / "static"
     VoidFarerHandler.engine = engine
     VoidFarerHandler.storage = storage
@@ -310,10 +345,32 @@ def run_server(
     print(f"\n=======================================================")
     print(f"🚀 VOIDFARER HOLOGRAPHIC COCKPIT ACTIVE")
     print(f"📡 Cockpit HUD URL: {url}")
+    print(f"⏱️ Cosmic Time: SD {round(engine.state.time.stardate, 2)} (Tick #{engine.state.time.tick})")
     print(f"⚡ Press Ctrl+C to disconnect sub-space uplink")
     print(f"=======================================================\n")
+
+    ticker_stop = threading.Event()
+
+    def _ticker_loop() -> None:
+        save_counter = 0
+        while not ticker_stop.is_set():
+            time_obj = engine.state.time
+            if not time_obj.is_paused and time_obj.speed > 0:
+                interval = max(0.1, 1.0 / time_obj.speed)
+                time.sleep(interval)
+                engine.tick(1)
+                save_counter += 1
+                if save_counter >= 10:
+                    storage.save(engine.state)
+                    save_counter = 0
+            else:
+                time.sleep(0.2)
+
+    if enable_ticker:
+        ticker = threading.Thread(target=_ticker_loop, daemon=True)
+        ticker.start()
+
     if open_browser:
-        import threading
         import webbrowser
 
         def _launch():
@@ -323,9 +380,11 @@ def run_server(
                 pass
 
         threading.Timer(0.4, _launch).start()
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
+        ticker_stop.set()
         print("\nShutting down sub-space uplink...")
         server.shutdown()
 

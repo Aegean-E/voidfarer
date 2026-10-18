@@ -2,7 +2,7 @@
 
 > **Autonomous Deep-Space Fleet, Procedural Galaxy & Holographic Cockpit Simulator.**
 
-VoidFarer is a zero-dependency, local-first space flight and exploration simulation engine. Navigate procedural star systems, establish orbits around exotic planets, route reactor power, trade dynamic commodities across orbital stations, investigate dangerous spatial anomalies, and pilot your flagship using either an ANSI terminal REPL or an HTML5 Canvas holographic cockpit Web HUD.
+VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits around exotic planets, route reactor power, commission autonomous mining and escort drones, purchase modular hardware upgrades, engage in tactical combat with hostile corsairs, trade dynamic commodities across orbital stations, and pilot your flagship using either an ANSI terminal REPL or an HTML5 Canvas holographic cockpit Web HUD.
 
 ---
 
@@ -41,6 +41,7 @@ voidfarer/
 │   ├── models.py             <- frozen dataclass DTOs and schema validators
 │   ├── galaxy.py             <- procedural star system & hyperlane generator
 │   ├── engine.py             <- deterministic state machine & coordinator
+│   ├── upgrades.py           <- hardware upgrades catalog & drone templates
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
 │   ├── cli.py                <- ANSI terminal interface & interactive REPL
@@ -52,7 +53,7 @@ voidfarer/
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
-    ├── test_engine.py        <- state transitions & anomaly mechanics
+    ├── test_engine.py        <- state transitions, fleet & combat mechanics
     ├── test_storage.py       <- power-loss safety & corruption quarantine
     ├── test_server.py        <- REST API request/response contracts
     └── test_cli.py           <- command dispatch & argument parsing
@@ -68,7 +69,7 @@ VoidFarer requires only Python 3.10+ and standard library modules.
 ```bash
 python -m voidfarer.cli status
 ```
-Displays commander dossier, vital telemetry (hull, shields, fuel), reactor power distribution, current system coordinates, and proximity hazard alerts.
+Displays commander dossier, vital telemetry (hull, shields, fuel), reactor power distribution, installed modules, fleet drone count, current system coordinates, and proximity hazard alerts.
 
 ### 2. Galaxy Starmap & Celestial Radar
 ```bash
@@ -88,22 +89,48 @@ python -m voidfarer.cli scan
 python -m voidfarer.cli jump alpha_centauri
 ```
 
-### 4. Reactor Power Routing
-Distribute 100% of your ship's reactor power across subsystems:
+### 4. Hardware Upgrades & Station Arsenal
 ```bash
-# power <engines> <shields> <sensors> <weapons>
-python -m voidfarer.cli power 35 25 25 15
+# Inspect available hardware modules and equipped status
+python -m voidfarer.cli upgrades
+
+# Purchase and equip an upgrade module
+python -m voidfarer.cli upgrades buy warp_booster_mk2
+python -m voidfarer.cli upgrades buy subspace_cargo_pods
 ```
 
-### 5. Commodity Commerce & Drydock Services
+### 5. Autonomous Fleet & Drones
+```bash
+# List active fleet drones and accumulated harvest yield
+python -m voidfarer.cli fleet
+
+# Commission a new drone (mining, scout, or combat_escort)
+python -m voidfarer.cli fleet buy mining sol
+
+# Redeploy a drone to another system
+python -m voidfarer.cli fleet deploy drone_mining_1 alpha_centauri
+
+# Harvest accumulated resources and credits from fleet
+python -m voidfarer.cli fleet harvest
+```
+
+### 6. Tactical Combat Maneuvers
+When intercepted by hostile corsairs in low-security space:
+```bash
+# Tactical maneuvers
+python -m voidfarer.cli combat fire     # Laser battery barrage
+python -m voidfarer.cli combat absorb   # Overcharge shield capacitors
+python -m voidfarer.cli combat evade    # High-G thruster burn
+python -m voidfarer.cli combat flee     # Emergency hyperspace micro-jump
+```
+
+### 7. Commodity Commerce & Drydock Services
 ```bash
 # Inspect local exchange prices
 python -m voidfarer.cli market
 
-# Purchase trade goods
+# Purchase and sell commodities
 python -m voidfarer.cli buy fuel_cells 5
-
-# Sell cargo for credits
 python -m voidfarer.cli sell titanium 3
 
 # Repair hull damage and refuel
@@ -111,23 +138,25 @@ python -m voidfarer.cli repair --amount 25
 python -m voidfarer.cli refuel --amount 20
 ```
 
-### 6. Interactive Terminal Cockpit REPL
+### 8. Interactive Terminal Cockpit REPL
 ```bash
 python -m voidfarer.cli repl
 ```
+Inside the interactive REPL, you can execute all commands (`status`, `chart`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
-### 7. Holographic Web Cockpit Interface
+### 9. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 ```bash
 python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
-- **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, and trajectory locking.
+- **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom.
 - **Galaxy Sector Chart**: Hyperlane corridor network visualization and jump routing.
-- **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, button clicks, and alarms.
+- **Station Arsenal Tab**: Modular hardware upgrades shop with real-time stat bonuses.
+- **Fleet Command Tab**: Roster of autonomous mining/scout drones with live harvest buttons.
+- **Tactical Combat Overlay**: Real-time battle HUD with enemy health bar and tactical action buttons.
+- **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, button clicks, and alarms.
 - **Reactor Power Matrix**: Dynamic power allocation sliders with instant subsystem re-routing.
-- **Commodity Exchange**: Live trading terminal with buy/sell actions and cargo capacity meters.
-- **Anomaly Encounters**: Tactical hazard modals with power checks and multi-branch outcomes.
 
 ---
 
@@ -135,5 +164,5 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Sub-Second Test Verification**: Comprehensive 25-test suite runs in under 0.7 seconds (`python -m unittest discover`).
+3. **Sub-Second Test Verification**: Comprehensive 33-test suite runs in under 0.8 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.

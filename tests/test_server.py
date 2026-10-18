@@ -91,6 +91,22 @@ class TestServer(unittest.TestCase):
         json_scan = json.loads(data_s.decode("utf-8"))
         self.assertTrue(json_scan["ok"])
 
+    def test_post_drone_and_upgrade_endpoints(self):
+        # Orbit station first
+        self._post("/api/orbit", {"target": "sol_body_1"})
+
+        # Buy drone
+        st_d, data_d = self._post("/api/drone/buy", {"drone_type": "mining", "system_id": "sol"})
+        self.assertEqual(st_d, 200)
+        json_d = json.loads(data_d.decode("utf-8"))
+        self.assertTrue(json_d["ok"])
+
+        # Buy upgrade
+        st_u, data_u = self._post("/api/upgrade", {"upgrade_id": "warp_booster_mk2"})
+        self.assertEqual(st_u, 200)
+        json_u = json.loads(data_u.decode("utf-8"))
+        self.assertTrue(json_u["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

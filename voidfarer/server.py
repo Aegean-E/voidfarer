@@ -181,6 +181,43 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/upgrade":
+            upgrade_id = str(body.get("upgrade_id", ""))
+            ok, msg = self.engine.buy_upgrade(upgrade_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/drone/buy":
+            drone_type = str(body.get("drone_type", "mining"))
+            sys_id = body.get("system_id")
+            ok, msg = self.engine.buy_drone(drone_type, sys_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/drone/deploy":
+            drone_id = str(body.get("drone_id", ""))
+            sys_id = str(body.get("system_id", ""))
+            ok, msg = self.engine.deploy_drone(drone_id, sys_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/drone/collect":
+            drone_id = body.get("drone_id")
+            ok, msg, info = self.engine.collect_drone_yield(drone_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "yield": info, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/combat":
+            action = str(body.get("action", "fire_lasers"))
+            ok, msg = self.engine.combat_action(action)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/step":
             dt = float(body.get("delta_time", 1.0))
             self.engine.step_orbits(dt)
@@ -195,6 +232,7 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             return
 
         self._send_error_json("Invalid API endpoint", status=HTTPStatus.NOT_FOUND)
+
 
 
 def run_server(

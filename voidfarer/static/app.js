@@ -1,6 +1,6 @@
 /**
  * VOIDFARER // Tactical Cockpit & Autonomous Galaxy Simulator
- * Master Web Client: Canvas Radar, Procedural Web Audio Synth, and REST API Controller.
+ * Master Web Client: Canvas Radar, Procedural Web Audio Synth, Fleet/Arsenal Controller, and REST Link.
  */
 
 class SoundController {
@@ -114,6 +114,24 @@ class SoundController {
             osc.stop(now + 0.38);
         } catch (e) {}
     }
+
+    playLaser() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(850, now);
+            osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.22);
+        } catch (e) {}
+    }
 }
 
 class CockpitApp {
@@ -122,6 +140,7 @@ class CockpitApp {
         this.state = null;
         this.galaxySystems = {};
         this.viewMode = "ORBITS"; // "ORBITS" or "GALAXY"
+        this.activeRightTab = "market"; // "market", "arsenal", "fleet"
         this.selectedTarget = null; // CelestialBody or StarSystem
         this.selectedType = null; // 'body' or 'system'
 
@@ -131,6 +150,9 @@ class CockpitApp {
         this.zoom = 1.0;
         this.panX = 0;
         this.panY = 0;
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
         this.hoveredItem = null;
 
         this.initDOMElements();
@@ -188,8 +210,31 @@ class CockpitApp {
         // Log
         this.flightLogStream = document.getElementById("flightLogStream");
 
-        // Market & Anomaly
-        this.marketPanel = document.getElementById("marketPanel");
+        // Combat Card
+        this.combatCard = document.getElementById("combatCard");
+        this.combatEnemyTitle = document.getElementById("combatEnemyTitle");
+        this.combatEnemyHp = document.getElementById("combatEnemyHp");
+        this.combatEnemyBar = document.getElementById("combatEnemyBar");
+        this.btnCombatFire = document.getElementById("btnCombatFire");
+        this.btnCombatAbsorb = document.getElementById("btnCombatAbsorb");
+        this.btnCombatEvade = document.getElementById("btnCombatEvade");
+        this.btnCombatFlee = document.getElementById("btnCombatFlee");
+
+        // Anomaly Card
+        this.anomalyCard = document.getElementById("anomalyCard");
+        this.anomalyTitle = document.getElementById("anomalyTitle");
+        this.anomalyDesc = document.getElementById("anomalyDesc");
+        this.anomalyChoices = document.getElementById("anomalyChoices");
+
+        // Right Deck Tabs
+        this.tabBtnMarket = document.getElementById("tabBtnMarket");
+        this.tabBtnArsenal = document.getElementById("tabBtnArsenal");
+        this.tabBtnFleet = document.getElementById("tabBtnFleet");
+        this.tabContentMarket = document.getElementById("tabContentMarket");
+        this.tabContentArsenal = document.getElementById("tabContentArsenal");
+        this.tabContentFleet = document.getElementById("tabContentFleet");
+
+        // Market
         this.marketTitle = document.getElementById("marketTitle");
         this.marketArch = document.getElementById("marketArch");
         this.marketTableBody = document.getElementById("marketTableBody");
@@ -199,15 +244,16 @@ class CockpitApp {
         this.btnDrydockRepair = document.getElementById("btnDrydockRepair");
         this.btnRefuelTanks = document.getElementById("btnRefuelTanks");
 
-        this.anomalyCard = document.getElementById("anomalyCard");
-        this.anomalyTitle = document.getElementById("anomalyTitle");
-        this.anomalyDesc = document.getElementById("anomalyDesc");
-        this.anomalyChoices = document.getElementById("anomalyChoices");
+        // Arsenal & Fleet containers
+        this.arsenalList = document.getElementById("arsenalList");
+        this.fleetRoster = document.getElementById("fleetRoster");
+        this.btnHarvestFleet = document.getElementById("btnHarvestFleet");
 
         // Footer stats
         this.statJumps = document.getElementById("statJumps");
         this.statScans = document.getElementById("statScans");
         this.statTrades = document.getElementById("statTrades");
+        this.statVictories = document.getElementById("statVictories");
         this.statAnomalies = document.getElementById("statAnomalies");
     }
 
@@ -251,7 +297,7 @@ class CockpitApp {
             this.sound.playBeep(1100, 0.04);
         });
         document.getElementById("btnZoomOut").addEventListener("click", () => {
-            this.zoom = Math.max(0.5, this.zoom - 0.2);
+            this.zoom = Math.max(0.4, this.zoom - 0.2);
             this.sound.playBeep(900, 0.04);
         });
         document.getElementById("btnResetView").addEventListener("click", () => {
@@ -268,7 +314,6 @@ class CockpitApp {
         // Power Sliders
         const sliders = [this.sliderEng, this.sliderShd, this.sliderSen, this.sliderWep];
         sliders.forEach(s => s.addEventListener("input", () => this.updatePowerAllocationDisplay()));
-
         this.applyPowerBtn.addEventListener("click", () => this.handleApplyPower());
 
         // Presets
@@ -289,14 +334,77 @@ class CockpitApp {
         this.btnDrydockRepair.addEventListener("click", () => this.handleRepair());
         this.btnRefuelTanks.addEventListener("click", () => this.handleRefuel());
 
-        // Canvas interactions
-        this.canvas.addEventListener("mousemove", (e) => this.handleCanvasMouseMove(e));
+        // Right Deck Tabs
+        this.tabBtnMarket.addEventListener("click", () => this.switchRightTab("market"));
+        this.tabBtnArsenal.addEventListener("click", () => this.switchRightTab("arsenal"));
+        this.tabBtnFleet.addEventListener("click", () => this.switchRightTab("fleet"));
+
+        // Combat Buttons
+        this.btnCombatFire.addEventListener("click", () => this.handleCombat("fire_lasers"));
+        this.btnCombatAbsorb.addEventListener("click", () => this.handleCombat("shield_absorb"));
+        this.btnCombatEvade.addEventListener("click", () => this.handleCombat("evasive_burn"));
+        this.btnCombatFlee.addEventListener("click", () => this.handleCombat("flee"));
+
+        // Harvest Fleet
+        this.btnHarvestFleet.addEventListener("click", () => this.handleHarvestFleet());
+
+        // Drone Commission buttons
+        document.querySelectorAll(".btn-drone-buy").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const target = e.currentTarget;
+                const dType = target.getAttribute("data-type");
+                this.handleCommissionDrone(dType);
+            });
+        });
+
+        // Canvas interactions & Drag Pan
+        this.canvas.addEventListener("mousedown", (e) => {
+            this.isDragging = true;
+            this.dragStartX = e.clientX - this.panX;
+            this.dragStartY = e.clientY - this.panY;
+        });
+
+        window.addEventListener("mouseup", () => {
+            this.isDragging = false;
+        });
+
+        this.canvas.addEventListener("mousemove", (e) => {
+            if (this.isDragging) {
+                this.panX = e.clientX - this.dragStartX;
+                this.panY = e.clientY - this.dragStartY;
+            } else {
+                this.handleCanvasMouseMove(e);
+            }
+        });
+
+        this.canvas.addEventListener("wheel", (e) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.1 : -0.1;
+            this.zoom = Math.max(0.4, Math.min(2.5, this.zoom + delta));
+        }, { passive: false });
+
         this.canvas.addEventListener("click", (e) => this.handleCanvasClick(e));
 
         // Clear Log
         document.getElementById("clearLogBtn").addEventListener("click", () => {
             this.flightLogStream.innerHTML = `<div class="log-line log-system">[SYS] Telemetry stream cleared.</div>`;
         });
+    }
+
+    switchRightTab(tabName) {
+        this.sound.playBeep(750, 0.05);
+        this.activeRightTab = tabName;
+
+        this.tabBtnMarket.classList.toggle("active", tabName === "market");
+        this.tabBtnArsenal.classList.toggle("active", tabName === "arsenal");
+        this.tabBtnFleet.classList.toggle("active", tabName === "fleet");
+
+        this.tabContentMarket.style.display = (tabName === "market") ? "flex" : "none";
+        this.tabContentArsenal.style.display = (tabName === "arsenal") ? "flex" : "none";
+        this.tabContentFleet.style.display = (tabName === "fleet") ? "flex" : "none";
+
+        if (tabName === "arsenal") this.renderArsenal();
+        if (tabName === "fleet") this.renderFleet();
     }
 
     setPowerSliders(e, sh, se, w) {
@@ -393,41 +501,60 @@ class CockpitApp {
         this.statJumps.textContent = this.state.stats.jumps || 0;
         this.statScans.textContent = this.state.stats.scans || 0;
         this.statTrades.textContent = this.state.stats.trades || 0;
+        this.statVictories.textContent = this.state.stats.combat_victories || 0;
         this.statAnomalies.textContent = this.state.stats.anomalies_resolved || 0;
 
+        // Render Combat Intercept Alert
+        if (this.state.active_combat) {
+            const c = this.state.active_combat;
+            this.sound.playAlarm();
+            this.combatCard.style.display = "flex";
+            this.combatEnemyTitle.textContent = `${c.enemy_name} [${c.enemy_class}]`;
+            this.combatEnemyHp.textContent = `${c.enemy_hull} / ${c.enemy_max_hull}`;
+            const pct = Math.round((c.enemy_hull / c.enemy_max_hull) * 100);
+            this.combatEnemyBar.style.width = `${pct}%`;
+        } else {
+            this.combatCard.style.display = "none";
+        }
+
         // Render Anomaly Alert
-        if (this.state.active_anomaly) {
+        if (this.state.active_anomaly && !this.state.active_combat) {
             this.sound.playAlarm();
             this.anomalyCard.style.display = "flex";
             this.anomalyTitle.textContent = this.state.active_anomaly.title;
             this.anomalyDesc.textContent = this.state.active_anomaly.description;
             this.anomalyChoices.innerHTML = "";
-            this.state.active_anomaly.choices.forEach(c => {
+            this.state.active_anomaly.choices.forEach(ch => {
                 const btn = document.createElement("button");
                 btn.className = "anomaly-choice-btn";
-                const checkInfo = c.required_power !== "none" 
-                    ? `[CHECK: ${c.required_power.toUpperCase()} >= ${c.min_power_threshold}%]`
+                const checkInfo = ch.required_power !== "none" 
+                    ? `[CHECK: ${ch.required_power.toUpperCase()} >= ${ch.min_power_threshold}%]`
                     : `[SAFE HARVEST]`;
-                btn.innerHTML = `${c.text} <span class="choice-check">${checkInfo}</span>`;
-                btn.addEventListener("click", () => this.handleResolveAnomaly(c.choice_id));
+                btn.innerHTML = `${ch.text} <span class="choice-check">${checkInfo}</span>`;
+                btn.addEventListener("click", () => this.handleResolveAnomaly(ch.choice_id));
                 this.anomalyChoices.appendChild(btn);
             });
         } else {
             this.anomalyCard.style.display = "none";
         }
 
-        // Render Market
-        if (orbBody && orbBody.station_dockable) {
-            this.marketPanel.style.display = "flex";
-            this.noMarketMsg.style.display = "none";
-            this.marketTitle.textContent = `${orbBody.name.toUpperCase()} EXCHANGE`;
-            this.marketArch.textContent = orbBody.market_archetype.toUpperCase();
-            this.renderMarketTable();
-        } else {
-            this.noMarketMsg.style.display = "flex";
-            this.marketTableBody.innerHTML = "";
-            this.marketTitle.textContent = orbBody ? orbBody.name : "DEEP SPACE";
-            this.marketArch.textContent = "UNPOPULATED";
+        // Render Active Tab Content
+        if (this.activeRightTab === "market") {
+            if (orbBody && orbBody.station_dockable) {
+                this.noMarketMsg.style.display = "none";
+                this.marketTitle.textContent = `${orbBody.name.toUpperCase()} EXCHANGE`;
+                this.marketArch.textContent = orbBody.market_archetype.toUpperCase();
+                this.renderMarketTable();
+            } else {
+                this.noMarketMsg.style.display = "flex";
+                this.marketTableBody.innerHTML = "";
+                this.marketTitle.textContent = orbBody ? orbBody.name : "DEEP SPACE";
+                this.marketArch.textContent = "UNPOPULATED";
+            }
+        } else if (this.activeRightTab === "arsenal") {
+            this.renderArsenal();
+        } else if (this.activeRightTab === "fleet") {
+            this.renderFleet();
         }
     }
 
@@ -465,6 +592,64 @@ class CockpitApp {
         });
     }
 
+    renderArsenal() {
+        this.arsenalList.innerHTML = "";
+        const upgrades = this.state.catalog_upgrades || [];
+        const equipped = this.state.ship.equipped_upgrades || {};
+        const credits = this.state.ship.credits;
+
+        upgrades.forEach(u => {
+            const isEquipped = equipped[u.slot] === u.id;
+            const card = document.createElement("div");
+            card.className = `arsenal-card ${isEquipped ? 'installed' : ''}`;
+
+            card.innerHTML = `
+                <div class="arsenal-info">
+                    <div class="arsenal-title-row">
+                        <span class="slot-tag">${u.slot.toUpperCase()}</span>
+                        <strong class="arsenal-name">${u.name}</strong>
+                    </div>
+                    <p class="arsenal-desc">${u.description}</p>
+                </div>
+                <button class="btn-upgrade-buy" ${isEquipped || credits < u.cost ? 'disabled' : ''} data-id="${u.id}">
+                    ${isEquipped ? 'EQUIPPED' : `${u.cost} CR`}
+                </button>
+            `;
+
+            if (!isEquipped) {
+                card.querySelector(".btn-upgrade-buy").addEventListener("click", () => this.handleBuyUpgrade(u.id));
+            }
+
+            this.arsenalList.appendChild(card);
+        });
+    }
+
+    renderFleet() {
+        this.fleetRoster.innerHTML = "";
+        const drones = this.state.ship.fleet_drones || [];
+
+        if (drones.length === 0) {
+            this.fleetRoster.innerHTML = `<p style="padding:12px;font-size:0.75rem;color:var(--text-muted);text-align:center;">No fleet drones active. Commission a drone below to start harvesting.</p>`;
+            return;
+        }
+
+        drones.forEach(d => {
+            const card = document.createElement("div");
+            card.className = "drone-card";
+
+            card.innerHTML = `
+                <div class="drone-meta">
+                    <strong class="drone-name">${d.name}</strong>
+                    <span class="drone-sub">${d.drone_type.toUpperCase()} // ${d.assigned_system_id.toUpperCase()} [${d.status.toUpperCase()}]</span>
+                </div>
+                <div class="drone-yield-badge">
+                    +${d.cargo_accumulated} Ore / +${d.credits_accumulated} CR
+                </div>
+            `;
+            this.fleetRoster.appendChild(card);
+        });
+    }
+
     appendLog(text, type = "system") {
         const line = document.createElement("div");
         line.className = `log-line log-${type}`;
@@ -475,6 +660,93 @@ class CockpitApp {
     }
 
     // --- Actions ---
+
+    async handleCombat(action) {
+        this.sound.init();
+        if (action === "fire_lasers") this.sound.playLaser();
+        else this.sound.playBeep(600);
+
+        try {
+            const res = await fetch("/api/combat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: action })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+            } else {
+                this.appendLog(`[COMBAT] ${json.message}`, "hazard");
+            }
+            this.state = json.state;
+            this.renderHUD();
+        } catch (e) {
+            this.appendLog(`[ERROR] Tactical maneuver failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleBuyUpgrade(upgradeId) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/upgrade", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ upgrade_id: upgradeId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Upgrade install failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleCommissionDrone(droneType) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/drone/buy", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ drone_type: droneType })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Drone commissioning failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleHarvestFleet() {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/drone/collect", { method: "POST" });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[FLEET] ${json.message}`, "system");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Fleet harvest failed: ${e.message}`, "hazard");
+        }
+    }
 
     async handleScan() {
         this.sound.init();
@@ -743,12 +1015,10 @@ class CockpitApp {
         const ship = this.state.ship;
         const now = Date.now() * 0.001;
 
-        // Scale AU to pixels
         const auScale = 45 * this.zoom;
 
         bodies.forEach(b => {
             if (b.body_type === "star") {
-                // Central Star with pulsing corona
                 const pulse = 18 + Math.sin(now * 2) * 2.5;
                 const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, pulse * 1.5);
                 grad.addColorStop(0, "#ffffff");
@@ -779,12 +1049,11 @@ class CockpitApp {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Calculate live planetary position
+            // Live planetary angle
             const angle = b.current_angle + b.orbit_speed * now * 0.5;
             const bx = cx + Math.cos(angle) * orbitR;
             const by = cy + Math.sin(angle) * orbitR;
 
-            // Render body
             const bodyRadius = Math.max(4, Math.min(14, b.radius_km / 12000)) * this.zoom;
 
             ctx.beginPath();
@@ -795,14 +1064,12 @@ class CockpitApp {
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Target reticle if selected
             if (this.selectedTarget && this.selectedTarget.id === b.id) {
                 ctx.strokeStyle = "var(--neon-cyan)";
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(bx - bodyRadius - 5, by - bodyRadius - 5, (bodyRadius + 5) * 2, (bodyRadius + 5) * 2);
             }
 
-            // Flagship position if in orbit
             if (ship.orbiting_body_id === b.id) {
                 ctx.beginPath();
                 ctx.arc(bx + bodyRadius + 8, by - bodyRadius - 8, 3.5, 0, Math.PI * 2);
@@ -813,7 +1080,6 @@ class CockpitApp {
                 ctx.fillText("VF-FLAGSHIP", bx + bodyRadius + 14, by - bodyRadius - 4);
             }
 
-            // Label
             ctx.font = "10px 'Rajdhani'";
             ctx.fillStyle = "#e6f1ff";
             ctx.fillText(b.name, bx + bodyRadius + 6, by + 3);
@@ -828,7 +1094,6 @@ class CockpitApp {
 
         const scale = 2.8 * this.zoom;
 
-        // Draw hyperlane links
         ctx.strokeStyle = "rgba(0, 240, 255, 0.25)";
         ctx.lineWidth = 1;
         const drawnPairs = new Set();
@@ -854,7 +1119,6 @@ class CockpitApp {
             });
         });
 
-        // Draw Star Systems
         systems.forEach(s => {
             const sx = cx + s.x * scale;
             const sy = cy + s.y * scale;
@@ -930,6 +1194,7 @@ class CockpitApp {
     }
 
     handleCanvasClick(e) {
+        if (this.isDragging) return;
         const rect = this.canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;

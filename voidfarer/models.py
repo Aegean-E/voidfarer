@@ -216,6 +216,90 @@ class AnomalyEncounter:
 
 
 @dataclass(frozen=True)
+class FleetDrone:
+    """Autonomous fleet asset deployed to star systems for mining, scouting, or escort."""
+
+    id: str
+    name: str
+    drone_type: str  # 'mining', 'scout', 'combat_escort'
+    assigned_system_id: str
+    status: str = "harvesting"  # 'harvesting', 'patrolling', 'idle'
+    cargo_accumulated: int = 0
+    credits_accumulated: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FleetDrone:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            drone_type=str(data["drone_type"]),
+            assigned_system_id=str(data.get("assigned_system_id", "sol")),
+            status=str(data.get("status", "harvesting")),
+            cargo_accumulated=int(data.get("cargo_accumulated", 0)),
+            credits_accumulated=int(data.get("credits_accumulated", 0)),
+        )
+
+
+@dataclass(frozen=True)
+class ShipUpgrade:
+    """Modular hardware upgrade installed on flagship."""
+
+    id: str
+    name: str
+    slot: str  # 'engines', 'shields', 'sensors', 'weapons', 'cargo'
+    cost: int
+    description: str
+    stat_bonus: dict[str, float] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ShipUpgrade:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            slot=str(data["slot"]),
+            cost=int(data["cost"]),
+            description=str(data["description"]),
+            stat_bonus=dict(data.get("stat_bonus", {})),
+        )
+
+
+@dataclass(frozen=True)
+class CombatEncounter:
+    """Hostile deep-space pirate or automated intercept encounter."""
+
+    id: str
+    enemy_name: str
+    enemy_class: str
+    enemy_hull: int
+    enemy_max_hull: int
+    enemy_damage: int
+    bounty_credits: int
+    salvage_commodity: str = "titanium"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CombatEncounter:
+        return cls(
+            id=str(data["id"]),
+            enemy_name=str(data["enemy_name"]),
+            enemy_class=str(data["enemy_class"]),
+            enemy_hull=int(data["enemy_hull"]),
+            enemy_max_hull=int(data["enemy_max_hull"]),
+            enemy_damage=int(data["enemy_damage"]),
+            bounty_credits=int(data["bounty_credits"]),
+            salvage_commodity=str(data.get("salvage_commodity", "titanium")),
+        )
+
+
+@dataclass(frozen=True)
 class ShipState:
     """Complete telemetry, resource inventory, and status of the player's flagship."""
 
@@ -235,6 +319,8 @@ class ShipState:
     orbiting_body_id: str | None
     power: ShipPower = field(default_factory=ShipPower)
     upgrades: tuple[str, ...] = ()
+    equipped_upgrades: dict[str, str] = field(default_factory=dict)
+    fleet_drones: tuple[FleetDrone, ...] = ()
     flight_log: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -255,6 +341,8 @@ class ShipState:
             "orbiting_body_id": self.orbiting_body_id,
             "power": self.power.to_dict(),
             "upgrades": list(self.upgrades),
+            "equipped_upgrades": dict(self.equipped_upgrades),
+            "fleet_drones": [d.to_dict() for d in self.fleet_drones],
             "flight_log": list(self.flight_log),
         }
 
@@ -277,6 +365,8 @@ class ShipState:
             orbiting_body_id=data.get("orbiting_body_id"),
             power=ShipPower.from_dict(data.get("power", {})),
             upgrades=tuple(data.get("upgrades", ())),
+            equipped_upgrades=dict(data.get("equipped_upgrades", {})),
+            fleet_drones=tuple(FleetDrone.from_dict(d) for d in data.get("fleet_drones", [])),
             flight_log=tuple(data.get("flight_log", ())),
         )
 
@@ -291,11 +381,13 @@ class GameState:
     systems: dict[str, StarSystem]
     visited_systems: tuple[str, ...]
     active_anomaly: AnomalyEncounter | None = None
+    active_combat: CombatEncounter | None = None
     stats: dict[str, int] = field(default_factory=lambda: {
         "jumps": 0,
         "scans": 0,
         "trades": 0,
         "anomalies_resolved": 0,
+        "combat_victories": 0,
         "credits_earned": 0,
     })
 
@@ -307,6 +399,7 @@ class GameState:
             "systems": {k: v.to_dict() for k, v in self.systems.items()},
             "visited_systems": list(self.visited_systems),
             "active_anomaly": self.active_anomaly.to_dict() if self.active_anomaly else None,
+            "active_combat": self.active_combat.to_dict() if self.active_combat else None,
             "stats": dict(self.stats),
         }
 
@@ -321,6 +414,11 @@ class GameState:
             if data.get("active_anomaly")
             else None
         )
+        active_combat = (
+            CombatEncounter.from_dict(data["active_combat"])
+            if data.get("active_combat")
+            else None
+        )
         return cls(
             version=int(data.get("version", 1)),
             galaxy_seed=int(data.get("galaxy_seed", 42)),
@@ -328,11 +426,13 @@ class GameState:
             systems=systems,
             visited_systems=tuple(data.get("visited_systems", ())),
             active_anomaly=active_anomaly,
+            active_combat=active_combat,
             stats=dict(data.get("stats", {
                 "jumps": 0,
                 "scans": 0,
                 "trades": 0,
                 "anomalies_resolved": 0,
+                "combat_victories": 0,
                 "credits_earned": 0,
             })),
         )

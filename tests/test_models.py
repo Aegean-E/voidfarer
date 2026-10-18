@@ -3,9 +3,12 @@
 import unittest
 from voidfarer.models import (
     CelestialBody,
+    CombatEncounter,
+    FleetDrone,
     GameState,
     ShipPower,
     ShipState,
+    ShipUpgrade,
     StarSystem,
 )
 
@@ -74,6 +77,53 @@ class TestModels(unittest.TestCase):
         self.assertEqual(len(restored.bodies), 1)
         self.assertEqual(restored.connections, ("sol", "vega"))
 
+    def test_fleet_drone_serialization(self):
+        drone = FleetDrone(
+            id="drone_mining_1",
+            name="Mining Sentry Alpha",
+            drone_type="mining",
+            assigned_system_id="sol",
+            status="harvesting",
+            cargo_accumulated=8,
+            credits_accumulated=150,
+        )
+        d = drone.to_dict()
+        restored = FleetDrone.from_dict(d)
+        self.assertEqual(restored.id, drone.id)
+        self.assertEqual(restored.drone_type, "mining")
+        self.assertEqual(restored.cargo_accumulated, 8)
+
+    def test_ship_upgrade_serialization(self):
+        upg = ShipUpgrade(
+            id="warp_booster_mk2",
+            name="Hyperdrive Booster MK-II",
+            slot="engines",
+            cost=850,
+            description="Quantum field accelerator.",
+            stat_bonus={"fuel_efficiency": 0.35},
+        )
+        d = upg.to_dict()
+        restored = ShipUpgrade.from_dict(d)
+        self.assertEqual(restored.id, "warp_booster_mk2")
+        self.assertEqual(restored.slot, "engines")
+        self.assertEqual(restored.cost, 850)
+
+    def test_combat_encounter_serialization(self):
+        combat = CombatEncounter(
+            id="combat_123",
+            enemy_name="Outlaw Raider",
+            enemy_class="Corsair",
+            enemy_hull=75,
+            enemy_max_hull=80,
+            enemy_damage=15,
+            bounty_credits=500,
+        )
+        d = combat.to_dict()
+        restored = CombatEncounter.from_dict(d)
+        self.assertEqual(restored.id, "combat_123")
+        self.assertEqual(restored.enemy_name, "Outlaw Raider")
+        self.assertEqual(restored.bounty_credits, 500)
+
     def test_game_state_roundtrip(self):
         ship = ShipState(
             commander_name="Astraea",
@@ -90,6 +140,15 @@ class TestModels(unittest.TestCase):
             cargo_capacity=30,
             current_system_id="sol",
             orbiting_body_id=None,
+            equipped_upgrades={"cargo": "subspace_cargo_pods"},
+            fleet_drones=(
+                FleetDrone(
+                    id="d1",
+                    name="Drone 1",
+                    drone_type="scout",
+                    assigned_system_id="sol",
+                ),
+            ),
         )
         state = GameState(
             version=1,
@@ -103,6 +162,7 @@ class TestModels(unittest.TestCase):
         self.assertEqual(restored.version, 1)
         self.assertEqual(restored.ship.commander_name, "Astraea")
         self.assertEqual(restored.ship.credits, 3500)
+        self.assertEqual(len(restored.ship.fleet_drones), 1)
 
 
 if __name__ == "__main__":

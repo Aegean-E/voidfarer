@@ -35,6 +35,18 @@ class TestCLI(unittest.TestCase):
             code = main(["power", "25", "25", "25", "25"])
             self.assertEqual(code, 0)
 
+    def test_cli_fleet_list(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["fleet", "list"])
+            self.assertEqual(code, 0)
+            self.assertIn("FLEET COMMAND", mock_out.getvalue())
+
+    def test_cli_upgrades_list(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["upgrades", "list"])
+            self.assertEqual(code, 0)
+            self.assertIn("STATION ARSENAL", mock_out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

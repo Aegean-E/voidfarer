@@ -2,10 +2,12 @@
 
 import http.client
 import json
+import os
 import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from voidfarer.cli import cmd_status, cmd_story, cmd_tutorial, main
 from voidfarer.engine import SimulationEngine
@@ -288,11 +290,15 @@ class TestStoryAndTutorial(unittest.TestCase):
         self.assertGreater(self.engine.state.ship.story.faction_reputation["coalition"], 0)
 
     def test_cli_main_entrypoint(self):
-        res = main(["tutorial", "status"])
-        self.assertEqual(res, 0)
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ,
+            {"LOCALAPPDATA": tmp, "HOME": tmp, "USERPROFILE": tmp},
+        ):
+            res = main(["tutorial", "status"])
+            self.assertEqual(res, 0)
 
-        res = main(["story", "status"])
-        self.assertEqual(res, 0)
+            res = main(["story", "status"])
+            self.assertEqual(res, 0)
 
 
 class TestServerStoryAndTutorial(unittest.TestCase):

@@ -1,16 +1,33 @@
 """Unit tests for command-line arguments and subcommands."""
 
 import io
+import os
 import unittest
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from voidfarer.cli import cmd_inventory, cmd_repl, main
 from voidfarer.engine import SimulationEngine
 from voidfarer.storage import StorageManager
+from voidfarer.story import STORY_RELICS
 
 
-class TestCLI(unittest.TestCase):
+class _IsolatedCliTestCase(unittest.TestCase):
+    """Base for CLI tests: redirect default storage away from the player's live save."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        env_patcher = patch.dict(
+            os.environ,
+            {"LOCALAPPDATA": self._tmp.name, "HOME": self._tmp.name, "USERPROFILE": self._tmp.name},
+        )
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
+
+
+class TestCLI(_IsolatedCliTestCase):
     def test_cli_help(self):
         with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
             code = main([])
@@ -76,12 +93,11 @@ class TestCLI(unittest.TestCase):
             self.assertIn("EXPEDITION JUMP STREAK", mock_out.getvalue())
 
 
-class TestCLIStabilization(unittest.TestCase):
+class TestCLIStabilization(_IsolatedCliTestCase):
     """Regression tests for numeric guards and the station consumable terminal."""
 
     def setUp(self):
-        self._tmp = TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
+        super().setUp()
         self.storage = StorageManager(self._tmp.name)
 
     def test_inventory_jettison_non_numeric_quantity_is_handled(self):
@@ -116,6 +132,25 @@ class TestCLIStabilization(unittest.TestCase):
         output = mock_out.getvalue().lower()
         self.assertEqual(output.count("must be an integer"), 2)
         self.assertNotIn("traceback", output)
+
+
+class TestCLIRelicsWithRecoveredRelics(_IsolatedCliTestCase):
+    """A save that already has relics must render the vault and modifiers (regression)."""
+
+    def test_relics_command_with_recovered_relics(self):
+        engine = SimulationEngine(seed=42)
+        engine.state = engine._clone_state(ship=engine._clone_ship(relics=tuple(STORY_RELICS.values())))
+        StorageManager(Path(self._tmp.name) / ".voidfarer").save(engine.state)
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["relics"])
+
+        output = mock_out.getvalue()
+        self.assertEqual(code, 0)
+        self.assertIn("PRECURSOR RELICS VAULT", output)
+        self.assertIn("Active Passive Fleet Modifiers", output)
+        self.assertIn("Scan Bounty Boost", output)
+        self.assertIn("Hull Reinforcement", output)
 
 
 if __name__ == "__main__":

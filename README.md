@@ -67,7 +67,7 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- 120-test unit & integration suite (about 2s)
+└── tests/                    <- 124-test unit & integration suite (about 2s)
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
@@ -79,6 +79,7 @@ voidfarer/
     ├── test_server.py        <- REST API request/response contracts
     ├── test_cli.py           <- command dispatch & argument parsing
     ├── test_story.py         <- academy onboarding & story campaign tests
+    ├── test_batch_launchers.py <- Windows batch launcher menu & CRLF regression tests
     └── test_time_and_ticks.py <- cosmic stardate, tick simulation & time controls
 ```
 
@@ -280,6 +281,6 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 120-test suite runs in about 2 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 124-test suite runs in about 2 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 

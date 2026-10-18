@@ -736,15 +736,15 @@ def cmd_relics(engine: SimulationEngine) -> int:
         print(f"• {color}[{r.rarity.upper()}]{RESET} {BOLD}{r.name}{RESET} ({r.id})")
         print(f"  {DIM}{r.description}{RESET}\n")
 
-    multipliers = calculate_passive_multipliers(relics, engine.state.ship.mastery.specializations)
+    multipliers = calculate_passive_multipliers(engine.state.ship)
     print(f"{BOLD}Active Passive Fleet Modifiers:{RESET}")
-    print(f"  Scan Bounty Boost:    +{int(multipliers['scanner_bounty_mult'] * 100)}%")
-    print(f"  Trade Profit Margin:  +{int(multipliers['trade_margin_mult'] * 100)}%")
-    print(f"  Laser Strike Power:   +{int(multipliers['laser_damage_mult'] * 100)}%")
-    print(f"  Shield Capacity:      +{int(multipliers['shield_capacity_bonus'])} MW")
-    print(f"  Hull Reinforcement:   +{int(multipliers['max_hull_bonus'])} HP")
-    print(f"  Jump Fuel Efficiency: +{int(multipliers['fuel_efficiency_mult'] * 100)}%")
-    print(f"  Fleet Drone Yield:    +{int(multipliers['drone_yield_mult'] * 100)}%")
+    print(f"  Scan Bounty Boost:    +{int((multipliers['scan_bounty'] - 1.0) * 100)}%")
+    print(f"  Trade Profit Margin:  +{int((multipliers['trade_margin'] - 1.0) * 100)}%")
+    print(f"  Laser Strike Power:   +{int((multipliers['laser_dmg'] - 1.0) * 100)}%")
+    print(f"  Shield Capacity:      +{int(multipliers['shield_cap'])} MW")
+    print(f"  Hull Reinforcement:   +{int(multipliers['max_hull'])} HP")
+    print(f"  Jump Fuel Efficiency: +{int((1.0 - multipliers['fuel_efficiency']) * 100)}%")
+    print(f"  Fleet Drone Yield:    +{int((multipliers['drone_yield'] - 1.0) * 100)}%")
     return 0
 
 

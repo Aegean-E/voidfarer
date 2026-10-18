@@ -144,3 +144,25 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   8. Drop the Google Fonts links, extend the CSS font variables with local fallback stacks, and narrow the exception handlers while keeping best-effort teardown (browser launch reports a manual-visit hint instead of failing silently).
 - **Consequences**: The V10 economy/inventory feature is stable, documented, and covered by 33 new tests (`test_economy.py`, `test_inventory.py`, and regressions) — 120 tests total, 100% green in about 2 seconds. Cargo math, chassis listings, market prices, and the advertised consumable terminal now match what the player experiences in CLI, REST, and the Web Cockpit, which also renders fully offline. Deferred to a future milestone: wiring the inert `stat_bonus` effects of the newer hardware modules and chassis perks, restoring the unreachable web mini-games, and completing the phishing panel.
 
+### ADR-011: Windows Launcher Crash Repair: Escaped Banner Pipes, CRLF Endings, and Launcher Regression Tests
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: Double-clicking `play.bat` on Windows appeared to do nothing: the console window flashed and closed before any menu. Reproduction showed `cmd /c play.bat` exiting with code 255 after printing only the first banner lines, with `'_' is not recognized as an internal or external command`. Root causes: (1) two unescaped `|` groups in the ASCII banner (`\|_` and `_||`) made cmd treat the rest of the echo as a piped command line, aborting the script before the menu; (2) both launchers shipped LF-only line endings, which cmd parses unreliably and editors easily reintroduce; (3) the banner's bottom line rendered `\_|\______` instead of the canonical `\_\|______` art used by the Python status banner in `cli.py`; (4) the menu hard-coded "68 Unit Tests", long stale.
+- **Decision**:
+  1. Escape every literal pipe in the banner (`\|` → `\^|` and `||` → `^|^|`) so the art renders without cmd interpreting it as a pipeline.
+  2. Convert `play.bat` and `voidfarer.bat` to CRLF line endings.
+  3. Align the banner's final line with the canonical art in `cli.py`.
+  4. Replace the stale "68 Unit Tests" menu label with "Automated Test Suite" so it cannot drift from the real count again.
+  5. Add `tests/test_batch_launchers.py`: a CRLF policy unit test for both launchers plus a Windows-only integration test that runs the real menu path (choice `0`) and requires a clean exit 0 with the menu rendered.
+- **Consequences**: Double-click launch works again from Explorer, argument passthrough (`play.bat status`, `voidfarer.bat status`) still exits 0, and launcher regressions now fail the suite — 123 tests total, 100% green in about 2 seconds.
+
+### ADR-012: Relics Command API Repair and Test Isolation from the Live Save
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: The Phase 4 gate failed on `test_cli_relics` once the save contained a relic: `cmd_relics` called `calculate_passive_multipliers(relics, specializations)` although the function takes only `ship`, and then printed key names (`scanner_bounty_mult`, `laser_damage_mult`, …) the returned dict never contains. Both defects had been masked because the CLI test suite ran against the player's real save in `%LOCALAPPDATA%\.voidfarer`: `TestCLI` calls `main()` with no isolation, so mutating test commands (for example `power`) persisted into live player progress, and the tests only exercised the relics path while the live save happened to have no relics.
+- **Decision**:
+  1. Call `calculate_passive_multipliers(engine.state.ship)` in `cmd_relics` and map the canonical keys: `scan_bounty`, `trade_margin`, `laser_dmg` and `drone_yield` as delta percentages, `shield_cap` and `max_hull` as absolute bonuses, and `fuel_efficiency` as savings.
+  2. Isolate every test that reaches `main()`/`_get_engine` from the live save: `tests/test_cli.py` gains an `_IsolatedCliTestCase` base that patches `LOCALAPPDATA`, `HOME`, and `USERPROFILE` into a per-test temp directory, and `tests/test_story.py::test_cli_main_entrypoint` wraps its `main()` calls the same way.
+  3. Add `TestCLIRelicsWithRecoveredRelics`, which seeds a save containing all six story relics and asserts the vault and modifier block render with exit 0.
+- **Consequences**: The relics command works for any save, the automated suite can no longer read or write the player's live save (`%LOCALAPPDATA%\.voidfarer` verified untouched by hashing it before and after full-suite runs), and total coverage is 124 tests, 100% green in about 2 seconds.
+

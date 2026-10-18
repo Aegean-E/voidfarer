@@ -2,7 +2,7 @@
 
 > **Autonomous Deep-Space Fleet, Procedural Galaxy & Holographic Cockpit Simulator.**
 
-VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits around exotic planets, route reactor power, commission autonomous mining and escort drones, purchase modular hardware upgrades, engage in tactical combat with hostile corsairs, trade dynamic commodities across orbital stations, and pilot your flagship using either an ANSI terminal REPL or an HTML5 Canvas holographic cockpit Web HUD.
+VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits around exotic planets, route reactor power, commission autonomous mining and escort drones, purchase modular hardware upgrades, engage in tactical combat with adaptive hostile AI, trade dynamic commodities across orbital stations, and pilot your flagship using either an ANSI terminal REPL or an HTML5 Canvas holographic cockpit Web HUD.
 
 ---
 
@@ -67,13 +67,14 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- 179-test unit & integration suite (about 2s)
+└── tests/                    <- 196-test unit & integration suite (about 2.7s)
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
     ├── test_economy.py       <- galactic market simulation & trade route tests
     ├── test_engine.py        <- state transitions, fleet & combat mechanics
     ├── test_engine_hardening.py <- audit regressions: service guards, relic stats & cargo invariants
+    ├── test_ai_and_calendar.py <- adaptive enemy AI, expanded systems & DD.MM.YYYY calendar
     ├── test_inventory.py     <- item catalog, manifest & consumable tests
     ├── test_factions_and_enemies.py <- faction geopolitics & tactical combat tests
     ├── test_storage.py       <- power-loss safety & corruption quarantine
@@ -83,7 +84,7 @@ voidfarer/
     ├── test_batch_launchers.py <- Windows batch launcher menu & CRLF regression tests
     ├── test_cockpit_layout.py <- cockpit layout-rule DOM/CSS regression tests
     ├── test_equipment_bonuses.py <- module stat_bonus & chassis perk regression tests
-    └── test_time_and_ticks.py <- cosmic stardate, tick simulation & time controls
+    └── test_time_and_ticks.py <- cosmic calendar, tick simulation & time controls
 ```
 
 ---
@@ -102,7 +103,7 @@ Displays commander dossier, vital telemetry (hull, shields, fuel), reactor power
 ```bash
 python -m voidfarer.cli chart
 ```
-Prints the sector hyperlane network, visited system flags, security ratings, and all celestial bodies in the local star system.
+Prints the sector hyperlane network, visited system flags, security ratings, and all celestial bodies in the local star system. Each system now hosts 5-6 planets, moons, ice worlds, lava worlds, ringed giants, and research outposts, with a guaranteed dockable station.
 
 ### 3. Navigation & Spaceflight
 ```bash
@@ -153,6 +154,8 @@ python -m voidfarer.cli combat absorb           # Overcharge deflector shield ca
 python -m voidfarer.cli combat evade            # High-G thruster burn to dodge telegraphed attacks
 python -m voidfarer.cli combat flee             # Emergency hyperspace micro-jump
 ```
+
+Hostile captains use adaptive AI profiles (`aggressive`, `defensive`, `opportunist`, `adaptive`, `warlord`). They read your hull, shields, and tactical combo to brace, evade, execute wounded targets, drain shields, EMP weapon systems, tachyon-lance hull, or regenerate nanites. The combat telemetry line shows the next predicted maneuver.
 
 ### 7. Dynamic Sector Bounties & Contracts (Zeigarnik Loop)
 ```bash
@@ -235,9 +238,9 @@ python -m voidfarer.cli factions
 python -m voidfarer.cli corporations
 ```
 
-### 15. Cosmic Stardate & Temporal Clock Controls
+### 15. Cosmic Calendar & Temporal Clock Controls
 ```bash
-# Check cosmic time, stardate, and active simulation tick
+# Check the in-game calendar date, stardate, and active simulation tick
 python -m voidfarer.cli time status
 
 # Pause or resume the cosmic simulation clock
@@ -263,7 +266,7 @@ Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
-- **Cosmic Chronometer & Time Control Deck**: Top-of-HUD cybernetic panel featuring live Stardate (`SD 3042.xx`), tick badge (`TICK #N`), 1-click Pause/Resume button (`Spacebar`), 1x-10x speed multiplier toggles (`1-4`), and step advance button (`T`).
+- **Cosmic Chronometer & Time Control Deck**: Top-of-HUD cybernetic panel featuring live in-game date (`DD.MM.YYYY`, starting 01.01.3042), tick badge (`TICK #N`), 1-click Pause/Resume button (`Spacebar`), 1x-10x speed multiplier toggles (`1-4`), and step advance button (`T`).
 - **Cadet Flight Academy Ribbon**: Persistent top-of-HUD progressive instruction banner with milestone progress, step hints, rewards, and one-click dismiss.
 - **COMMS LOG Subspace Radio Tab**: Subspace transmissions stream with animated character avatars (Admiral Vance, Cipher, Archon Prime), faction alignment chips, and interactive moral choice cards.
 - **Factions & Megacorporations Tab**: Live diplomatic standings (-100 to +100), territorial headquarters, tariff discounts, and corporate specialty trade margins.
@@ -284,7 +287,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 179-test suite runs in about 2.5 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 196-test suite runs in about 2.7 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

@@ -500,7 +500,7 @@ def run_server(
     print(f"\n=======================================================")
     print(f"🚀 VOIDFARER HOLOGRAPHIC COCKPIT ACTIVE")
     print(f"📡 Cockpit HUD URL: {url}")
-    print(f"⏱️ Cosmic Time: SD {round(engine.state.time.stardate, 2)} (Tick #{engine.state.time.tick})")
+    print(f"⏱️ Cosmic Time: {engine.state.time.current_date} (Tick #{engine.state.time.tick})")
     print(f"⚡ Press Ctrl+C to disconnect sub-space uplink")
     print(f"=======================================================\n")
 

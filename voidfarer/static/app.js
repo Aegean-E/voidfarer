@@ -796,7 +796,7 @@ class CockpitApp {
         if (this.state.time) {
             const t = this.state.time;
             if (this.chronoStardate) {
-                this.chronoStardate.textContent = `SD ${t.stardate.toFixed(2)}`;
+                this.chronoStardate.textContent = `DATE ${t.date || "01.01.3042"}`;
             }
             if (this.chronoTick) {
                 this.chronoTick.textContent = `TICK #${t.tick}`;

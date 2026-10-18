@@ -277,3 +277,7 @@ class TestCockpitRuntimeContracts(unittest.TestCase):
         self.assertNotRegex(self.js, r"ctx\.(?:strokeStyle|fillStyle) = \"var\(--neon")
         self.assertIn('ctx.strokeStyle = "#00f0ff"', self.js)
         self.assertIn('ctx.fillStyle = "#00ffaa"', self.js)
+
+    def test_chrono_displays_calendar_date(self):
+        self.assertIn("DATE ${t.date", self.js)
+        self.assertIn("DATE 01.01.3042", INDEX_HTML.read_text(encoding="utf-8"))

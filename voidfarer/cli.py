@@ -105,7 +105,7 @@ def cmd_status(engine: SimulationEngine) -> int:
     print(f"{BOLD}╔════ COMMANDER DOSSIER ══════════════════════════════════════════════╗{RESET}")
     print(f"║ Commander: {CYAN}{ship.commander_name:<16}{RESET} Callsign: {YELLOW}{ship.callsign:<16}{RESET} Class: {ship.ship_class:<12} ║")
     t = engine.state.time
-    print(f"║ Stardate:  {YELLOW}{t.stardate:>7.2f}{RESET}  (Tick #{t.tick:<5})   Temporal Clock: {GREEN if not t.is_paused else RED}{t.time_scale:<10}{RESET}       ║")
+    print(f"║ Date:      {YELLOW}{t.current_date:<10}{RESET}  (Tick #{t.tick:<5})   Temporal Clock: {GREEN if not t.is_paused else RED}{t.time_scale:<10}{RESET}       ║")
     print(f"║ Credits:   {YELLOW}{ship.credits:>8} cr{RESET}       Cargo:    {sum(ship.cargo.values()):>2}/{ship.cargo_capacity:<2} units                     ║")
     print(f"╠════ VITAL TELEMETRY ════════════════════════════════════════════════╣{RESET}")
     streak_mult = 1.0 + min(1.5, (ship.streak - 1) * 0.15)
@@ -173,6 +173,7 @@ def cmd_status(engine: SimulationEngine) -> int:
         print(f"   Enemy Hull:   {_bar(c.enemy_hull, c.enemy_max_hull, 20, RED)}")
         if c.telegraphed_action:
             print(f"   Telemetry:    {YELLOW}⚠ {c.telegraphed_action}{RESET}")
+        print(f"   Hostile AI:   {CYAN}{c.ai_profile.upper()}{RESET} intent={c.enemy_intent.upper()}")
         if ship.tactical_combo > 0:
             crit_alert = f" {YELLOW}{BOLD}(CRITICAL OVERCHARGE READY!){RESET}" if ship.tactical_combo >= 2 else ""
             print(f"   Tactical Combo: {YELLOW}{BOLD}⚡ x{ship.tactical_combo}{crit_alert}{RESET}")
@@ -195,11 +196,11 @@ def cmd_time(engine: SimulationEngine, storage: StorageManager, argv: list[str])
     if not argv or argv[0].lower() in ("status", "info"):
         t = engine.state.time
         print(f"\n{BOLD}{CYAN}╔════ COSMIC CHRONOMETRY & TEMPORAL MATRIX ════════════════════════════╗{RESET}")
-        print(f"║ Stardate:       {YELLOW}{t.stardate:.2f}{RESET}               Epoch Tick:     {CYAN}#{t.tick}{RESET}")
+        print(f"║ Date:           {YELLOW}{t.current_date}{RESET}               Epoch Tick:     {CYAN}#{t.tick}{RESET}")
         state_str = "RUNNING" if not t.is_paused else "PAUSED"
         color = GREEN if not t.is_paused else RED
         print(f"║ Temporal Speed: {color}{t.time_scale:<18}{RESET} Temporal State: {color}{state_str:<10}{RESET}")
-        print(f"║ Elapsed Time:   {t.elapsed_days:.2f} standard days ({t.tick} ticks elapsed)")
+        print(f"║ Stardate:       {t.stardate:.2f}               Elapsed Time:   {t.elapsed_days:.2f} standard days")
         print(f"╠════ TEMPORAL COMMANDS ═══════════════════════════════════════════════╣{RESET}")
         print(f"║  • {CYAN}time pause{RESET}                 Freeze temporal progression (0x)")
         print(f"║  • {CYAN}time resume{RESET}                Resume normal temporal flow (1.0x)")

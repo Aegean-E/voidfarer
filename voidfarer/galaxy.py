@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import random
+from dataclasses import replace
 from typing import Sequence
 
 from voidfarer.models import (
@@ -257,6 +258,11 @@ class GalaxyGenerator:
             ("gas_giant", "hydrogen_storm", "industrial", "#f4a261", "Upper atmospheric siphon extracting deuterium isotopes."),
             ("orbital_station", "citadel", "high_tech", "#00f0ff", "Orbital manufacturing enclave producing quantum substrates."),
             ("asteroid_belt", "debris_field", "mining", "#8d99ae", "Shattered planetesimals harboring raw titanium ores."),
+            ("desert_world", "silicate_plains", "mining", "#e9c46a", "Sun-scorched dunes concealing rare silicate crystal seams."),
+            ("ice_world", "cryo_ocean", "agricultural", "#a8dadc", "Subsurface cryo-oceans teeming with cultivable extremophiles."),
+            ("lava_world", "magma_forge", "industrial", "#e76f51", "Tectonic magma vents powering automated heavy foundries."),
+            ("ringed_giant", "helium_harvest", "industrial", "#c9ada7", "Ringed gas envelope mined for helium-3 and exotic isotopes."),
+            ("research_outpost", "science", "high_tech", "#b5179e", "Deep-space research campus studying precursor field harmonics."),
         ]
 
         if sys_id in ("betelgeuse", "cygnus_x1", "rift_station"):
@@ -264,7 +270,7 @@ class GalaxyGenerator:
                 ("volcanic", "dark_market", "black_market", "#e63946", "Unregulated shadow bazaar trafficking illicit xenoliths.")
             )
 
-        num_bodies = 3 if sys_id in ("sol", "betelgeuse") else 2
+        num_bodies = 6 if sys_id in ("sol", "betelgeuse") else 5
         for i in range(num_bodies):
             body_type, designation, market_arch, color, discovery = archetype_pool[
                 (i + len(sys_id)) % len(archetype_pool)
@@ -289,6 +295,17 @@ class GalaxyGenerator:
                     scan_completed=False,
                     scan_discovery=discovery,
                 )
+            )
+
+        if not any(b.station_dockable for b in bodies[1:]):
+            bodies[-1] = replace(
+                bodies[-1],
+                body_type="orbital_station",
+                color="#00f0ff",
+                hazards=(),
+                station_dockable=True,
+                market_archetype="high_tech",
+                scan_discovery="Orbital trade citadel servicing deep-space convoys.",
             )
 
         return bodies

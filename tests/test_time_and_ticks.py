@@ -163,6 +163,7 @@ class TestSimulationEngineTimeAndTicks(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(self.engine.state.time.tick, initial_tick + 3)
         self.assertEqual(summary["ticks_advanced"], 3)
+        self.assertEqual(summary["date"], self.engine.state.time.current_date)
 
     def test_status_snapshot_contains_time(self):
         snapshot = self.engine.get_status_snapshot()
@@ -170,6 +171,7 @@ class TestSimulationEngineTimeAndTicks(unittest.TestCase):
         time_data = snapshot["time"]
         self.assertEqual(time_data["tick"], self.engine.state.time.tick)
         self.assertEqual(time_data["stardate"], round(self.engine.state.time.stardate, 2))
+        self.assertEqual(time_data["date"], self.engine.state.time.current_date)
         self.assertEqual(time_data["speed"], self.engine.state.time.speed)
         self.assertEqual(time_data["is_paused"], self.engine.state.time.is_paused)
 

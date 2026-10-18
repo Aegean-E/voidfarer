@@ -10,6 +10,7 @@ from typing import Any, Sequence
 
 from voidfarer.enemies import (
     ENEMY_ARCHETYPES,
+    choose_enemy_intent,
     generate_system_enemy,
 )
 from voidfarer.factions import (
@@ -1508,11 +1509,17 @@ class SimulationEngine:
             enemy_rem_hull = combat.enemy_hull
             enemy_rem_damage = combat.enemy_damage
             ability_cd = max(0, combat.ability_cooldown - 1)
+            intent = combat.enemy_intent if combat.enemy_intent in {"fire", "brace", "evade", "execute", "ability"} else "fire"
+            enemy_guard = 0.55 if intent == "brace" else 1.0
+            damaging_actions = {"fire_lasers", "drone_strike", "target_subsystem", "target_weapons", "target_shields"}
+            enemy_miss = action in damaging_actions and intent == "evade" and self.rng.random() < 0.35
+            enemy_hull_before = enemy_rem_hull
+            enemy_shield_before = enemy_rem_shield
 
             if action == "fire_lasers":
                 wep_power = self.state.ship.power.weapons
                 bonus_wep = int(equipment["combat_damage"])
-                base_dmg = int((20 + int(wep_power * 0.75) + bonus_wep) * passives.get("laser_dmg", 1.0))
+                base_dmg = int((20 + int(wep_power * 0.75) + bonus_wep) * passives.get("laser_dmg", 1.0) * enemy_guard)
 
                 new_combo += 1
                 crit_text = ""
@@ -1541,11 +1548,11 @@ class SimulationEngine:
 
                 new_combo += 1
                 if has_escort:
-                    torpedo_dmg = 45
+                    torpedo_dmg = max(1, int(45 * enemy_guard))
                     enemy_rem_hull -= torpedo_dmg
                     strike_desc = f"Combat Escort Frigate launched armor-piercing kinetic torpedo! Inflicted {torpedo_dmg} damage directly to hull (bypassing shields)!"
                 else:
-                    sensor_burn = 35
+                    sensor_burn = max(1, int(35 * enemy_guard))
                     enemy_rem_shield = max(0, enemy_rem_shield - sensor_burn)
                     strike_desc = f"Scout Drone focused beam telemetry! Collapsed {sensor_burn} MW of enemy deflector shields!"
 
@@ -1554,28 +1561,41 @@ class SimulationEngine:
                 new_combo += 1
                 if subsystem == "weapons":
                     enemy_rem_damage = max(6, int(combat.enemy_damage * 0.60))
-                    strike_dmg = 15
+                    strike_dmg = max(1, int(15 * enemy_guard))
                     if enemy_rem_shield > 0:
                         enemy_rem_shield = max(0, enemy_rem_shield - strike_dmg)
                     else:
                         enemy_rem_hull -= strike_dmg
                     strike_desc = f"Targeted strike hit enemy weapon arrays! Disabled fire-control (-40% enemy firepower) and dealt {strike_dmg} damage!"
                 else:
-                    shield_ion = 40
+                    shield_ion = max(1, int(40 * enemy_guard))
                     enemy_rem_shield = max(0, enemy_rem_shield - shield_ion)
                     strike_desc = f"Ion pulse targeted enemy shield generators! EMP cascade drained {shield_ion} MW shields!"
 
             elif action == "shield_absorb":
                 boost = 30 + (25 if "dreadnought_tactics" in self.state.ship.mastery.specializations else 0)
                 new_shield = min(self.state.ship.max_shield, new_shield + boost)
-                mitigated = max(1, int(combat.enemy_damage * 0.35))
+                mitigated = max(1, int(combat.enemy_damage * 0.35 * (1.5 if intent == "execute" else 1.0)))
                 if new_shield >= mitigated:
                     new_shield -= mitigated
                 else:
                     new_hull = max(0, new_hull - (mitigated - new_shield))
                     new_shield = 0
                 msg = f"Shield capacitors overcharged (+{boost} MW). Enemy barrage deflected, taking only {mitigated} damage."
-                next_telegraph = "Enemy maneuvering into high-angle firing lane"
+                next_intent, next_telegraph = choose_enemy_intent(
+                    profile=combat.ai_profile,
+                    special_ability=combat.special_ability,
+                    ability_ready=max(0, combat.ability_cooldown - 1) == 0,
+                    enemy_hull=combat.enemy_hull,
+                    enemy_max_hull=combat.enemy_max_hull,
+                    enemy_shield=combat.enemy_shield,
+                    enemy_max_shield=combat.enemy_max_shield,
+                    player_hull=new_hull,
+                    player_max_hull=self.state.ship.max_hull,
+                    player_shield=new_shield,
+                    player_max_shield=self.state.ship.max_shield,
+                    player_combo=new_combo,
+                )
                 new_combat = CombatEncounter(
                     id=combat.id,
                     enemy_name=combat.enemy_name,
@@ -1591,6 +1611,8 @@ class SimulationEngine:
                     special_ability=combat.special_ability,
                     ability_cooldown=max(0, combat.ability_cooldown - 1),
                     telegraphed_action=next_telegraph,
+                    ai_profile=combat.ai_profile,
+                    enemy_intent=next_intent,
                 )
                 new_log = list(self.state.ship.flight_log[-19:]) + [msg]
                 new_ship = self._clone_ship(hull=new_hull, shield=new_shield, tactical_combo=new_combo, streak=new_streak, flight_log=tuple(new_log[-20:]))
@@ -1628,6 +1650,11 @@ class SimulationEngine:
 
             else:
                 return False, f"Unknown combat action '{action}'. Choices: fire_lasers, drone_strike, target_subsystem, shield_absorb, evasive_burn, flee."
+
+            if enemy_miss:
+                enemy_rem_hull = enemy_hull_before
+                enemy_rem_shield = enemy_shield_before
+                strike_desc = "Enemy AI jinked out of your firing solution; the strike missed."
 
             # Check if enemy was neutralized
             if enemy_rem_hull <= 0:
@@ -1709,7 +1736,7 @@ class SimulationEngine:
 
             # Enemy counter-attack and tactical abilities
             ability_note = ""
-            if ability_cd == 0 and combat.special_ability != "none":
+            if intent == "ability" and ability_cd == 0 and combat.special_ability != "none":
                 if combat.special_ability == "shield_drain":
                     drain_amt = min(15, new_shield)
                     new_shield -= drain_amt
@@ -1731,7 +1758,7 @@ class SimulationEngine:
                     ability_cd = 2
 
             # Standard counter-battery
-            inbound = enemy_rem_damage
+            inbound = int(enemy_rem_damage * (1.5 if intent == "execute" else 1.0))
             evasion_note = ""
             if inbound > 0 and equipment["evasion"] > 0.0 and self.rng.random() < equipment["evasion"]:
                 inbound = 0
@@ -1746,13 +1773,21 @@ class SimulationEngine:
                 if new_hull < 50:
                     new_streak = max(1, self.state.ship.streak - 1)
 
-            # Next move telegraphing
-            if ability_cd == 1 and combat.special_ability != "none":
-                next_telegraph = f"WARNING: Hostile {combat.special_ability.replace('_', ' ').title()} charging to 100%!"
-            elif enemy_rem_shield > 0:
-                next_telegraph = "Deflector shield matrix active; powering main plasma batteries"
-            else:
-                next_telegraph = "Hull exposed! Primary weapons locking on flagship"
+            # AI selects the next maneuver from live hull, shield, combo, and profile state.
+            next_intent, next_telegraph = choose_enemy_intent(
+                profile=combat.ai_profile,
+                special_ability=combat.special_ability,
+                ability_ready=ability_cd == 0,
+                enemy_hull=enemy_rem_hull,
+                enemy_max_hull=combat.enemy_max_hull,
+                enemy_shield=enemy_rem_shield,
+                enemy_max_shield=combat.enemy_max_shield,
+                player_hull=new_hull,
+                player_max_hull=self.state.ship.max_hull,
+                player_shield=new_shield,
+                player_max_shield=self.state.ship.max_shield,
+                player_combo=new_combo,
+            )
 
             msg = f"{strike_desc} Inbound counter-battery dealt {inbound} damage.{evasion_note}{ability_note} (Enemy HP: {enemy_rem_hull}/{combat.enemy_max_hull}, Shield: {enemy_rem_shield}/{combat.enemy_max_shield})"
 
@@ -1771,6 +1806,8 @@ class SimulationEngine:
                 special_ability=combat.special_ability,
                 ability_cooldown=ability_cd,
                 telegraphed_action=next_telegraph,
+                ai_profile=combat.ai_profile,
+                enemy_intent=next_intent,
             )
 
             new_log = list(self.state.ship.flight_log[-19:]) + [msg]
@@ -2275,6 +2312,7 @@ class SimulationEngine:
                 return {
                     "ticks_advanced": 0,
                     "stardate": round(self.state.time.stardate, 2),
+                    "date": self.state.time.current_date,
                     "tick": self.state.time.tick,
                     "time_scale": self.state.time.time_scale,
                     "is_paused": self.state.time.is_paused,
@@ -2394,6 +2432,7 @@ class SimulationEngine:
             return {
                 "ticks_advanced": num_ticks,
                 "stardate": round(new_stardate, 2),
+                "date": new_time.current_date,
                 "tick": new_tick,
                 "elapsed_days": round(new_days, 2),
                 "shield_recharged": shield_recharged,
@@ -2457,5 +2496,5 @@ class SimulationEngine:
     def step_time(self, num_ticks: int = 1) -> tuple[bool, str, dict[str, Any]]:
         """Advance simulation by a discrete number of ticks."""
         summary = self.tick(max(1, int(num_ticks)))
-        return True, f"Advanced {summary['ticks_advanced']} tick(s). Stardate: {summary['stardate']}.", summary
+        return True, f"Advanced {summary['ticks_advanced']} tick(s). Date: {summary['date']} (Tick #{summary['tick']}).", summary
 

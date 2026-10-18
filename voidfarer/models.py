@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from datetime import date, timedelta
 from typing import Any
 
 
@@ -12,7 +13,7 @@ class CelestialBody:
 
     id: str
     name: str
-    body_type: str  # 'star', 'terrestrial', 'gas_giant', 'oceanic', 'volcanic', 'orbital_station', 'asteroid_belt'
+    body_type: str  # 'star', 'terrestrial', 'gas_giant', 'oceanic', 'volcanic', 'orbital_station', 'asteroid_belt', 'desert_world', 'ice_world', 'lava_world', 'ringed_giant', 'research_outpost'
     orbit_radius: float  # In Astronomical Units (AU)
     orbit_speed: float  # Orbital angular velocity
     current_angle: float  # Current orbital phase (radians)
@@ -290,6 +291,8 @@ class CombatEncounter:
     special_ability: str = "none"
     ability_cooldown: int = 0
     telegraphed_action: str = "Hostile weapons powering up"
+    ai_profile: str = "aggressive"
+    enemy_intent: str = "fire"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -311,6 +314,8 @@ class CombatEncounter:
             special_ability=str(data.get("special_ability", "none")),
             ability_cooldown=int(data.get("ability_cooldown", 0)),
             telegraphed_action=str(data.get("telegraphed_action", "Hostile weapons powering up")),
+            ai_profile=str(data.get("ai_profile", "aggressive")),
+            enemy_intent=str(data.get("enemy_intent", "fire")),
         )
 
 
@@ -832,10 +837,17 @@ class TimeState:
     time_scale: str = "1x"
     elapsed_days: float = 0.0
 
+    @property
+    def current_date(self) -> str:
+        """In-game calendar date (DD.MM.YYYY), starting 01.01.3042 at tick zero."""
+        start = date(3042, 1, 1)
+        return (start + timedelta(days=int(self.elapsed_days))).strftime("%d.%m.%Y")
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "tick": self.tick,
             "stardate": round(self.stardate, 2),
+            "date": self.current_date,
             "speed": self.speed,
             "is_paused": self.is_paused,
             "time_scale": self.time_scale,

@@ -25,6 +25,7 @@ class EnemyArchetype:
     bounty_credits: int
     salvage_commodity: str
     rep_rewards: dict[str, int]
+    ai_profile: str = "aggressive"
 
 
 ENEMY_ARCHETYPES: dict[str, EnemyArchetype] = {
@@ -41,6 +42,7 @@ ENEMY_ARCHETYPES: dict[str, EnemyArchetype] = {
         bounty_credits=450,
         salvage_commodity="fuel_cells",
         rep_rewards={"sol_coalition": 4, "outlaw_corsairs": -6},
+        ai_profile="aggressive",
     ),
     "syndicate_marauder": EnemyArchetype(
         id="syndicate_marauder",
@@ -55,6 +57,7 @@ ENEMY_ARCHETYPES: dict[str, EnemyArchetype] = {
         bounty_credits=750,
         salvage_commodity="titanium",
         rep_rewards={"sol_coalition": 6, "vanguard_syndicate": -8},
+        ai_profile="opportunist",
     ),
     "corporate_enforcer": EnemyArchetype(
         id="corporate_enforcer",
@@ -69,6 +72,7 @@ ENEMY_ARCHETYPES: dict[str, EnemyArchetype] = {
         bounty_credits=900,
         salvage_commodity="microchips",
         rep_rewards={"outlaw_corsairs": 6, "hyperion_dynamics": -10},
+        ai_profile="defensive",
     ),
     "precursor_sentinel": EnemyArchetype(
         id="precursor_sentinel",
@@ -83,6 +87,7 @@ ENEMY_ARCHETYPES: dict[str, EnemyArchetype] = {
         bounty_credits=1200,
         salvage_commodity="xenoliths",
         rep_rewards={"precursor_watch": 8, "outlaw_corsairs": 4},
+        ai_profile="adaptive",
     ),
     "warlord_dreadnought": EnemyArchetype(
         id="warlord_dreadnought",
@@ -97,8 +102,89 @@ ENEMY_ARCHETYPES: dict[str, EnemyArchetype] = {
         bounty_credits=2500,
         salvage_commodity="xenoliths",
         rep_rewards={"sol_coalition": 15, "nebula_collective": 12, "vanguard_syndicate": 10, "outlaw_corsairs": -25},
+        ai_profile="warlord",
     ),
 }
+
+
+INTENT_TELEGRAPHS = {
+    "fire": "Weapons locked; charging main batteries",
+    "brace": "Ablative plating rotating to absorb incoming fire",
+    "evade": "Maneuvering thrusters primed for an evasive jink",
+    "execute": "Targeting weak points for a killing blow",
+    "ability": "Special weapon system charging to full power",
+}
+
+SPECIAL_TELEGRAPHS = {
+    "shield_drain": "Energy siphon arrays locking onto flagship deflectors",
+    "emp_overload": "EMP capacitors charging up for weapon disruption",
+    "tachyon_lance": "Tachyon focal lenses aligning for phase-shield breach",
+    "nanite_regen": "Nanite repair matrix deployed in automated standby",
+}
+
+
+def choose_enemy_intent(
+    profile: str,
+    special_ability: str,
+    ability_ready: bool,
+    enemy_hull: int,
+    enemy_max_hull: int,
+    enemy_shield: int,
+    enemy_max_shield: int,
+    player_hull: int,
+    player_max_hull: int,
+    player_shield: int,
+    player_max_shield: int,
+    player_combo: int,
+) -> tuple[str, str]:
+    """Pick the next hostile maneuver from hull, shield, combo, and AI profile state."""
+    enemy_hp = enemy_hull / max(1, enemy_max_hull)
+    enemy_sh = enemy_shield / max(1, enemy_max_shield)
+    player_hp = player_hull / max(1, player_max_hull)
+    player_sh = player_shield / max(1, player_max_shield)
+    has_ability = ability_ready and special_ability != "none"
+
+    if profile == "warlord":
+        if enemy_hp < 0.55 and special_ability == "nanite_regen" and has_ability:
+            return "ability", SPECIAL_TELEGRAPHS[special_ability]
+        if player_hp < 0.35:
+            return "execute", INTENT_TELEGRAPHS["execute"]
+        if player_combo >= 2:
+            return "brace", INTENT_TELEGRAPHS["brace"]
+    elif profile == "defensive":
+        if player_combo >= 2:
+            return "brace", INTENT_TELEGRAPHS["brace"]
+        if player_sh < 0.30 and has_ability and special_ability == "emp_overload":
+            return "ability", SPECIAL_TELEGRAPHS[special_ability]
+        if enemy_hp < 0.35 or enemy_sh < 0.25:
+            return "brace", INTENT_TELEGRAPHS["brace"]
+    elif profile == "opportunist":
+        if player_hp <= 0.35:
+            return "execute", INTENT_TELEGRAPHS["execute"]
+        if player_sh > 0.40 and has_ability and special_ability == "shield_drain":
+            return "ability", SPECIAL_TELEGRAPHS[special_ability]
+        if enemy_sh < 0.20 and has_ability and special_ability == "tachyon_lance":
+            return "ability", SPECIAL_TELEGRAPHS[special_ability]
+    elif profile == "adaptive":
+        if player_combo >= 3 and has_ability:
+            return "ability", SPECIAL_TELEGRAPHS[special_ability]
+        if player_hp < 0.30 and has_ability:
+            return "ability", SPECIAL_TELEGRAPHS[special_ability]
+        if enemy_hp < 0.30:
+            return "evade", INTENT_TELEGRAPHS["evade"]
+        if player_combo >= 2:
+            return "brace", INTENT_TELEGRAPHS["brace"]
+    else:  # aggressive
+        if player_hp < 0.35:
+            return "execute", INTENT_TELEGRAPHS["execute"]
+        if has_ability:
+            return "ability", SPECIAL_TELEGRAPHS[special_ability]
+        if player_combo >= 3:
+            return "brace", INTENT_TELEGRAPHS["brace"]
+
+    if has_ability and (enemy_sh < 0.50 or player_sh > 0.50):
+        return "ability", SPECIAL_TELEGRAPHS[special_ability]
+    return "fire", INTENT_TELEGRAPHS["fire"]
 
 
 def generate_system_enemy(
@@ -158,4 +244,6 @@ def generate_system_enemy(
         special_ability=arch.special_ability,
         ability_cooldown=0,
         telegraphed_action=initial_telegraph,
+        ai_profile=arch.ai_profile,
+        enemy_intent="fire",
     )

@@ -41,7 +41,7 @@ class TestLauncherMenu(unittest.TestCase):
 
     def test_menu_choice_zero_renders_and_exits_cleanly(self):
         result = subprocess.run(
-            ["cmd.exe", "/c", "play.bat"],
+            ["cmd.exe", "/c", str(PLAY_BAT)],
             input="0\r\n",
             capture_output=True,
             encoding="utf-8",

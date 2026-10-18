@@ -1,40 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-cockpit-layout-v1",
-    "last_phase": "phase 4",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792356859.295635,
-    "completed_at": 1792356955.9888418
+    "task_id": "task-voidfarer-equipment-bonuses-v1",
+    "last_phase": "in_progress",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792360063.484698
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-v8-time-and-ticks",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/5] Architectural domain modeling for time, ticks, orbital mechanics, and time controls",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792345722.454504,
-      "timestamp_str": "2026-10-18 20:48:42",
-      "impact_assessment": {
-        "why": "Add simulation time, cosmic stardate ticks, orbital motion, drone time-harvesting, and player time controls as requested by the user",
-        "benefits": "Deepens simulation realism with dynamic planetary orbits, autonomous fleet background production over time, dynamic market ebb/flow, and full player agency with pause/speed controls",
-        "risks": "contract: REST API and CLI backward-compatible serialization with existing save files; dependency: zero third-party packages, pure stdlib; concurrency: thread-safe engine tick lock during background server ticker; state: save state migration for missing time field",
-        "mitigation": "Frozen dataclass TimeState with default factory, engine mutex locking on tick, and comprehensive automated unit tests"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-v8-time-and-ticks",
-      "phase": "in_progress",
-      "phase_num": 3,
-      "description": "[2/4] Implementation of TimeState, engine tick dynamics, REST API endpoints, CLI, and Web HUD time deck",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792346549.9992998,
-      "timestamp_str": "2026-10-18 21:02:29"
-    },
     {
       "task_id": "task-voidfarer-v8-time-and-ticks",
       "phase": "in_progress",
@@ -239,6 +212,32 @@
       "status": "completed",
       "timestamp": 1792356955.9888434,
       "timestamp_str": "2026-10-18 23:55:55"
+    },
+    {
+      "task_id": "task-voidfarer-equipment-bonuses-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/4] Plan: make inert hardware stat_bonus effects and chassis perks real, add failing-first tests for aggregation and engine integrations, and repair the launcher test's env-sensitive invocation",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792359594.487377,
+      "timestamp_str": "2026-10-19 00:39:54",
+      "impact_assessment": {
+        "why": "ADR-010 deferred wiring of inert upgrade stat bonuses and chassis perks; players currently buy modules whose advertised effects (fuel, scan, combat, shield regen, evasion, ECM) do nothing, and the 135-test baseline is red in this environment because NoDefaultCurrentDirectoryInExePath=1 makes 'cmd /c play.bat' unresolvable",
+        "benefits": "Every advertised module and chassis perk changes gameplay; bonuses are centralized and test-pinned; launcher regression test becomes portable across hardened Windows hosts",
+        "risks": "contract: preserve save schema, REST/CLI shapes and catalog ids; dependency: stdlib only; concurrency: pure calculation under the existing engine lock; state: no new persisted fields, chassis lookup stays class-based",
+        "mitigation": "Pure calculate_equipment_bonuses(ship) helper, additive/multiplicative rules documented in ADR-014, integration tests compare before/after behavior, absolute launcher path in the subprocess test, full suite plus aikit check gate"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-equipment-bonuses-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[4/4] Verified: 146/146 tests green (2.1s); aikit check voidfarer 4/4 (test, hygiene, guidelines, secrets); new 11-test equipment suite red-first then green; launch test now uses absolute play.bat path; README counts/tree + ADR-014 updated; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792360063.484698,
+      "timestamp_str": "2026-10-19 00:47:43"
     }
   ]
 }

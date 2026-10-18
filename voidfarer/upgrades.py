@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Sequence
 
-from voidfarer.models import FleetDrone, ShipUpgrade
+from voidfarer.models import FleetDrone, ShipState, ShipUpgrade
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,7 @@ class ShipChassis:
     cargo_capacity: int
     description: str
     specialty_perk: str
+    stat_bonus: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -39,6 +40,7 @@ class ShipChassis:
             cargo_capacity=int(data["cargo_capacity"]),
             description=str(data["description"]),
             specialty_perk=str(data.get("specialty_perk", "")),
+            stat_bonus=dict(data.get("stat_bonus", {})),
         )
 
 
@@ -66,6 +68,7 @@ CATALOG_CHASSIS: tuple[ShipChassis, ...] = (
         cargo_capacity=120,
         description="Heavy-duty commercial freighter equipped with reinforced cargo hold bays and cargo compression fields.",
         specialty_perk="+15% Galactic Trade Margin & 120-unit Cargo Bay",
+        stat_bonus={"trade_margin": 0.15},
     ),
     ShipChassis(
         id="solaris_gunship",
@@ -78,6 +81,7 @@ CATALOG_CHASSIS: tuple[ShipChassis, ...] = (
         cargo_capacity=35,
         description="Military-grade patrol vessel outfitted with heavy deflector capacitor grids and forward laser mounts.",
         specialty_perk="+20 Tactical Combat Damage & 180 MW Shields",
+        stat_bonus={"combat_damage": 20.0},
     ),
     ShipChassis(
         id="chronos_explorer",
@@ -90,6 +94,7 @@ CATALOG_CHASSIS: tuple[ShipChassis, ...] = (
         cargo_capacity=60,
         description="Specialized scientific survey cruiser featuring high-capacity hydrogen fuel reserves and deep astrometric sensors.",
         specialty_perk="120 Fuel Capacity & +50% Science Scan Bounties",
+        stat_bonus={"scan_mult": 1.5},
     ),
     ShipChassis(
         id="archon_dreadnought",
@@ -102,6 +107,7 @@ CATALOG_CHASSIS: tuple[ShipChassis, ...] = (
         cargo_capacity=80,
         description="Pinnacle naval flagship constructed with reinforced neutronium bulkheads and sovereign hardlight shields.",
         specialty_perk="250 Hull & 250 Shields, +35 Combat Damage, Supreme Fleet Asset",
+        stat_bonus={"combat_damage": 35.0},
     ),
 )
 
@@ -336,6 +342,57 @@ def get_available_upgrades(installed: dict[str, str]) -> list[ShipUpgrade]:
 
 def get_chassis(chassis_id: str) -> ShipChassis | None:
     return CHASSIS_MAP.get(chassis_id)
+
+
+def get_chassis_for_ship_class(ship_class: str) -> ShipChassis | None:
+    """Resolve the commissioned chassis from the ship class recorded in the save."""
+    return next((c for c in CATALOG_CHASSIS if c.ship_class == ship_class), None)
+
+
+def calculate_equipment_bonuses(ship: ShipState) -> dict[str, float]:
+    """Aggregate equipped module and chassis stat bonuses into effective multipliers.
+
+    Multiplicative stats (fuel savings, scan yield) multiply each source; additive
+    stats (combat damage, evasion, regeneration, ECM, trade margin) sum. The result
+    never changes persisted state and is safe to call under the engine lock.
+    """
+    bonuses: dict[str, float] = {
+        "fuel_efficiency": 1.0,
+        "scan_mult": 1.0,
+        "relic_find": 0.0,
+        "combat_damage": 0.0,
+        "evasion": 0.0,
+        "shield_regen": 0.0,
+        "pirate_evasion": 0.0,
+        "trade_margin": 0.0,
+        "max_hull": 0.0,
+        "max_shield": 0.0,
+        "cargo_capacity": 0.0,
+        "hull_repair_per_tick": 0.0,
+    }
+
+    sources: list[dict[str, float]] = []
+    for upgrade_id in ship.equipped_upgrades.values():
+        upgrade = get_upgrade(upgrade_id)
+        if upgrade:
+            sources.append(upgrade.stat_bonus)
+    chassis = get_chassis_for_ship_class(ship.ship_class)
+    if chassis:
+        sources.append(chassis.stat_bonus)
+
+    for stats in sources:
+        for stat, value in stats.items():
+            if stat == "fuel_efficiency":
+                bonuses["fuel_efficiency"] *= max(0.0, 1.0 - float(value))
+            elif stat == "scan_mult":
+                bonuses["scan_mult"] *= float(value)
+            elif stat in bonuses:
+                bonuses[stat] += float(value)
+
+    bonuses["fuel_efficiency"] = max(0.10, bonuses["fuel_efficiency"])
+    bonuses["evasion"] = min(0.90, bonuses["evasion"])
+    bonuses["pirate_evasion"] = min(0.90, bonuses["pirate_evasion"])
+    return bonuses
 
 
 def get_available_chassis(current_chassis_id: str) -> list[ShipChassis]:

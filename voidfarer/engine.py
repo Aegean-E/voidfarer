@@ -83,6 +83,7 @@ from voidfarer.upgrades import (
     CATALOG_UPGRADES,
     CHASSIS_MAP,
     UPGRADE_MAP,
+    calculate_equipment_bonuses,
     get_available_chassis,
     get_available_upgrades,
     get_chassis,
@@ -425,6 +426,7 @@ class SimulationEngine:
 
             # Calculate fuel cost (with warp booster upgrade bonus, relics, and talents)
             passives = calculate_passive_multipliers(self.state.ship)
+            equipment = calculate_equipment_bonuses(self.state.ship)
             eng_pwr = self.state.ship.power.engines
             base_fuel = 8
             if eng_pwr >= 40:
@@ -434,10 +436,7 @@ class SimulationEngine:
             else:
                 fuel_cost = base_fuel
 
-            if "warp_booster_mk2" in self.state.ship.equipped_upgrades.values():
-                fuel_cost = max(2, int(fuel_cost * 0.65))
-
-            fuel_cost = max(1, int(fuel_cost * passives["fuel_efficiency"]))
+            fuel_cost = max(1, int(fuel_cost * equipment["fuel_efficiency"] * passives["fuel_efficiency"]))
 
             if self.state.ship.fuel < fuel_cost:
                 return False, f"Insufficient Quantum Fuel: {fuel_cost} units required, {self.state.ship.fuel} available."
@@ -472,7 +471,7 @@ class SimulationEngine:
             standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
             is_hostile_territory = standing <= -50
 
-            if is_hostile_territory and self.rng.random() < 0.65:
+            if is_hostile_territory and self.rng.random() < 0.65 * (1.0 - equipment["pirate_evasion"]):
                 combat = generate_system_enemy(
                     system_id=target_system_id,
                     security=target_sys.security,
@@ -483,7 +482,7 @@ class SimulationEngine:
             elif target_sys.security < 0.35:
                 if has_escort:
                     new_log.append("TACTICAL: Combat escort frigate dispersed hostile ambush.")
-                elif self.rng.random() < 0.40:
+                elif self.rng.random() < 0.40 * (1.0 - equipment["pirate_evasion"]):
                     combat = generate_system_enemy(
                         system_id=target_system_id,
                         security=target_sys.security,
@@ -692,11 +691,10 @@ class SimulationEngine:
                 return False, "Cannot scan: ship must establish orbit around a celestial body first.", {}
 
             passives = calculate_passive_multipliers(self.state.ship)
+            equipment = calculate_equipment_bonuses(self.state.ship)
             pwr = self.state.ship.power.sensors
             credit_bounty = int(100 * (pwr / 25.0))
-            if "deep_core_scanner" in self.state.ship.equipped_upgrades.values():
-                credit_bounty = int(credit_bounty * 1.5)
-            credit_bounty = int(credit_bounty * passives["scan_bounty"])
+            credit_bounty = int(credit_bounty * equipment["scan_mult"] * passives["scan_bounty"])
 
             # Mark scan completed on body
             updated_bodies = []
@@ -743,7 +741,7 @@ class SimulationEngine:
             new_credits = self.state.ship.credits + credit_bounty
 
             # Variable Ratio relic drop and near-miss feedback
-            relic_bonus = passives["relic_find"] + self.state.ship.near_miss_scanner_bonus
+            relic_bonus = passives["relic_find"] + equipment["relic_find"] + self.state.ship.near_miss_scanner_bonus
             found_relic, is_near_miss = roll_relic_drop(self.rng, bonus_prob=relic_bonus, current_system=cur_sys.name)
             new_relics = list(self.state.ship.relics)
             new_near_miss = 0.0
@@ -847,6 +845,7 @@ class SimulationEngine:
             stats = dict(self.state.stats)
 
             passives = calculate_passive_multipliers(self.state.ship)
+            equipment = calculate_equipment_bonuses(self.state.ship)
 
             # Geopolitical faction & corporate commercial mechanics
             sys_faction_id = get_faction_id_from_name(self.current_system.faction)
@@ -879,7 +878,7 @@ class SimulationEngine:
                 if owned < quantity:
                     return False, f"Insufficient inventory: you have {owned} units, tried to sell {quantity}."
 
-                margin_mult = passives.get("trade_margin", 1.0)
+                margin_mult = passives.get("trade_margin", 1.0) * (1.0 + equipment["trade_margin"])
                 corp_mult = 1.0
                 corp_note = ""
                 dom_corp_id = self.current_system.dominant_corp
@@ -1427,6 +1426,7 @@ class SimulationEngine:
             cargo = dict(self.state.ship.cargo)
             stats = dict(self.state.stats)
             passives = calculate_passive_multipliers(self.state.ship)
+            equipment = calculate_equipment_bonuses(self.state.ship)
 
             new_combo = self.state.ship.tactical_combo
             new_streak = self.state.ship.streak
@@ -1437,7 +1437,7 @@ class SimulationEngine:
 
             if action == "fire_lasers":
                 wep_power = self.state.ship.power.weapons
-                bonus_wep = 15 if "pulse_cannon_array" in self.state.ship.equipped_upgrades.values() else 0
+                bonus_wep = int(equipment["combat_damage"])
                 base_dmg = int((20 + int(wep_power * 0.75) + bonus_wep) * passives.get("laser_dmg", 1.0))
 
                 new_combo += 1
@@ -1525,7 +1525,7 @@ class SimulationEngine:
 
             elif action == "evasive_burn":
                 eng = self.state.ship.power.engines
-                chance = 0.50 + (eng / 25.0) * 0.20
+                chance = min(0.95, 0.50 + (eng / 25.0) * 0.20 + equipment["evasion"])
                 if self.rng.random() < chance:
                     msg = "High-G burn successful! Evaded enemy weapon tracking and escaped hostile sector."
                     new_combat = None
@@ -1646,6 +1646,10 @@ class SimulationEngine:
 
             # Standard counter-battery
             inbound = enemy_rem_damage
+            evasion_note = ""
+            if inbound > 0 and equipment["evasion"] > 0.0 and self.rng.random() < equipment["evasion"]:
+                inbound = 0
+                evasion_note = " [Ion afterburners evaded incoming fire!]"
             if new_shield >= inbound:
                 new_shield -= inbound
             else:
@@ -1664,7 +1668,7 @@ class SimulationEngine:
             else:
                 next_telegraph = "Hull exposed! Primary weapons locking on flagship"
 
-            msg = f"{strike_desc} Inbound counter-battery dealt {inbound} damage.{ability_note} (Enemy HP: {enemy_rem_hull}/{combat.enemy_max_hull}, Shield: {enemy_rem_shield}/{combat.enemy_max_shield})"
+            msg = f"{strike_desc} Inbound counter-battery dealt {inbound} damage.{evasion_note}{ability_note} (Enemy HP: {enemy_rem_hull}/{combat.enemy_max_hull}, Shield: {enemy_rem_shield}/{combat.enemy_max_shield})"
 
             new_combat = CombatEncounter(
                 id=combat.id,
@@ -2116,6 +2120,7 @@ class SimulationEngine:
                 "active_combat": self.state.active_combat.to_dict() if self.state.active_combat else None,
                 "time": self.state.time.to_dict(),
                 "stats": dict(self.state.stats),
+                "equipment_bonuses": calculate_equipment_bonuses(self.state.ship),
                 "market_quotes": market_quotes,
                 "catalog_upgrades": [u.to_dict() for u in CATALOG_UPGRADES],
                 "catalog_drones": CATALOG_DRONE_TEMPLATES,
@@ -2227,10 +2232,12 @@ class SimulationEngine:
                 drone_credits_harvested = sum(d.credits_accumulated for d in new_drones) - credits_before
 
             # 3. Passive shield capacitor regeneration
+            equipment = calculate_equipment_bonuses(cur_ship)
             new_shield = cur_ship.shield
             shield_recharged = 0
             if not self.state.active_combat and cur_ship.shield < cur_ship.max_shield:
                 shield_gain = int(max(1, (cur_ship.power.shields / 25.0) * num_ticks))
+                shield_gain += int(equipment["shield_regen"] * num_ticks)
                 new_shield = min(cur_ship.max_shield, cur_ship.shield + shield_gain)
                 shield_recharged = new_shield - cur_ship.shield
 
@@ -2245,10 +2252,9 @@ class SimulationEngine:
 
             # 6. Automated repair bay module passive hull healing
             new_hull = cur_ship.hull
-            for u_id in cur_ship.equipped_upgrades.values():
-                u = get_upgrade(u_id)
-                if u and "hull_repair_per_tick" in u.stat_bonus:
-                    new_hull = min(cur_ship.max_hull, new_hull + int(u.stat_bonus["hull_repair_per_tick"] * num_ticks))
+            repair_per_tick = equipment["hull_repair_per_tick"]
+            if repair_per_tick > 0:
+                new_hull = min(cur_ship.max_hull, new_hull + int(repair_per_tick * num_ticks))
 
             new_flight_log = list(cur_ship.flight_log)
             if econ_logs:

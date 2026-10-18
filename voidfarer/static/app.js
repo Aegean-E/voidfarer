@@ -315,6 +315,8 @@ class CockpitApp {
 
         // Log
         this.flightLogStream = document.getElementById("flightLogStream");
+        this.logPanel = document.getElementById("logPanel");
+        this.btnToggleLog = document.getElementById("btnToggleLog");
 
         // Combat Card
         this.combatCard = document.getElementById("combatCard");
@@ -572,6 +574,15 @@ class CockpitApp {
         document.getElementById("clearLogBtn").addEventListener("click", () => {
             this.flightLogStream.innerHTML = `<div class="log-line log-system">[SYS] Telemetry stream cleared.</div>`;
         });
+
+        // Collapse / expand the telemetry log (layout rule G-001)
+        if (this.btnToggleLog && this.logPanel) {
+            this.btnToggleLog.addEventListener("click", () => {
+                const collapsed = this.logPanel.classList.toggle("log-collapsed");
+                this.btnToggleLog.textContent = collapsed ? "SHOW" : "HIDE";
+                this.btnToggleLog.setAttribute("aria-expanded", String(!collapsed));
+            });
+        }
 
         // Time & Ticks Chrono Controls
         if (this.btnTimePause) {

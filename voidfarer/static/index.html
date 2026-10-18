@@ -78,6 +78,16 @@
                 </div>
             </div>
 
+            <!-- Quick Action & Audio Controls -->
+            <div class="hud-top-actions">
+                <button class="btn-hud" id="audioToggleBtn" title="Toggle Synthesized Audio">
+                    <span class="icon" id="audioIcon">🔊</span> SOUND FX
+                </button>
+                <button class="btn-hud btn-cyan" id="quickScanBtn">
+                    <span class="icon">📡</span> SENSOR SCAN
+                </button>
+            </div>
+
             <!-- Cosmic Chronometer & Time Controls -->
             <div class="hud-time-deck" id="hudTimeDeck">
                 <div class="time-readout-group">
@@ -98,16 +108,6 @@
                     <button class="btn-time-ctrl btn-time-speed" id="btnTime10x" data-speed="10.0" title="Hyper-Warp 10x Speed (Hotkey: 4)">10x</button>
                     <button class="btn-time-ctrl btn-time-step" id="btnTimeStep" title="Advance +1 Simulation Tick (Hotkey: T)">⏭ +1</button>
                 </div>
-            </div>
-
-            <!-- Quick Action & Audio Controls -->
-            <div class="hud-top-actions">
-                <button class="btn-hud" id="audioToggleBtn" title="Toggle Synthesized Audio">
-                    <span class="icon" id="audioIcon">🔊</span> SOUND FX
-                </button>
-                <button class="btn-hud btn-cyan" id="quickScanBtn">
-                    <span class="icon">📡</span> SENSOR SCAN
-                </button>
             </div>
         </header>
 
@@ -138,51 +138,337 @@
 
         <!-- Main Workspace Deck Grid -->
         <main class="cockpit-grid">
-            
-            <!-- Left Deck: Navigation, Starmap & Orbit Canvas -->
-            <section class="deck-panel panel-left" id="panelNav">
-                <div class="panel-header">
-                    <div class="panel-tag"><span class="badge-dot"></span> NAV-RADAR</div>
-                    <h2 class="panel-title" id="radarTitle">SOL SYSTEM ORBITS</h2>
-                    <div class="view-toggle-group">
-                        <button class="tab-btn active" id="viewOrbitBtn">ORBITS</button>
-                        <button class="tab-btn" id="viewGalaxyBtn">GALAXY MAP</button>
-                    </div>
-                </div>
 
-                <!-- Canvas Radar Display -->
-                <div class="canvas-radar-container">
-                    <canvas id="radarCanvas" width="560" height="420"></canvas>
-                    <div class="radar-crosshair"></div>
-                    <div class="radar-sweep"></div>
-                    <div class="radar-coords" id="radarCoords">COORDS: [0.00, 0.00] // SECTOR 01</div>
-                    <div class="radar-controls">
-                        <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
-                        <button class="ctrl-btn" id="btnZoomOut" title="Zoom Out">-</button>
-                        <button class="ctrl-btn" id="btnResetView" title="Center Flagship">⊙</button>
-                    </div>
-                </div>
+            <!-- Left Deck: Vertical Tactical Terminal (Commerce, Arsenal, Fleet, ...) -->
+            <section class="deck-panel panel-left" id="panelLeft">
+                <nav class="deck-tabs-header" id="deckTabsHeader" aria-label="Terminal sections">
+                    <button class="deck-tab-btn active" id="tabBtnMarket">COMMERCE</button>
+                    <button class="deck-tab-btn" id="tabBtnArsenal">ARSENAL</button>
+                    <button class="deck-tab-btn" id="tabBtnFleet">FLEET</button>
+                    <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
+                    <button class="deck-tab-btn" id="tabBtnMastery">MASTERY & RELICS</button>
+                    <button class="deck-tab-btn" id="tabBtnStory">COMMS LOG <span class="tab-badge" id="storyBadge" style="display: none;">!</span></button>
+                    <button class="deck-tab-btn" id="tabBtnFactions">FACTIONS & CORPS</button>
+                </nav>
 
-                <!-- Selected Body / System Card -->
-                <div class="nav-target-card" id="navTargetCard">
-                    <div class="target-badge" id="targetType">TARGET: CELESTIAL BODY</div>
-                    <div class="target-title-row">
-                        <h3 class="target-name" id="targetName">Select a target on radar</h3>
-                        <span class="target-dist" id="targetDist">-- AU</span>
+                <div class="terminal-content-stack">
+                    <!-- Tab 1: Station Market / Exchange -->
+                    <div class="market-panel tab-content" id="tabContentMarket">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-cyan"></span> EXCHANGE</div>
+                            <h2 class="panel-title" id="marketTitle">LOCAL EXCHANGE</h2>
+                            <span class="badge-arch" id="marketArch">HIGH_TECH</span>
+                        </div>
+
+                        <!-- Station Services -->
+                        <div class="station-services-bar" id="stationServicesBar">
+                            <button class="btn-service" id="btnDrydockRepair">
+                                <span class="icon">🛠️</span>
+                                <div class="service-meta">
+                                    <span>REPAIR HULL (+25)</span>
+                                    <small id="repairCostLabel">100 CR</small>
+                                </div>
+                            </button>
+                            <button class="btn-service" id="btnRefuelTanks">
+                                <span class="icon">⛽</span>
+                                <div class="service-meta">
+                                    <span>REFUEL (+20)</span>
+                                    <small id="refuelCostLabel">120 CR</small>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Cargo Hold Meter -->
+                        <div class="cargo-capacity-box">
+                            <div class="cargo-header">
+                                <span>CARGO HOLD CAPACITY</span>
+                                <strong id="cargoDetailed">15 / 40 UNITS</strong>
+                            </div>
+                            <div class="cargo-meter">
+                                <div class="cargo-meter-fill" id="cargoMeterFill" style="width: 37.5%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Commodity Exchange List -->
+                        <div class="commodity-table-container">
+                            <table class="market-table">
+                                <thead>
+                                    <tr>
+                                        <th>COMMODITY</th>
+                                        <th>BUY</th>
+                                        <th>SELL</th>
+                                        <th>HOLD</th>
+                                        <th>TRADE</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="marketTableBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="no-market-message" id="noMarketMsg" style="display: none;">
+                            <span class="big-icon">🪐</span>
+                            <h4>NO ORBITAL EXCHANGE</h4>
+                            <p>Ship is currently orbiting an unpopulated body or in deep space. Orbit a space station or colony to trade.</p>
+                        </div>
                     </div>
-                    <p class="target-desc" id="targetDesc">Click on any celestial planet, orbital station, or star in the radar to plot trajectory.</p>
-                    <div class="target-actions" id="targetActions">
-                        <button class="btn-action btn-cyan" id="btnOrbitTarget" disabled>ENTER ORBIT</button>
-                        <button class="btn-action btn-purple" id="btnJumpTarget" style="display:none;" disabled>HYPERSPACE JUMP</button>
+
+                    <!-- Tab 2: Station Arsenal & Modular Upgrades -->
+                    <div class="arsenal-panel tab-content" id="tabContentArsenal" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-amber"></span> ARSENAL</div>
+                            <h2 class="panel-title">STATION HARDWARE UPGRADES</h2>
+                        </div>
+                        <div class="arsenal-list" id="arsenalList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Autonomous Fleet Command & Drones -->
+                    <div class="fleet-panel tab-content" id="tabContentFleet" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-green"></span> FLEET-LINK</div>
+                            <h2 class="panel-title">AUTONOMOUS FLEET ASSETS</h2>
+                            <button class="btn-hud btn-green" id="btnHarvestFleet">HARVEST ALL</button>
+                        </div>
+
+                        <!-- Fleet Drones Roster -->
+                        <div class="fleet-roster" id="fleetRoster">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <!-- Commission New Drone -->
+                        <div class="commission-drone-box">
+                            <h4 class="commission-title">COMMISSION FLEET ASSET</h4>
+                            <div class="drone-shop-grid">
+                                <button class="btn-drone-buy" data-type="mining">
+                                    <strong>MINING DRONE</strong>
+                                    <small>650 cr // Yields Titanium</small>
+                                </button>
+                                <button class="btn-drone-buy" data-type="scout">
+                                    <strong>SCOUT DRONE</strong>
+                                    <small>500 cr // Passive Credits</small>
+                                </button>
+                                <button class="btn-drone-buy" data-type="combat_escort">
+                                    <strong>ESCORT FRIGATE</strong>
+                                    <small>1,300 cr // Repels Pirates</small>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Sector Bounties & Dynamic Contracts -->
+                    <div class="contracts-panel tab-content" id="tabContentContracts" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-amber"></span> ZEIGARNIK-LOOP</div>
+                            <h2 class="panel-title">SECTOR BOUNTIES & CONTRACTS</h2>
+                        </div>
+                        <p class="panel-intro-text">Continuous operational assignments. Completing tasks yields credits, pilot XP, and Precursor Relics while immediately deploying next-tier assignments.</p>
+                        <div class="contracts-list" id="contractsList">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 5: Pilot Mastery Tree & Precursor Relics -->
+                    <div class="mastery-panel tab-content" id="tabContentMastery" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-purple"></span> SELF-DETERMINATION</div>
+                            <h2 class="panel-title">PILOT SPECIALIZATIONS</h2>
+                        </div>
+                    
+                        <div class="mastery-perks-banner">
+                            <div class="perks-badge">
+                                <span>AVAILABLE TALENT POINTS</span>
+                                <strong id="availableTalentPoints">0</strong>
+                            </div>
+                            <p class="perks-desc">Allocate talent perks to specialize in exploration, dreadnought combat, swarm fleets, or quantum smuggling.</p>
+                        </div>
+
+                        <div class="talents-grid" id="talentsGrid">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <div class="panel-header" style="margin-top: 1.2rem;">
+                            <div class="panel-tag"><span class="badge-dot dot-cyan"></span> REINFORCEMENT-VAULT</div>
+                            <h2 class="panel-title">PRECURSOR RELICS VAULT</h2>
+                        </div>
+                        <p class="panel-intro-text">Alien artifacts recovered via sensor sweeps, hazardous anomalies, and contracts. Provide permanent fleet bonuses.</p>
+                        <div class="relics-grid" id="relicsGrid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Tab 6: The Precursor Cipher Narrative Comms -->
+                    <div class="story-panel tab-content" id="tabContentStory" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-magenta"></span> SPACE-OPERA CAMPAIGN</div>
+                            <h2 class="panel-title" id="storyChapterTitle">ACT I: THE GHOST TRANSMISSION</h2>
+                            <span class="badge-arch" id="storyTargetBadge">TARGET: ALPHA CENTAURI</span>
+                        </div>
+
+                        <!-- Faction Alignment Meter Row -->
+                        <div class="factions-meter-bar">
+                            <div class="faction-chip" id="factionCoalition">
+                                <span class="faction-name">SOL COALITION</span>
+                                <strong class="faction-score" id="scoreCoalition">+0</strong>
+                            </div>
+                            <div class="faction-chip" id="factionSyndicate">
+                                <span class="faction-name">SPACERS SYNDICATE</span>
+                                <strong class="faction-score" id="scoreSyndicate">+0</strong>
+                            </div>
+                            <div class="faction-chip" id="factionPrecursor">
+                                <span class="faction-name">PRECURSOR WATCH</span>
+                                <strong class="faction-score" id="scorePrecursor">+0</strong>
+                            </div>
+                        </div>
+
+                        <div class="story-synopsis-box">
+                            <p class="story-synopsis-text" id="storySynopsisText">Decrypting subspace telemetry...</p>
+                        </div>
+
+                        <!-- Critical Moral Choice Card -->
+                        <div class="story-choice-container" id="storyChoiceContainer" style="display: none;">
+                            <div class="choice-prompt-header">
+                                <span class="choice-alert-icon">⚡</span>
+                                <h4>TACTICAL TRANSMISSION DECISION REQUIRED</h4>
+                            </div>
+                            <div class="story-choices-list" id="storyChoicesList"></div>
+                        </div>
+
+                        <!-- Radio Subspace Transmissions Log -->
+                        <div class="story-transmissions-feed">
+                            <div class="feed-header">
+                                <span>DECRYPTED COMMS STREAM</span>
+                                <small id="commsLogCount">0 TRANSMISSIONS</small>
+                            </div>
+                            <div class="transmissions-stream" id="transmissionsStream">
+                                <!-- Populated dynamically with character avatars, badges, and typewriter effect -->
+                            </div>
+                        </div>
+
+                        <!-- Academy Controls Row -->
+                        <div class="academy-settings-row" style="margin-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 4px;">
+                            <span style="font-size: 0.68rem; color: var(--text-muted); font-family: var(--font-mono);">FLIGHT CADET ACADEMY:</span>
+                            <button class="btn-hud" id="btnResetCadetAcademy" style="font-size: 0.65rem; padding: 4px 10px; border-color: rgba(0, 240, 255, 0.4); color: var(--neon-cyan);">RETAKE CADET ACADEMY</button>
+                        </div>
+                    </div>
+
+                    <!-- Tab 7: Factions & Megacorporations Deck -->
+                    <div class="tab-content factions-panel" id="tabContentFactions" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-purple"></span> GEOPOLITICS</div>
+                            <h2 class="panel-title">GALACTIC FACTIONS & CORPORATIONS</h2>
+                        </div>
+                        <div class="factions-section">
+                            <h3 class="subpanel-title">SOVEREIGN FACTIONS</h3>
+                            <div class="factions-grid" id="factionsGrid">
+                                <!-- Populated dynamically by app.js -->
+                            </div>
+                        </div>
+                        <div class="corps-section" style="margin-top: 18px;">
+                            <h3 class="subpanel-title">INTERSTELLAR MEGACORPORATIONS</h3>
+                            <div class="corps-grid" id="corpsGrid">
+                                <!-- Populated dynamically by app.js -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Center Deck: Subsystem Reactor & Tactical Log -->
+            <!-- Center Deck: Context Alerts, NAV-Radar & Reactor Matrix -->
             <section class="deck-panel panel-center" id="panelCenter">
-                
+                <!-- Combat Intercept Overlay (Active when intercepted) -->
+                <div class="combat-alert-card" id="combatCard" style="display: none;">
+                    <div class="combat-header">
+                        <span class="combat-icon">⚔️</span>
+                        <div class="combat-text">
+                            <span class="combat-tag">HOSTILE INTERCEPT DETECTED</span>
+                            <h3 class="combat-title" id="combatEnemyTitle">Pirate Raider</h3>
+                            <span class="badge-faction" id="combatEnemyFaction" style="font-family: var(--font-mono); font-size: 0.65rem; color: #ffcc00;">FACTION: OUTLAW</span>
+                        </div>
+                    </div>
+                    <div class="combat-health-bar-container" id="combatShieldContainer" style="display: none;">
+                        <div class="combat-health-label" style="color: #00f3ff;">
+                            <span>ENEMY DEFLECTOR SHIELD</span>
+                            <strong id="combatEnemyShield">0 / 0</strong>
+                        </div>
+                        <div class="combat-meter"><div class="combat-meter-fill shield-fill" id="combatEnemyShieldBar" style="width: 0%;"></div></div>
+                    </div>
+                    <div class="combat-health-bar-container">
+                        <div class="combat-health-label">
+                            <span>ENEMY HULL ARMOR</span>
+                            <strong id="combatEnemyHp">80 / 80</strong>
+                        </div>
+                        <div class="combat-meter"><div class="combat-meter-fill" id="combatEnemyBar" style="width: 100%;"></div></div>
+                    </div>
+                    <div class="combat-telegraph-banner" id="combatTelegraphBanner" style="display: none;">
+                        <span class="icon">⚠</span> <span id="combatTelegraphText">Hostile weapon telemetry incoming</span>
+                    </div>
+                    <div class="combat-tactics-grid">
+                        <button class="btn-combat btn-red" id="btnCombatFire">🎯 FIRE LASER ARRAY</button>
+                        <button class="btn-combat btn-cyan" id="btnCombatDrone" style="background: rgba(0, 240, 255, 0.2); color: #00f0ff; border-color: rgba(0, 240, 255, 0.5);">🛸 DRONE STRIKE</button>
+                        <button class="btn-combat btn-amber" id="btnCombatTarget" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border-color: rgba(255, 170, 0, 0.5);">⚡ TARGET SUBSYSTEM</button>
+                        <button class="btn-combat btn-blue" id="btnCombatAbsorb">🛡️ SHIELD OVERCHARGE</button>
+                        <button class="btn-combat btn-amber" id="btnCombatEvade">🚀 EVASIVE BURN</button>
+                        <button class="btn-combat btn-purple" id="btnCombatFlee">⚡ FLEE SECTOR (-8 FUEL)</button>
+                    </div>
+                    <div class="combat-combo-badge" id="combatComboBadge" style="display: none;">
+                        ⚡ TACTICAL COMBO: <span id="combatComboCount">0</span> <strong class="crit-ready-text" id="critReadyText">(CRITICAL OVERCHARGE READY!)</strong>
+                    </div>
+                </div>
+
+                <!-- Anomaly Modal / Card (Prominent when active) -->
+                <div class="anomaly-alert-card" id="anomalyCard" style="display: none;">
+                    <div class="anomaly-header">
+                        <span class="alert-icon">⚠️</span>
+                        <div class="alert-text">
+                            <span class="alert-tag">PROXIMITY HAZARD</span>
+                            <h3 class="alert-title" id="anomalyTitle">Anomaly Detected</h3>
+                        </div>
+                    </div>
+                    <p class="anomaly-desc" id="anomalyDesc">Spatial sensors detected an exotic spatial disruption.</p>
+                    <div class="anomaly-choices" id="anomalyChoices"></div>
+                </div>
+
+                <div class="sub-panel nav-panel" id="panelNav">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot"></span> NAV-RADAR</div>
+                        <h2 class="panel-title" id="radarTitle">SOL SYSTEM ORBITS</h2>
+                        <div class="view-toggle-group">
+                            <button class="tab-btn active" id="viewOrbitBtn">ORBITS</button>
+                            <button class="tab-btn" id="viewGalaxyBtn">GALAXY MAP</button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Radar Display -->
+                    <div class="canvas-radar-container">
+                        <canvas id="radarCanvas" width="560" height="420"></canvas>
+                        <div class="radar-crosshair"></div>
+                        <div class="radar-sweep"></div>
+                        <div class="radar-coords" id="radarCoords">COORDS: [0.00, 0.00] // SECTOR 01</div>
+                        <div class="radar-controls">
+                            <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
+                            <button class="ctrl-btn" id="btnZoomOut" title="Zoom Out">-</button>
+                            <button class="ctrl-btn" id="btnResetView" title="Center Flagship">⊙</button>
+                        </div>
+                    </div>
+
+                    <!-- Selected Body / System Card -->
+                    <div class="nav-target-card" id="navTargetCard">
+                        <div class="target-badge" id="targetType">TARGET: CELESTIAL BODY</div>
+                        <div class="target-title-row">
+                            <h3 class="target-name" id="targetName">Select a target on radar</h3>
+                            <span class="target-dist" id="targetDist">-- AU</span>
+                        </div>
+                        <p class="target-desc" id="targetDesc">Click on any celestial planet, orbital station, or star in the radar to plot trajectory.</p>
+                        <div class="target-actions" id="targetActions">
+                            <button class="btn-action btn-cyan" id="btnOrbitTarget" disabled>ENTER ORBIT</button>
+                            <button class="btn-action btn-purple" id="btnJumpTarget" style="display:none;" disabled>HYPERSPACE JUMP</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Reactor Power Matrix -->
-                <div class="sub-panel reactor-panel">
+                <div class="sub-panel reactor-panel" id="panelReactor">
                     <div class="panel-header">
                         <div class="panel-tag"><span class="badge-dot dot-amber"></span> POWER-ROUTING</div>
                         <h2 class="panel-title">REACTOR DISTRIBUTION</h2>
@@ -238,307 +524,24 @@
                         <button class="btn-hud btn-green" id="applyPowerBtn">APPLY REACTOR ROUTE</button>
                     </div>
                 </div>
+            </section>
 
+            <!-- Right Deck: Telemetry Flight Log (anchored lower-right, G-001) -->
+            <section class="deck-panel panel-right" id="panelRight">
                 <!-- Tactical Flight Telemetry Log -->
-                <div class="sub-panel log-panel">
+                <div class="sub-panel log-panel" id="logPanel">
                     <div class="panel-header">
                         <div class="panel-tag"><span class="badge-dot dot-green"></span> TELEMETRY</div>
                         <h2 class="panel-title">TACTICAL FLIGHT LOG</h2>
-                        <button class="text-btn" id="clearLogBtn">CLEAR</button>
+                        <div class="log-header-actions">
+                            <button class="text-btn" id="btnToggleLog" aria-controls="flightLogStream" aria-expanded="true" title="Hide or show the telemetry stream">HIDE</button>
+                            <button class="text-btn" id="clearLogBtn">CLEAR</button>
+                        </div>
                     </div>
                     <div class="flight-log-stream" id="flightLogStream">
                         <div class="log-line log-system">[SYS] Sub-space uplink online. Telemetry sync active.</div>
                     </div>
                 </div>
-            </section>
-
-            <!-- Right Deck: Multi-Tab Tactical Terminal (Market, Arsenal, Fleet) -->
-            <section class="deck-panel panel-right" id="panelRight">
-                
-                <!-- Combat Intercept Overlay (Active when intercepted) -->
-                <div class="combat-alert-card" id="combatCard" style="display: none;">
-                    <div class="combat-header">
-                        <span class="combat-icon">⚔️</span>
-                        <div class="combat-text">
-                            <span class="combat-tag">HOSTILE INTERCEPT DETECTED</span>
-                            <h3 class="combat-title" id="combatEnemyTitle">Pirate Raider</h3>
-                            <span class="badge-faction" id="combatEnemyFaction" style="font-family: var(--font-mono); font-size: 0.65rem; color: #ffcc00;">FACTION: OUTLAW</span>
-                        </div>
-                    </div>
-                    <div class="combat-health-bar-container" id="combatShieldContainer" style="display: none;">
-                        <div class="combat-health-label" style="color: #00f3ff;">
-                            <span>ENEMY DEFLECTOR SHIELD</span>
-                            <strong id="combatEnemyShield">0 / 0</strong>
-                        </div>
-                        <div class="combat-meter"><div class="combat-meter-fill shield-fill" id="combatEnemyShieldBar" style="width: 0%;"></div></div>
-                    </div>
-                    <div class="combat-health-bar-container">
-                        <div class="combat-health-label">
-                            <span>ENEMY HULL ARMOR</span>
-                            <strong id="combatEnemyHp">80 / 80</strong>
-                        </div>
-                        <div class="combat-meter"><div class="combat-meter-fill" id="combatEnemyBar" style="width: 100%;"></div></div>
-                    </div>
-                    <div class="combat-telegraph-banner" id="combatTelegraphBanner" style="display: none;">
-                        <span class="icon">⚠</span> <span id="combatTelegraphText">Hostile weapon telemetry incoming</span>
-                    </div>
-                    <div class="combat-tactics-grid">
-                        <button class="btn-combat btn-red" id="btnCombatFire">🎯 FIRE LASER ARRAY</button>
-                        <button class="btn-combat btn-cyan" id="btnCombatDrone" style="background: rgba(0, 240, 255, 0.2); color: #00f0ff; border-color: rgba(0, 240, 255, 0.5);">🛸 DRONE STRIKE</button>
-                        <button class="btn-combat btn-amber" id="btnCombatTarget" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border-color: rgba(255, 170, 0, 0.5);">⚡ TARGET SUBSYSTEM</button>
-                        <button class="btn-combat btn-blue" id="btnCombatAbsorb">🛡️ SHIELD OVERCHARGE</button>
-                        <button class="btn-combat btn-amber" id="btnCombatEvade">🚀 EVASIVE BURN</button>
-                        <button class="btn-combat btn-purple" id="btnCombatFlee">⚡ FLEE SECTOR (-8 FUEL)</button>
-                    </div>
-                    <div class="combat-combo-badge" id="combatComboBadge" style="display: none;">
-                        ⚡ TACTICAL COMBO: <span id="combatComboCount">0</span> <strong class="crit-ready-text" id="critReadyText">(CRITICAL OVERCHARGE READY!)</strong>
-                    </div>
-                </div>
-
-                <!-- Anomaly Modal / Card (Prominent when active) -->
-                <div class="anomaly-alert-card" id="anomalyCard" style="display: none;">
-                    <div class="anomaly-header">
-                        <span class="alert-icon">⚠️</span>
-                        <div class="alert-text">
-                            <span class="alert-tag">PROXIMITY HAZARD</span>
-                            <h3 class="alert-title" id="anomalyTitle">Anomaly Detected</h3>
-                        </div>
-                    </div>
-                    <p class="anomaly-desc" id="anomalyDesc">Spatial sensors detected an exotic spatial disruption.</p>
-                    <div class="anomaly-choices" id="anomalyChoices"></div>
-                </div>
-
-                <!-- Right Deck Tab Selector -->
-                <div class="deck-tabs-header">
-                    <button class="deck-tab-btn active" id="tabBtnMarket">COMMERCE</button>
-                    <button class="deck-tab-btn" id="tabBtnArsenal">ARSENAL</button>
-                    <button class="deck-tab-btn" id="tabBtnFleet">FLEET</button>
-                    <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
-                    <button class="deck-tab-btn" id="tabBtnMastery">MASTERY & RELICS</button>
-                    <button class="deck-tab-btn" id="tabBtnStory">COMMS LOG <span class="tab-badge" id="storyBadge" style="display: none;">!</span></button>
-                    <button class="deck-tab-btn" id="tabBtnFactions">FACTIONS & CORPS</button>
-                </div>
-
-                <!-- Tab 1: Station Market / Exchange -->
-                <div class="market-panel tab-content" id="tabContentMarket">
-                    <div class="panel-header">
-                        <div class="panel-tag"><span class="badge-dot dot-cyan"></span> EXCHANGE</div>
-                        <h2 class="panel-title" id="marketTitle">LOCAL EXCHANGE</h2>
-                        <span class="badge-arch" id="marketArch">HIGH_TECH</span>
-                    </div>
-
-                    <!-- Station Services -->
-                    <div class="station-services-bar" id="stationServicesBar">
-                        <button class="btn-service" id="btnDrydockRepair">
-                            <span class="icon">🛠️</span>
-                            <div class="service-meta">
-                                <span>REPAIR HULL (+25)</span>
-                                <small id="repairCostLabel">100 CR</small>
-                            </div>
-                        </button>
-                        <button class="btn-service" id="btnRefuelTanks">
-                            <span class="icon">⛽</span>
-                            <div class="service-meta">
-                                <span>REFUEL (+20)</span>
-                                <small id="refuelCostLabel">120 CR</small>
-                            </div>
-                        </button>
-                    </div>
-
-                    <!-- Cargo Hold Meter -->
-                    <div class="cargo-capacity-box">
-                        <div class="cargo-header">
-                            <span>CARGO HOLD CAPACITY</span>
-                            <strong id="cargoDetailed">15 / 40 UNITS</strong>
-                        </div>
-                        <div class="cargo-meter">
-                            <div class="cargo-meter-fill" id="cargoMeterFill" style="width: 37.5%;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Commodity Exchange List -->
-                    <div class="commodity-table-container">
-                        <table class="market-table">
-                            <thead>
-                                <tr>
-                                    <th>COMMODITY</th>
-                                    <th>BUY</th>
-                                    <th>SELL</th>
-                                    <th>HOLD</th>
-                                    <th>TRADE</th>
-                                </tr>
-                            </thead>
-                            <tbody id="marketTableBody"></tbody>
-                        </table>
-                    </div>
-
-                    <div class="no-market-message" id="noMarketMsg" style="display: none;">
-                        <span class="big-icon">🪐</span>
-                        <h4>NO ORBITAL EXCHANGE</h4>
-                        <p>Ship is currently orbiting an unpopulated body or in deep space. Orbit a space station or colony to trade.</p>
-                    </div>
-                </div>
-
-                <!-- Tab 2: Station Arsenal & Modular Upgrades -->
-                <div class="arsenal-panel tab-content" id="tabContentArsenal" style="display: none;">
-                    <div class="panel-header">
-                        <div class="panel-tag"><span class="badge-dot dot-amber"></span> ARSENAL</div>
-                        <h2 class="panel-title">STATION HARDWARE UPGRADES</h2>
-                    </div>
-                    <div class="arsenal-list" id="arsenalList">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-
-                <!-- Tab 3: Autonomous Fleet Command & Drones -->
-                <div class="fleet-panel tab-content" id="tabContentFleet" style="display: none;">
-                    <div class="panel-header">
-                        <div class="panel-tag"><span class="badge-dot dot-green"></span> FLEET-LINK</div>
-                        <h2 class="panel-title">AUTONOMOUS FLEET ASSETS</h2>
-                        <button class="btn-hud btn-green" id="btnHarvestFleet">HARVEST ALL</button>
-                    </div>
-
-                    <!-- Fleet Drones Roster -->
-                    <div class="fleet-roster" id="fleetRoster">
-                        <!-- Populated dynamically -->
-                    </div>
-
-                    <!-- Commission New Drone -->
-                    <div class="commission-drone-box">
-                        <h4 class="commission-title">COMMISSION FLEET ASSET</h4>
-                        <div class="drone-shop-grid">
-                            <button class="btn-drone-buy" data-type="mining">
-                                <strong>MINING DRONE</strong>
-                                <small>650 cr // Yields Titanium</small>
-                            </button>
-                            <button class="btn-drone-buy" data-type="scout">
-                                <strong>SCOUT DRONE</strong>
-                                <small>500 cr // Passive Credits</small>
-                            </button>
-                            <button class="btn-drone-buy" data-type="combat_escort">
-                                <strong>ESCORT FRIGATE</strong>
-                                <small>1,300 cr // Repels Pirates</small>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 4: Sector Bounties & Dynamic Contracts -->
-                <div class="contracts-panel tab-content" id="tabContentContracts" style="display: none;">
-                    <div class="panel-header">
-                        <div class="panel-tag"><span class="badge-dot dot-amber"></span> ZEIGARNIK-LOOP</div>
-                        <h2 class="panel-title">SECTOR BOUNTIES & CONTRACTS</h2>
-                    </div>
-                    <p class="panel-intro-text">Continuous operational assignments. Completing tasks yields credits, pilot XP, and Precursor Relics while immediately deploying next-tier assignments.</p>
-                    <div class="contracts-list" id="contractsList">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-
-                <!-- Tab 5: Pilot Mastery Tree & Precursor Relics -->
-                <div class="mastery-panel tab-content" id="tabContentMastery" style="display: none;">
-                    <div class="panel-header">
-                        <div class="panel-tag"><span class="badge-dot dot-purple"></span> SELF-DETERMINATION</div>
-                        <h2 class="panel-title">PILOT SPECIALIZATIONS</h2>
-                    </div>
-                    
-                    <div class="mastery-perks-banner">
-                        <div class="perks-badge">
-                            <span>AVAILABLE TALENT POINTS</span>
-                            <strong id="availableTalentPoints">0</strong>
-                        </div>
-                        <p class="perks-desc">Allocate talent perks to specialize in exploration, dreadnought combat, swarm fleets, or quantum smuggling.</p>
-                    </div>
-
-                    <div class="talents-grid" id="talentsGrid">
-                        <!-- Populated dynamically -->
-                    </div>
-
-                    <div class="panel-header" style="margin-top: 1.2rem;">
-                        <div class="panel-tag"><span class="badge-dot dot-cyan"></span> REINFORCEMENT-VAULT</div>
-                        <h2 class="panel-title">PRECURSOR RELICS VAULT</h2>
-                    </div>
-                    <p class="panel-intro-text">Alien artifacts recovered via sensor sweeps, hazardous anomalies, and contracts. Provide permanent fleet bonuses.</p>
-                    <div class="relics-grid" id="relicsGrid">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-
-                <!-- Tab 6: The Precursor Cipher Narrative Comms -->
-                <div class="story-panel tab-content" id="tabContentStory" style="display: none;">
-                    <div class="panel-header">
-                        <div class="panel-tag"><span class="badge-dot dot-magenta"></span> SPACE-OPERA CAMPAIGN</div>
-                        <h2 class="panel-title" id="storyChapterTitle">ACT I: THE GHOST TRANSMISSION</h2>
-                        <span class="badge-arch" id="storyTargetBadge">TARGET: ALPHA CENTAURI</span>
-                    </div>
-
-                    <!-- Faction Alignment Meter Row -->
-                    <div class="factions-meter-bar">
-                        <div class="faction-chip" id="factionCoalition">
-                            <span class="faction-name">SOL COALITION</span>
-                            <strong class="faction-score" id="scoreCoalition">+0</strong>
-                        </div>
-                        <div class="faction-chip" id="factionSyndicate">
-                            <span class="faction-name">SPACERS SYNDICATE</span>
-                            <strong class="faction-score" id="scoreSyndicate">+0</strong>
-                        </div>
-                        <div class="faction-chip" id="factionPrecursor">
-                            <span class="faction-name">PRECURSOR WATCH</span>
-                            <strong class="faction-score" id="scorePrecursor">+0</strong>
-                        </div>
-                    </div>
-
-                    <div class="story-synopsis-box">
-                        <p class="story-synopsis-text" id="storySynopsisText">Decrypting subspace telemetry...</p>
-                    </div>
-
-                    <!-- Critical Moral Choice Card -->
-                    <div class="story-choice-container" id="storyChoiceContainer" style="display: none;">
-                        <div class="choice-prompt-header">
-                            <span class="choice-alert-icon">⚡</span>
-                            <h4>TACTICAL TRANSMISSION DECISION REQUIRED</h4>
-                        </div>
-                        <div class="story-choices-list" id="storyChoicesList"></div>
-                    </div>
-
-                    <!-- Radio Subspace Transmissions Log -->
-                    <div class="story-transmissions-feed">
-                        <div class="feed-header">
-                            <span>DECRYPTED COMMS STREAM</span>
-                            <small id="commsLogCount">0 TRANSMISSIONS</small>
-                        </div>
-                        <div class="transmissions-stream" id="transmissionsStream">
-                            <!-- Populated dynamically with character avatars, badges, and typewriter effect -->
-                        </div>
-                    </div>
-
-                    <!-- Academy Controls Row -->
-                    <div class="academy-settings-row" style="margin-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 4px;">
-                        <span style="font-size: 0.68rem; color: var(--text-muted); font-family: var(--font-mono);">FLIGHT CADET ACADEMY:</span>
-                        <button class="btn-hud" id="btnResetCadetAcademy" style="font-size: 0.65rem; padding: 4px 10px; border-color: rgba(0, 240, 255, 0.4); color: var(--neon-cyan);">RETAKE CADET ACADEMY</button>
-                    </div>
-                </div>
-
-                <!-- Tab 7: Factions & Megacorporations Deck -->
-                <div class="tab-content factions-panel" id="tabContentFactions" style="display: none;">
-                    <div class="panel-header">
-                        <div class="panel-tag"><span class="badge-dot dot-purple"></span> GEOPOLITICS</div>
-                        <h2 class="panel-title">GALACTIC FACTIONS & CORPORATIONS</h2>
-                    </div>
-                    <div class="factions-section">
-                        <h3 class="subpanel-title">SOVEREIGN FACTIONS</h3>
-                        <div class="factions-grid" id="factionsGrid">
-                            <!-- Populated dynamically by app.js -->
-                        </div>
-                    </div>
-                    <div class="corps-section" style="margin-top: 18px;">
-                        <h3 class="subpanel-title">INTERSTELLAR MEGACORPORATIONS</h3>
-                        <div class="corps-grid" id="corpsGrid">
-                            <!-- Populated dynamically by app.js -->
-                        </div>
-                    </div>
-                </div>
-
             </section>
         </main>
 

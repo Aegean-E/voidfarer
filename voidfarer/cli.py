@@ -16,26 +16,41 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
+    except (ValueError, OSError):
         pass
 
 from voidfarer.engine import SimulationEngine
 from voidfarer.factions import (
     CANONICAL_CORPORATIONS,
     CANONICAL_FACTIONS,
+    calculate_faction_market_modifier,
+    get_faction_id_from_name,
     get_faction_standing_tier,
 )
-from voidfarer.galaxy import COMMODITY_MAP, GalaxyGenerator
+from voidfarer.galaxy import COMMODITY_MAP
 from voidfarer.retention import (
     PILOT_TALENTS,
     calculate_passive_multipliers,
 )
 from voidfarer.server import ThreadedHTTPServer, VoidFarerHandler, run_server
 from voidfarer.storage import StorageManager
+from voidfarer.economy import (
+    calculate_dynamic_market_quote,
+    get_galactic_trade_routes,
+)
+from voidfarer.inventory import (
+    ITEM_CATALOG,
+    get_inventory_manifest,
+    get_item_info,
+)
 from voidfarer.upgrades import (
+    CATALOG_CHASSIS,
     CATALOG_DRONE_TEMPLATES,
     CATALOG_UPGRADES,
+    CHASSIS_MAP,
     UPGRADE_MAP,
+    get_available_chassis,
+    get_sell_value,
 )
 
 CYAN = "\033[96m"
@@ -267,18 +282,185 @@ def cmd_market(engine: SimulationEngine) -> int:
         print(f"{YELLOW}Fix:{RESET} Run `voidfarer orbit <body_id>` to enter orbit first.")
         return 1
 
-    quotes = GalaxyGenerator.get_market_quotes(engine.current_system, body)
+    quotes = [
+        calculate_dynamic_market_quote(engine.current_system, body, comm, engine.state.economy)
+        for comm in COMMODITY_MAP.values()
+    ]
+    sys_faction_id = get_faction_id_from_name(engine.current_system.faction)
+    faction_mod = calculate_faction_market_modifier(
+        sys_faction_id, engine.state.ship.faction_standings.get(sys_faction_id, 0)
+    )
     print(f"\n{BOLD}{CYAN}=== LOCAL COMMODITY EXCHANGE: {body.name.upper()} ==={RESET}")
-    print(f"Market Archetype: {BOLD}{body.market_archetype.upper()}{RESET} | Credits: {YELLOW}{engine.state.ship.credits} cr{RESET}")
+    print(f"Market Archetype: {BOLD}{body.market_archetype.upper()}{RESET} | Credits: {YELLOW}{engine.state.ship.credits} cr{RESET} | Trade Modifier: {BOLD}x{faction_mod:.2f}{RESET}")
     print(f"{'-' * 70}")
     print(f"{'COMMODITY':<22} {'BUY':>8} {'SELL':>8} {'SUPPLY':>8} {'DEMAND':>8} {'HOLD':>8}")
     print(f"{'-' * 70}")
     cargo = engine.state.ship.cargo
     for q in quotes:
         hold_qty = cargo.get(q.commodity_id, 0)
-        print(f"{q.name:<22} {GREEN}{q.buy_price:>6} cr{RESET} {YELLOW}{q.sell_price:>6} cr{RESET} {q.supply:>8} {q.demand:>8} {BOLD}{hold_qty:>8}{RESET}")
+        effective_buy = int(q.buy_price * faction_mod)
+        print(f"{q.name:<22} {GREEN}{effective_buy:>6} cr{RESET} {YELLOW}{q.sell_price:>6} cr{RESET} {q.supply:>8} {q.demand:>8} {BOLD}{hold_qty:>8}{RESET}")
     print(f"{'-' * 70}")
     return 0
+
+
+def cmd_economy(engine: SimulationEngine) -> int:
+    """Display galactic macroeconomic conditions, active events, and lucrative trade routes."""
+    econ = engine.state.economy
+    print(f"\n{BOLD}{CYAN}=== GALACTIC ECONOMY & MACROECONOMIC INTELLIGENCE ==={RESET}")
+    print(f"Simulation Tick: {YELLOW}#{engine.state.time.tick}{RESET} | Known Systems: {CYAN}{len(engine.state.systems)}{RESET}\n")
+
+    print(f"{BOLD}Active Macroeconomic Shocks & Galactic News:{RESET}")
+    if not econ.active_events:
+        print(f"  {DIM}Galaxy is currently in economic equilibrium. No major shortages or crises reported.{RESET}")
+    else:
+        for evt in econ.active_events:
+            sys_name = engine.state.systems[evt.system_id].name if evt.system_id in engine.state.systems else evt.system_id
+            badge = f"{RED}[CRISIS]{RESET}" if evt.price_multiplier > 1.2 else f"{GREEN}[BOOM]{RESET}"
+            pct = int((evt.price_multiplier - 1.0) * 100)
+            sign = f"+{pct}%" if pct > 0 else f"{pct}%"
+            print(f"  • {badge} {BOLD}{evt.title}{RESET} ({sys_name})")
+            print(f"    Impact: {YELLOW}{evt.commodity_id.upper()}{RESET} prices {YELLOW}{sign}{RESET} | Clocks: {CYAN}{evt.duration_ticks} ticks remaining{RESET}")
+            print(f"    {DIM}{evt.description}{RESET}\n")
+
+    print(f"{BOLD}Top Interstellar Trade Routes (Arbitrage Opportunities):{RESET}")
+    routes = get_galactic_trade_routes(engine.state.systems, econ)
+    if not routes:
+        print(f"  {DIM}No trade routes found.{RESET}")
+    else:
+        print(f"  {'COMMODITY':<20} {'BUY FROM':<22} {'SELL TO':<22} {'PROFIT/U':>10} {'MARGIN':>8}")
+        print(f"  {'-' * 86}")
+        for r in routes[:6]:
+            print(f"  {BOLD}{r['commodity_name']:<20}{RESET} {GREEN}{r['buy_system_name']} ({r['buy_price']} cr){RESET:<22} {YELLOW}{r['sell_system_name']} ({r['sell_price']} cr){RESET:<22} {GREEN}+{r['profit_per_unit']} cr{RESET:>10} {CYAN}{r['profit_margin_pct']}%{RESET:>8}")
+        print(f"  {'-' * 86}")
+    return 0
+
+
+def cmd_inventory(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Display and manage ship cargo manifest, usable consumables, and hold capacity."""
+    ship = engine.state.ship
+    if len(parts) == 1 or parts[1].lower() in ("list", "status", "manifest"):
+        print(f"\n{BOLD}{CYAN}=== FLAGSHIP INVENTORY & CARGO MANIFEST ==={RESET}")
+        manifest = get_inventory_manifest(ship.cargo)
+        used_vol = sum(item['total_volume'] for item in manifest)
+        print(f"Hold Capacity: {_bar(used_vol, ship.cargo_capacity, 24, YELLOW if used_vol < ship.cargo_capacity else RED)} units")
+        print(f"Credits:       {YELLOW}{ship.credits} cr{RESET}\n")
+
+        if not manifest:
+            print(f"{DIM}Cargo hold is currently empty.{RESET}")
+            print(f"Purchase commodities at orbital markets (`market`), or buy consumables (`inventory buy`).")
+            return 0
+
+        print(f"{'ID':<24} {'NAME':<24} {'CATEGORY':<14} {'QTY':>6} {'TOTAL VOL':>10} {'USABLE':<8}")
+        print(f"{'-' * 90}")
+        for item in manifest:
+            usable_str = f"{GREEN}YES{RESET}" if item['is_usable'] else f"{DIM}NO{RESET}"
+            print(f"{item['id']:<24} {BOLD}{item['name']:<24}{RESET} {CYAN}{item['category']:<14}{RESET} {item['quantity']:>6} {item['total_volume']:>10} {usable_str:<8}")
+            print(f"  {DIM}└─ {item['description']}{RESET}")
+        print(f"{'-' * 90}")
+        print(f"Subcommands: {BOLD}inventory buy <item_id> [qty]{RESET} | {BOLD}inventory use <item_id>{RESET} | {BOLD}inventory jettison <item_id> <quantity>{RESET}")
+        return 0
+
+    sub = parts[1].lower()
+    if sub == "buy":
+        if len(parts) < 3:
+            consumables = ", ".join(sorted(k for k, v in ITEM_CATALOG.items() if v.category == "consumable"))
+            print(f"{RED}Usage:{RESET} inventory buy <item_id> [quantity]")
+            print(f"{DIM}Available consumables:{RESET} {consumables}")
+            return 1
+        item_id = parts[2].lower()
+        try:
+            qty = int(parts[3]) if len(parts) > 3 else 1
+        except ValueError:
+            print(f"{RED}Error:{RESET} Quantity must be an integer.")
+            return 1
+        ok, msg = engine.buy_item(item_id, qty)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    if sub == "use":
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} inventory use <item_id>")
+            return 1
+        item_id = parts[2].lower()
+        ok, msg = engine.use_item(item_id)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    elif sub in ("jettison", "drop", "discard"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} inventory jettison <item_id> [quantity]")
+            return 1
+        item_id = parts[2].lower()
+        try:
+            qty = int(parts[3]) if len(parts) > 3 else 1
+        except ValueError:
+            print(f"{RED}Error:{RESET} Quantity must be an integer.")
+            return 1
+        ok, msg = engine.jettison_cargo(item_id, qty)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    print(f"{RED}Unknown inventory command '{sub}'. Options: list, buy <id> [qty], use <id>, jettison <id> [qty].{RESET}")
+    return 1
+
+
+def cmd_shipyard(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Orbital shipyard: inspect ship chassis upgrades, purchase vessels, and sell modules."""
+    ship = engine.state.ship
+    body = engine.orbiting_body
+    if not body or not body.station_dockable:
+        print(f"{RED}Error:{RESET} Ship must dock at an orbital station or colony to access shipyard drydocks.")
+        return 1
+
+    if len(parts) == 1 or parts[1].lower() in ("list", "status", "catalog"):
+        print(f"\n{BOLD}{CYAN}=== ORBITAL SHIPYARD & CHASSIS SHOWROOM ==={RESET}")
+        print(f"Station: {BOLD}{body.name}{RESET} | Commander Vault: {YELLOW}{ship.credits} cr{RESET}")
+        print(f"Current Class: {GREEN}{ship.ship_class}{RESET} ({ship.hull}/{ship.max_hull} Hull, {ship.shield}/{ship.max_shield} Shield, {ship.cargo_capacity} Cargo)\n")
+
+        print(f"{BOLD}Available Ship Chassis for Purchase:{RESET}")
+        print(f"{'ID':<20} {'NAME':<28} {'CLASS':<22} {'COST':>8} {'HULL':>6} {'SHD':>6} {'CARGO':>6}")
+        print(f"{'-' * 100}")
+        for c in CATALOG_CHASSIS:
+            is_cur = c.ship_class == ship.ship_class
+            marker = f"{GREEN}[CURRENT]{RESET}" if is_cur else f"{YELLOW}{c.cost} cr{RESET}"
+            print(f"{c.id:<20} {BOLD}{c.name:<28}{RESET} {CYAN}{c.ship_class:<22}{RESET} {marker:>8} {c.max_hull:>6} {c.max_shield:>6} {c.cargo_capacity:>6}")
+            print(f"  {DIM}Perk: {c.specialty_perk} - {c.description}{RESET}")
+        print(f"{'-' * 100}")
+        print(f"Subcommands: {BOLD}shipyard chassis <id>{RESET} | {BOLD}shipyard sell <slot>{RESET} | {BOLD}upgrades{RESET}")
+        return 0
+
+    sub = parts[1].lower()
+    if sub in ("chassis", "buy_chassis"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} shipyard chassis <chassis_id>")
+            return 1
+        cid = parts[2].lower()
+        ok, msg = engine.buy_ship_chassis(cid)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    elif sub in ("sell", "uninstall"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} shipyard sell <slot>")
+            return 1
+        slot = parts[2].lower()
+        ok, msg = engine.sell_upgrade(slot)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    print(f"{RED}Unknown shipyard command '{sub}'. Options: catalog, chassis <id>, sell <slot>.{RESET}")
+    return 1
 
 
 def cmd_fleet(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
@@ -843,12 +1025,20 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
                 print((GREEN if ok else RED) + msg + RESET)
                 storage.save(engine.state)
         elif cmd == "repair":
-            amt = int(parts[1]) if len(parts) > 1 else 25
+            try:
+                amt = int(parts[1]) if len(parts) > 1 else 25
+            except ValueError:
+                print(f"{RED}Error:{RESET} Repair amount must be an integer.")
+                continue
             ok, msg = engine.repair_hull(amt)
             print((GREEN if ok else RED) + msg + RESET)
             storage.save(engine.state)
         elif cmd == "refuel":
-            amt = int(parts[1]) if len(parts) > 1 else 20
+            try:
+                amt = int(parts[1]) if len(parts) > 1 else 20
+            except ValueError:
+                print(f"{RED}Error:{RESET} Fuel amount must be an integer.")
+                continue
             ok, msg = engine.refuel(amt)
             print((GREEN if ok else RED) + msg + RESET)
             storage.save(engine.state)
@@ -858,10 +1048,25 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             cmd_corporations(engine, storage, parts)
         elif cmd in ("time", "chrono", "tick", "wait"):
             cmd_time(engine, storage, parts[1:])
+        elif cmd in ("economy", "econ"):
+            cmd_economy(engine)
+        elif cmd in ("inventory", "inv", "cargo"):
+            cmd_inventory(engine, storage, parts)
+        elif cmd in ("use",):
+            cmd_inventory(engine, storage, ["inventory", "use"] + parts[1:])
+        elif cmd in ("jettison", "drop"):
+            cmd_inventory(engine, storage, ["inventory", "jettison"] + parts[1:])
+        elif cmd in ("shipyard", "drydock"):
+            cmd_shipyard(engine, storage, parts)
+        elif cmd in ("chassis",):
+            cmd_shipyard(engine, storage, ["shipyard", "chassis"] + parts[1:])
         elif cmd == "help":
             print(f"{BOLD}Available subcommands:{RESET}")
             print("  status                         - Telemetry, fleet roster, and subsystem readouts")
             print("  time [status|pause|speed|step] - Cosmic time, ticks, and temporal speed controls")
+            print("  economy / econ                 - Galactic macroeconomic conditions and trade routes")
+            print("  inventory [buy|use|jettison]   - Hold manifest, station consumables & usable items")
+            print("  shipyard [chassis|sell]        - Orbital shipyard, chassis showroom, and drydocks")
             print("  chart / map                    - Hyperlane network & orbital bodies")
             print("  factions                       - Galactic factions, sovereign standings & perks")
             print("  corps / corporations           - Megacorporations, specialties & trade bonuses")
@@ -906,6 +1111,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers.add_parser("status", help="Print ship telemetry and navigation status")
     subparsers.add_parser("chart", help="Display star systems and orbital bodies")
     subparsers.add_parser("market", help="Display local commodity exchange quotes")
+    subparsers.add_parser("economy", help="Display galactic economy shocks and trade routes")
+    inv_p = subparsers.add_parser("inventory", help="Inspect cargo hold manifest, buy consumables, and use items")
+    inv_p.add_argument("action", nargs="?", default="list", choices=["list", "buy", "use", "jettison"])
+    inv_p.add_argument("arg1", nargs="?", help="Item ID")
+    inv_p.add_argument("arg2", nargs="?", help="Quantity")
+    subparsers.add_parser("shipyard", help="Orbital shipyard chassis and module sales")
     subparsers.add_parser("scan", help="Execute sensor scan on orbiting body")
     subparsers.add_parser("repl", help="Launch interactive terminal cockpit")
 
@@ -1002,6 +1213,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         return cmd_chart(engine)
     elif args.command == "market":
         return cmd_market(engine)
+    elif args.command == "economy":
+        return cmd_economy(engine)
+    elif args.command == "inventory":
+        parts = ["inventory"]
+        if args.action != "list":
+            parts.append(args.action)
+            if args.arg1:
+                parts.append(args.arg1)
+            if args.arg2:
+                parts.append(args.arg2)
+        return cmd_inventory(engine, storage, parts)
+    elif args.command == "shipyard":
+        return cmd_shipyard(engine, storage, ["shipyard"])
     elif args.command == "fleet":
         parts = ["fleet"]
         if args.action != "list":

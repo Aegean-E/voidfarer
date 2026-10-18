@@ -121,3 +121,26 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   6. Expand automated test coverage with regression tests for state preservation, speed memory, and hyperspace transit time.
 - **Consequences**: Guarantees zero simulation clock resets across any player action, realistic cosmic transit time during interstellar jumps, smooth temporal control UX, instant clean server shutdown, and 100% test pass rate across all automated suites.
 
+### ADR-010: V10 Economy & Inventory Stabilization: Combat Tick Rebuild, Volume Cargo Gate, Chassis Listing, Consumable Terminal, and Housekeeping
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: An independent review of the in-flight V10 economy/trading/inventory work (`economy.py`, `inventory.py`, engine hooks, REST/CLI surfaces) confirmed several defects blocking the feature:
+  1. `tick()` rebuilt the active combat encounter with non-existent fields (`enemy_type`, `enemy_weapons`, `threat_level`, `tactical_turn`, `combat_log`), raising `TypeError` whenever a special-ability enemy had an active `ability_cooldown`; the Web Cockpit background ticker thread died on the first such tick.
+  2. The buy-side cargo gate compared raw unit counts against a volume requirement, silently overselling hold space for multi-volume commodities (titanium, xenoliths).
+  3. `get_available_chassis` was called with the ship's class name instead of the chassis id, so the current hull always appeared purchasable in the REST shipyard payload and Web HUD; the zero-cost starter hull could also be re-bought for free hull/shield/fuel refreshes.
+  4. `sell_upgrade` cleared the equipped slot but left the module name in `ship.upgrades`, producing ghost modules in the HUD.
+  5. The item catalog defined four usable consumables, but no purchase path existed: the CLI hint pointed at a non-existent `inventory buy`, and the REST API offered `use`/`jettison` without a buy endpoint.
+  6. Bare `int()` conversions in `inventory jettison`, `repair`, `refuel` (CLI/REPL) and `/api/inventory/jettison` (REST) crashed on non-numeric input.
+  7. `cmd_market` displayed legacy static prices while `trade()` charged dynamic stock/event/faction-adjusted prices.
+  8. The hygiene gate flagged three Google Fonts links and four silent `except Exception: pass` blocks (browser launch, server teardown, console reconfigure).
+- **Decision**:
+  1. Rebuild the combat encounter via `dataclasses.replace(...)` for ability-cooldown decay.
+  2. Centralize hold math in `inventory.calculate_cargo_volume` and use it in `trade()` and the new `buy_item()`.
+  3. Resolve the current chassis through `SimulationEngine.current_chassis_id` for `get_available_chassis` (state snapshot + REST shipyard) and reject zero-cost starter hull purchases in `buy_ship_chassis`.
+  4. Remove the sold module's display name from `ship.upgrades` on sale.
+  5. Add `SimulationEngine.buy_item` with CLI `inventory buy <id> [qty]` (including top-level argparse parity) and `POST /api/inventory/buy`; malformed REST quantities answer `400`.
+  6. Guard CLI/REPL numeric conversions and REST quantity parsing with clean messages.
+  7. Render `calculate_dynamic_market_quote` values plus the faction trade modifier in `cmd_market`, matching what `trade()` actually charges.
+  8. Drop the Google Fonts links, extend the CSS font variables with local fallback stacks, and narrow the exception handlers while keeping best-effort teardown (browser launch reports a manual-visit hint instead of failing silently).
+- **Consequences**: The V10 economy/inventory feature is stable, documented, and covered by 33 new tests (`test_economy.py`, `test_inventory.py`, and regressions) — 120 tests total, 100% green in about 2 seconds. Cargo math, chassis listings, market prices, and the advertised consumable terminal now match what the player experiences in CLI, REST, and the Web Cockpit, which also renders fully offline. Deferred to a future milestone: wiring the inert `stat_bonus` effects of the newer hardware modules and chassis perks, restoring the unreachable web mini-games, and completing the phishing panel.
+

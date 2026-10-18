@@ -128,6 +128,19 @@ class TestServer(unittest.TestCase):
         # Engine handles point validation cleanly
         self.assertIn("ok", json_m)
 
+    def test_get_api_shipyard_excludes_current_chassis(self):
+        status, data = self._get("/api/shipyard")
+        self.assertEqual(status, 200)
+        json_data = json.loads(data.decode("utf-8"))
+        available = {c["id"] for c in json_data["available_chassis"]}
+        self.assertNotIn("vanguard_scout", available)
+
+    def test_post_inventory_buy_rejects_non_numeric_quantity(self):
+        status, data = self._post("/api/inventory/buy", {"item_id": "nanite_repair_paste", "quantity": "many"})
+        self.assertEqual(status, 400)
+        json_data = json.loads(data.decode("utf-8"))
+        self.assertFalse(json_data["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

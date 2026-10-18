@@ -3,6 +3,7 @@
 import unittest
 from voidfarer.engine import SimulationEngine
 from voidfarer.models import AnomalyChoice, AnomalyEncounter, CombatEncounter, FleetDrone
+from voidfarer.upgrades import get_upgrade
 
 
 class TestEngine(unittest.TestCase):
@@ -268,6 +269,98 @@ class TestEngine(unittest.TestCase):
         self.assertTrue(ok_flee)
         self.assertEqual(self.engine.state.ship.streak, 1)
         self.assertEqual(self.engine.state.ship.tactical_combo, 0)
+
+    def test_tick_decays_combat_ability_cooldown(self):
+        combat = CombatEncounter(
+            id="combat_tick",
+            enemy_name="Apex Raider",
+            enemy_class="Corsair",
+            enemy_hull=80,
+            enemy_max_hull=80,
+            enemy_damage=12,
+            bounty_credits=650,
+            special_ability="alpha_strike",
+            ability_cooldown=2,
+            telegraphed_action="Charging alpha strike",
+        )
+        self.engine.state = self.engine._clone_state(active_combat=combat)
+
+        # Old code rebuilt the encounter with non-existent fields and raised TypeError on any tick.
+        self.engine.tick(1)
+        self.assertEqual(self.engine.state.active_combat.ability_cooldown, 1)
+        self.assertEqual(self.engine.state.active_combat.enemy_name, "Apex Raider")
+        self.assertEqual(self.engine.state.active_combat.enemy_hull, 80)
+
+        self.engine.tick(5)
+        self.assertEqual(self.engine.state.active_combat.ability_cooldown, 0)
+
+    def test_trade_respects_cargo_volume_not_just_units(self):
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(credits=100000, cargo={})
+        )
+
+        # Titanium occupies 2 hold units each: 21 units (42 volume) exceed the 40-unit hold.
+        ok, msg = self.engine.trade("titanium", 21, is_buy=True)
+        self.assertFalse(ok)
+        self.assertIn("capacity", msg.lower())
+
+        ok, _ = self.engine.trade("titanium", 15, is_buy=True)
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.cargo.get("titanium"), 15)
+
+    def test_available_chassis_excludes_current_ship(self):
+        snapshot = self.engine.get_status_snapshot()
+        available_ids = {c["id"] for c in snapshot["available_chassis"]}
+        self.assertNotIn("vanguard_scout", available_ids)
+        self.assertIn("orion_hauler", available_ids)
+
+    def test_starter_chassis_cannot_be_repurchased(self):
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(ship=self.engine._clone_ship(credits=100000))
+
+        ok, _ = self.engine.buy_ship_chassis("orion_hauler")
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.ship_class, "Bulk Merchant Hauler")
+
+        # The zero-cost starter hull must never be "purchased" for free repairs/refuels.
+        ok, msg = self.engine.buy_ship_chassis("vanguard_scout")
+        self.assertFalse(ok)
+        self.assertIn("starter", msg.lower())
+
+    def test_sell_upgrade_removes_module_name_from_manifest(self):
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(ship=self.engine._clone_ship(credits=100000))
+
+        module_name = get_upgrade("subspace_cargo_pods").name
+        ok, _ = self.engine.buy_upgrade("subspace_cargo_pods")
+        self.assertTrue(ok)
+        self.assertIn(module_name, self.engine.state.ship.upgrades)
+
+        ok, _ = self.engine.sell_upgrade("cargo")
+        self.assertTrue(ok)
+        self.assertNotIn(module_name, self.engine.state.ship.upgrades)
+
+    def test_buy_item_requires_station_and_consumable(self):
+        # Undocked: rejected cleanly.
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(orbiting_body_id=None)
+        )
+        ok, _ = self.engine.buy_item("nanite_repair_paste")
+        self.assertFalse(ok)
+
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(ship=self.engine._clone_ship(credits=100000))
+
+        # Commodities are not sold at the consumable terminal.
+        ok, _ = self.engine.buy_item("titanium")
+        self.assertFalse(ok)
+
+        credits_before = self.engine.state.ship.credits
+        ok, _ = self.engine.buy_item("nanite_repair_paste", 2)
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.cargo.get("nanite_repair_paste"), 2)
+        self.assertEqual(self.engine.state.ship.credits, credits_before - 500)
 
 
 if __name__ == "__main__":

@@ -857,6 +857,97 @@ class TimeState:
 
 
 @dataclass(frozen=True)
+class EconomicEvent:
+    """Cosmic economic shock, boom, crisis, or embargo shifting commodity supply and prices."""
+
+    id: str
+    title: str
+    description: str
+    system_id: str
+    commodity_id: str
+    price_multiplier: float
+    duration_ticks: int
+    category: str = "boom"  # 'boom', 'crisis', 'shortage', 'breakthrough', 'blockade'
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EconomicEvent:
+        return cls(
+            id=str(data["id"]),
+            title=str(data["title"]),
+            description=str(data["description"]),
+            system_id=str(data["system_id"]),
+            commodity_id=str(data["commodity_id"]),
+            price_multiplier=float(data.get("price_multiplier", 1.0)),
+            duration_ticks=int(data.get("duration_ticks", 20)),
+            category=str(data.get("category", "boom")),
+        )
+
+
+@dataclass(frozen=True)
+class SystemMarketState:
+    """Localized commodity supply stockpiles, demand pressures, and local production."""
+
+    system_id: str
+    stockpiles: dict[str, int] = field(default_factory=dict)
+    production_rates: dict[str, int] = field(default_factory=dict)
+    consumption_rates: dict[str, int] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "system_id": self.system_id,
+            "stockpiles": dict(self.stockpiles),
+            "production_rates": dict(self.production_rates),
+            "consumption_rates": dict(self.consumption_rates),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SystemMarketState:
+        return cls(
+            system_id=str(data["system_id"]),
+            stockpiles={k: int(v) for k, v in data.get("stockpiles", {}).items()},
+            production_rates={k: int(v) for k, v in data.get("production_rates", {}).items()},
+            consumption_rates={k: int(v) for k, v in data.get("consumption_rates", {}).items()},
+        )
+
+
+@dataclass(frozen=True)
+class GlobalEconomyState:
+    """Galactic economy simulation tracking localized market states and macro-economic events."""
+
+    markets: dict[str, SystemMarketState] = field(default_factory=dict)
+    active_events: tuple[EconomicEvent, ...] = ()
+    last_updated_tick: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "markets": {k: v.to_dict() for k, v in self.markets.items()},
+            "active_events": [e.to_dict() for e in self.active_events],
+            "last_updated_tick": self.last_updated_tick,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GlobalEconomyState:
+        if not data:
+            return cls()
+        markets = {
+            k: SystemMarketState.from_dict(v)
+            for k, v in data.get("markets", {}).items()
+        }
+        events = tuple(
+            EconomicEvent.from_dict(e)
+            for e in data.get("active_events", [])
+        )
+        return cls(
+            markets=markets,
+            active_events=events,
+            last_updated_tick=int(data.get("last_updated_tick", 0)),
+        )
+
+
+@dataclass(frozen=True)
 class GameState:
     """Master simulation universe state container."""
 
@@ -876,6 +967,7 @@ class GameState:
         "combat_victories": 0,
         "credits_earned": 0,
     })
+    economy: GlobalEconomyState = field(default_factory=GlobalEconomyState)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -888,6 +980,7 @@ class GameState:
             "active_combat": self.active_combat.to_dict() if self.active_combat else None,
             "time": self.time.to_dict(),
             "stats": dict(self.stats),
+            "economy": self.economy.to_dict(),
         }
 
     @classmethod
@@ -923,5 +1016,6 @@ class GameState:
                 "combat_victories": 0,
                 "credits_earned": 0,
             })),
+            economy=GlobalEconomyState.from_dict(data.get("economy", {})),
         )
 

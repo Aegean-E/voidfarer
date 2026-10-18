@@ -2,9 +2,12 @@
 
 import io
 import unittest
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from voidfarer.cli import main
+from voidfarer.cli import cmd_inventory, cmd_repl, main
+from voidfarer.engine import SimulationEngine
+from voidfarer.storage import StorageManager
 
 
 class TestCLI(unittest.TestCase):
@@ -71,6 +74,48 @@ class TestCLI(unittest.TestCase):
             code = main(["streak"])
             self.assertEqual(code, 0)
             self.assertIn("EXPEDITION JUMP STREAK", mock_out.getvalue())
+
+
+class TestCLIStabilization(unittest.TestCase):
+    """Regression tests for numeric guards and the station consumable terminal."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.storage = StorageManager(self._tmp.name)
+
+    def test_inventory_jettison_non_numeric_quantity_is_handled(self):
+        engine = SimulationEngine(seed=42)
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = cmd_inventory(engine, self.storage, ["inventory", "jettison", "titanium", "abc"])
+        self.assertEqual(code, 1)
+        self.assertIn("integer", mock_out.getvalue().lower())
+
+    def test_inventory_buy_usage_without_item_id(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["inventory", "buy"])
+        self.assertEqual(code, 1)
+        self.assertIn("usage", mock_out.getvalue().lower())
+
+    def test_inventory_buy_consumable_at_station(self):
+        engine = SimulationEngine(seed=42)
+        engine.orbit("sol_body_1")
+        engine.state = engine._clone_state(ship=engine._clone_ship(credits=5000))
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = cmd_inventory(engine, self.storage, ["inventory", "buy", "nanite_repair_paste"])
+        self.assertEqual(code, 0)
+        self.assertIn("Purchased", mock_out.getvalue())
+        self.assertEqual(engine.state.ship.cargo.get("nanite_repair_paste"), 1)
+
+    def test_repl_repair_and_refuel_reject_non_numeric_amounts(self):
+        engine = SimulationEngine(seed=42)
+        with patch("builtins.input", side_effect=["repair abc", "refuel xyz", "exit"]):
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                code = cmd_repl(engine, self.storage)
+        self.assertEqual(code, 0)
+        output = mock_out.getvalue().lower()
+        self.assertEqual(output.count("must be an integer"), 2)
+        self.assertNotIn("traceback", output)
 
 
 if __name__ == "__main__":

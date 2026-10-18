@@ -58,6 +58,8 @@ voidfarer/
 │   ├── retention.py          <- relics, dynamic contracts & pilot mastery
 │   ├── story.py              <- cadet academy & precursor cipher campaign
 │   ├── upgrades.py           <- hardware upgrades catalog & drone templates
+│   ├── economy.py            <- dynamic galactic economy, stockpiles & trade routes
+│   ├── inventory.py          <- item catalog, consumables & cargo manifest
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
 │   ├── cli.py                <- ANSI terminal interface & interactive REPL
@@ -65,11 +67,13 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- sub-second unit & integration test suite
+└── tests/                    <- 120-test unit & integration suite (about 2s)
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
+    ├── test_economy.py       <- galactic market simulation & trade route tests
     ├── test_engine.py        <- state transitions, fleet & combat mechanics
+    ├── test_inventory.py     <- item catalog, manifest & consumable tests
     ├── test_factions_and_enemies.py <- faction geopolitics & tactical combat tests
     ├── test_storage.py       <- power-loss safety & corruption quarantine
     ├── test_server.py        <- REST API request/response contracts
@@ -189,6 +193,14 @@ python -m voidfarer.cli sell titanium 3
 # Repair hull damage and refuel
 python -m voidfarer.cli repair --amount 25
 python -m voidfarer.cli refuel --amount 20
+
+# Inspect the living galactic economy: stockpiles, market shocks, and best trade routes
+python -m voidfarer.cli economy
+
+# Inspect the cargo manifest, buy station consumables, and use them in space
+python -m voidfarer.cli inventory
+python -m voidfarer.cli inventory buy nanite_repair_paste 2
+python -m voidfarer.cli inventory use nanite_repair_paste
 ```
 
 ### 12. Cadet Flight Academy (Situated Scaffolding)
@@ -239,7 +251,7 @@ python -m voidfarer.cli time step 4
 ```bash
 python -m voidfarer.cli repl
 ```
-Inside the interactive REPL, you can execute all commands (`status`, `chart`, `time`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
+Inside the interactive REPL, you can execute all commands (`status`, `chart`, `time`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `economy`, `inventory`, `shipyard`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
 ### 17. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
@@ -268,6 +280,6 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Sub-Second Test Verification**: Comprehensive 84-test suite runs in under 1.5 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 120-test suite runs in about 2 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 

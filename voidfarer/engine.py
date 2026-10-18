@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import math
 import random
 import threading
@@ -21,7 +21,20 @@ from voidfarer.factions import (
     get_faction_id_from_name,
     get_faction_standing_tier,
 )
+from voidfarer.economy import (
+    calculate_dynamic_market_quote,
+    generate_initial_economy,
+    get_galactic_trade_routes,
+    tick_global_economy,
+)
+from voidfarer.inventory import (
+    ITEM_CATALOG,
+    calculate_cargo_volume,
+    get_inventory_manifest,
+    get_item_info,
+)
 from voidfarer.galaxy import (
+    CANONICAL_COMMODITIES,
     COMMODITY_MAP,
     GalaxyGenerator,
 )
@@ -29,8 +42,10 @@ from voidfarer.models import (
     BountyContract,
     CelestialBody,
     CombatEncounter,
+    EconomicEvent,
     FleetDrone,
     GameState,
+    GlobalEconomyState,
     MarketQuote,
     PilotMastery,
     PrecursorRelic,
@@ -42,6 +57,7 @@ from voidfarer.models import (
     StoryChoice,
     StoryState,
     StoryTransmission,
+    SystemMarketState,
     TimeState,
     TutorialState,
     TutorialStep,
@@ -62,10 +78,15 @@ from voidfarer.story import (
     generate_initial_tutorial,
 )
 from voidfarer.upgrades import (
+    CATALOG_CHASSIS,
     CATALOG_DRONE_TEMPLATES,
     CATALOG_UPGRADES,
+    CHASSIS_MAP,
     UPGRADE_MAP,
+    get_available_chassis,
     get_available_upgrades,
+    get_chassis,
+    get_sell_value,
     get_upgrade,
 )
 
@@ -86,11 +107,13 @@ class SimulationEngine:
             st = ship.story
             if not st.chapters:
                 st = generate_initial_story()
-            if tut != ship.tutorial or st != ship.story:
-                self.state = state
-                self.state = self._clone_state(ship=self._clone_ship(tutorial=tut, story=st))
-            else:
-                self.state = state
+            self.state = state
+            new_ship = self._clone_ship(tutorial=tut, story=st) if (tut != ship.tutorial or st != ship.story) else ship
+            econ = state.economy
+            if not econ or not econ.markets:
+                econ = generate_initial_economy(state.systems, self.rng)
+            if new_ship != ship or econ != state.economy:
+                self.state = self._clone_state(ship=new_ship, economy=econ)
         else:
             self.state = self._create_initial_state(seed)
 
@@ -130,7 +153,7 @@ class SimulationEngine:
         )
 
     def _clone_state(self, **kwargs: Any) -> GameState:
-        """Create a new GameState preserving time, stats, and all unspecified universe fields."""
+        """Create a new GameState preserving time, stats, economy, and all unspecified universe fields."""
         cur = self.state
         return GameState(
             version=kwargs.get("version", cur.version),
@@ -142,6 +165,7 @@ class SimulationEngine:
             active_combat=kwargs["active_combat"] if "active_combat" in kwargs else cur.active_combat,
             time=kwargs.get("time", cur.time),
             stats=kwargs.get("stats", cur.stats),
+            economy=kwargs.get("economy", cur.economy),
         )
 
     def _progress_tutorial(self, action_type: str) -> tuple[TutorialState, int, int, list[PrecursorRelic], list[str]]:
@@ -313,6 +337,7 @@ class SimulationEngine:
             },
         )
 
+        economy = generate_initial_economy(systems, self.rng)
         return GameState(
             version=1,
             galaxy_seed=seed,
@@ -330,6 +355,7 @@ class SimulationEngine:
                 "credits_earned": 0,
                 "contracts_completed": 0,
             },
+            economy=economy,
         )
 
     @property
@@ -575,6 +601,40 @@ class SimulationEngine:
                     dominant_corp=system.dominant_corp,
                 )
 
+            # Advance global economy by 2 transit ticks
+            new_econ, econ_logs = tick_global_economy(self.state.economy, 2, self.state.systems, self.rng)
+            if econ_logs:
+                new_flight_log = list(new_ship.flight_log) + econ_logs
+                new_ship = self._clone_ship(
+                    ship_class=new_ship.ship_class,
+                    hull=new_ship.hull,
+                    max_hull=new_ship.max_hull,
+                    shield=new_ship.shield,
+                    max_shield=new_ship.max_shield,
+                    fuel=new_ship.fuel,
+                    max_fuel=new_ship.max_fuel,
+                    credits=new_ship.credits,
+                    cargo=new_ship.cargo,
+                    cargo_capacity=new_ship.cargo_capacity,
+                    current_system_id=new_ship.current_system_id,
+                    orbiting_body_id=new_ship.orbiting_body_id,
+                    power=new_ship.power,
+                    upgrades=new_ship.upgrades,
+                    equipped_upgrades=new_ship.equipped_upgrades,
+                    fleet_drones=new_ship.fleet_drones,
+                    flight_log=tuple(new_flight_log[-20:]),
+                    streak=new_ship.streak,
+                    relics=new_ship.relics,
+                    mastery=new_ship.mastery,
+                    active_contracts=new_ship.active_contracts,
+                    tactical_combo=new_ship.tactical_combo,
+                    near_miss_scanner_bonus=new_ship.near_miss_scanner_bonus,
+                    tutorial=new_ship.tutorial,
+                    story=new_ship.story,
+                    faction_standings=new_ship.faction_standings,
+                    corp_standings=new_ship.corp_standings,
+                )
+
             self.state = self._clone_state(
                 ship=new_ship,
                 systems=updated_systems,
@@ -583,6 +643,7 @@ class SimulationEngine:
                 active_combat=combat,
                 stats=stats,
                 time=transit_time,
+                economy=new_econ,
             )
 
             msg = f"Jump successful: arrived in {target_sys.name}."
@@ -775,13 +836,12 @@ class SimulationEngine:
             if quantity <= 0:
                 return False, "Quantity must be greater than zero."
 
-            quotes = GalaxyGenerator.get_market_quotes(self.current_system, body)
-            quote = next((q for q in quotes if q.commodity_id == commodity_id), None)
-            if not quote:
+            comm = COMMODITY_MAP.get(commodity_id)
+            if not comm:
                 return False, f"Commodity '{commodity_id}' not traded here."
 
-            comm = COMMODITY_MAP.get(commodity_id)
-            vol_per_unit = comm.volume if comm else 1
+            quote = calculate_dynamic_market_quote(self.current_system, body, comm, self.state.economy)
+            vol_per_unit = comm.volume
 
             cargo = dict(self.state.ship.cargo)
             stats = dict(self.state.stats)
@@ -801,9 +861,9 @@ class SimulationEngine:
                 if self.state.ship.credits < total_cost:
                     return False, f"Insufficient credits: {total_cost} cr required, {self.state.ship.credits} cr available."
 
-                current_cargo_units = sum(cargo.values())
+                current_cargo_volume = calculate_cargo_volume(cargo)
                 needed_space = quantity * vol_per_unit
-                if current_cargo_units + needed_space > self.state.ship.cargo_capacity:
+                if current_cargo_volume + needed_space > self.state.ship.cargo_capacity:
                     return False, f"Cargo hold capacity exceeded: cannot load {needed_space} units."
 
                 new_credits = self.state.ship.credits - total_cost
@@ -869,7 +929,29 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = self._clone_state(ship=new_ship, stats=stats)
+            # Update local system stockpile in economy
+            econ_markets = dict(self.state.economy.markets)
+            sys_id = self.current_system.id
+            if sys_id in econ_markets:
+                sm = econ_markets[sys_id]
+                new_stocks = dict(sm.stockpiles)
+                if is_buy:
+                    new_stocks[commodity_id] = max(5, new_stocks.get(commodity_id, 50) - quantity)
+                else:
+                    new_stocks[commodity_id] = min(400, new_stocks.get(commodity_id, 50) + quantity)
+                econ_markets[sys_id] = SystemMarketState(
+                    system_id=sys_id,
+                    stockpiles=new_stocks,
+                    production_rates=sm.production_rates,
+                    consumption_rates=sm.consumption_rates,
+                )
+            new_economy = GlobalEconomyState(
+                markets=econ_markets,
+                active_events=self.state.economy.active_events,
+                last_updated_tick=self.state.economy.last_updated_tick,
+            )
+
+            self.state = self._clone_state(ship=new_ship, stats=stats, economy=new_economy)
 
             return True, msg
 
@@ -899,25 +981,48 @@ class SimulationEngine:
             if upgrade.name not in upg_list:
                 upg_list.append(upgrade.name)
 
-            # Apply stat bonuses
-            new_capacity = self.state.ship.cargo_capacity
-            new_max_shield = self.state.ship.max_shield
-            new_shield = self.state.ship.shield
+            # Determine base ship stats
+            base_hull = 100
+            base_shield = 100
+            base_capacity = 40
+            for c in CATALOG_CHASSIS:
+                if c.ship_class == self.state.ship.ship_class:
+                    base_hull = c.max_hull
+                    base_shield = c.max_shield
+                    base_capacity = c.cargo_capacity
+                    break
 
-            if "cargo_capacity" in upgrade.stat_bonus:
-                new_capacity += int(upgrade.stat_bonus["cargo_capacity"])
+            # Recompute stats based on all currently equipped modules
+            total_hull = base_hull
+            total_shield = base_shield
+            total_capacity = base_capacity
+            for u_id in equipped.values():
+                u = get_upgrade(u_id)
+                if u:
+                    if "max_hull" in u.stat_bonus:
+                        total_hull += int(u.stat_bonus["max_hull"])
+                    if "max_shield" in u.stat_bonus:
+                        total_shield += int(u.stat_bonus["max_shield"])
+                    if "cargo_capacity" in u.stat_bonus:
+                        total_capacity += int(u.stat_bonus["cargo_capacity"])
+
+            cur_hull = min(self.state.ship.hull, total_hull)
+            if "max_hull" in upgrade.stat_bonus:
+                cur_hull = total_hull
+            cur_shield = min(self.state.ship.shield, total_shield)
             if "max_shield" in upgrade.stat_bonus:
-                new_max_shield += int(upgrade.stat_bonus["max_shield"])
-                new_shield = new_max_shield
+                cur_shield = total_shield
 
             log_entry = f"Arsenal upgrade: Installed {upgrade.name} ({upgrade.slot.upper()}) for {upgrade.cost} cr."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
             new_ship = self._clone_ship(
-                shield=new_shield,
-                max_shield=new_max_shield,
+                hull=cur_hull,
+                max_hull=total_hull,
+                shield=cur_shield,
+                max_shield=total_shield,
                 credits=new_credits,
-                cargo_capacity=new_capacity,
+                cargo_capacity=total_capacity,
                 upgrades=tuple(upg_list),
                 equipped_upgrades=equipped,
                 flight_log=tuple(new_log),
@@ -925,6 +1030,237 @@ class SimulationEngine:
 
             self.state = self._clone_state(ship=new_ship)
             return True, f"Successfully installed {upgrade.name} in {upgrade.slot} slot."
+
+    def sell_upgrade(self, slot: str) -> tuple[bool, str]:
+        """Uninstall and sell an equipped hardware module back to shipyard for credits."""
+        with self.lock:
+            body = self.orbiting_body
+            if not body or not body.station_dockable:
+                return False, "Shipyard drydock authorization required: dock at a station or colony to uninstall modules."
+
+            equipped = dict(self.state.ship.equipped_upgrades)
+            if slot not in equipped:
+                return False, f"No hardware module installed in {slot} slot."
+
+            upg_id = equipped[slot]
+            upg = get_upgrade(upg_id)
+            trade_in_value = get_sell_value(upg_id)
+
+            del equipped[slot]
+            new_credits = self.state.ship.credits + trade_in_value
+
+            # Determine base ship stats
+            base_hull = 100
+            base_shield = 100
+            base_capacity = 40
+            for c in CATALOG_CHASSIS:
+                if c.ship_class == self.state.ship.ship_class:
+                    base_hull = c.max_hull
+                    base_shield = c.max_shield
+                    base_capacity = c.cargo_capacity
+                    break
+
+            total_hull = base_hull
+            total_shield = base_shield
+            total_capacity = base_capacity
+            for u_id in equipped.values():
+                u = get_upgrade(u_id)
+                if u:
+                    if "max_hull" in u.stat_bonus:
+                        total_hull += int(u.stat_bonus["max_hull"])
+                    if "max_shield" in u.stat_bonus:
+                        total_shield += int(u.stat_bonus["max_shield"])
+                    if "cargo_capacity" in u.stat_bonus:
+                        total_capacity += int(u.stat_bonus["cargo_capacity"])
+
+            cur_hull = min(self.state.ship.hull, total_hull)
+            cur_shield = min(self.state.ship.shield, total_shield)
+
+            upg_name = upg.name if upg else upg_id
+            remaining_upgrades = tuple(n for n in self.state.ship.upgrades if n != upg_name)
+            msg = f"Uninstalled {upg_name} from {slot} slot for {trade_in_value} cr trade-in value."
+            new_log = list(self.state.ship.flight_log[-19:]) + [msg]
+
+            new_ship = self._clone_ship(
+                hull=cur_hull,
+                max_hull=total_hull,
+                shield=cur_shield,
+                max_shield=total_shield,
+                credits=new_credits,
+                cargo_capacity=total_capacity,
+                upgrades=remaining_upgrades,
+                equipped_upgrades=equipped,
+                flight_log=tuple(new_log),
+            )
+            self.state = self._clone_state(ship=new_ship)
+            return True, msg
+
+    def buy_ship_chassis(self, chassis_id: str) -> tuple[bool, str]:
+        """Purchase and commission a new spacecraft hull chassis at an orbital shipyard."""
+        with self.lock:
+            body = self.orbiting_body
+            if not body or not body.station_dockable:
+                return False, "Shipyard drydock authorization required: dock at a station or colony to commission a new chassis."
+
+            chassis = get_chassis(chassis_id)
+            if not chassis:
+                return False, f"Unknown ship chassis '{chassis_id}'."
+
+            if chassis.cost <= 0:
+                return False, f"'{chassis.name}' is the standard-issue starter hull and is not sold at shipyards."
+
+            if chassis.ship_class == self.state.ship.ship_class:
+                return False, f"Ship is already commissioned as a {chassis.name}."
+
+            if self.state.ship.credits < chassis.cost:
+                return False, f"Insufficient credits: {chassis.name} costs {chassis.cost} cr, you have {self.state.ship.credits} cr."
+
+            new_credits = self.state.ship.credits - chassis.cost
+
+            # Calculate stats with equipped upgrades
+            bonus_capacity = 0
+            bonus_shield = 0
+            bonus_hull = 0
+            for u_id in self.state.ship.equipped_upgrades.values():
+                u = get_upgrade(u_id)
+                if u:
+                    if "cargo_capacity" in u.stat_bonus:
+                        bonus_capacity += int(u.stat_bonus["cargo_capacity"])
+                    if "max_shield" in u.stat_bonus:
+                        bonus_shield += int(u.stat_bonus["max_shield"])
+                    if "max_hull" in u.stat_bonus:
+                        bonus_hull += int(u.stat_bonus["max_hull"])
+
+            total_max_hull = chassis.max_hull + bonus_hull
+            total_max_shield = chassis.max_shield + bonus_shield
+            total_cargo_capacity = chassis.cargo_capacity + bonus_capacity
+
+            msg = f"Commissioned {chassis.name} ({chassis.ship_class}) at shipyard for {chassis.cost} cr! Perk: {chassis.specialty_perk}"
+            new_log = list(self.state.ship.flight_log[-19:]) + [msg]
+
+            new_ship = self._clone_ship(
+                ship_class=chassis.ship_class,
+                hull=total_max_hull,
+                max_hull=total_max_hull,
+                shield=total_max_shield,
+                max_shield=total_max_shield,
+                fuel=chassis.max_fuel,
+                max_fuel=chassis.max_fuel,
+                cargo_capacity=total_cargo_capacity,
+                credits=new_credits,
+                flight_log=tuple(new_log),
+            )
+            self.state = self._clone_state(ship=new_ship)
+            return True, msg
+
+    def use_item(self, item_id: str) -> tuple[bool, str]:
+        """Consume a usable item from cargo (nanite repair paste, shield battery, fuel canister, decoy)."""
+        with self.lock:
+            cargo = dict(self.state.ship.cargo)
+            if cargo.get(item_id, 0) <= 0:
+                return False, f"Item '{item_id}' not found in cargo hold."
+
+            item_info = get_item_info(item_id)
+            if not item_info.is_usable:
+                return False, f"'{item_info.name}' is a trade commodity and cannot be consumed directly."
+
+            ship = self.state.ship
+            new_hull = ship.hull
+            new_shield = ship.shield
+            new_fuel = ship.fuel
+            combat = self.state.active_combat
+            msg = ""
+
+            if item_info.effect_type == "repair_hull":
+                if ship.hull >= ship.max_hull:
+                    return False, "Hull is already at maximum structural integrity."
+                new_hull = min(ship.max_hull, ship.hull + item_info.effect_amount)
+                msg = f"Applied {item_info.name}: restored +{new_hull - ship.hull} Hull integrity ({new_hull}/{ship.max_hull})."
+            elif item_info.effect_type == "recharge_shield":
+                if ship.shield >= ship.max_shield:
+                    return False, "Deflector shields are already at maximum capacitance."
+                new_shield = min(ship.max_shield, ship.shield + item_info.effect_amount)
+                msg = f"Discharged {item_info.name}: boosted Deflector Shields by +{new_shield - ship.shield} MW ({new_shield}/{ship.max_shield})."
+            elif item_info.effect_type == "refuel":
+                if ship.fuel >= ship.max_fuel:
+                    return False, "Hyperdrive fuel tanks are already completely full."
+                new_fuel = min(ship.max_fuel, ship.fuel + item_info.effect_amount)
+                msg = f"Injected {item_info.name}: loaded +{new_fuel - ship.fuel} Quantum Fuel units ({new_fuel}/{ship.max_fuel})."
+            elif item_info.effect_type == "evade_combat":
+                if not combat:
+                    return False, "Decoy flare is only usable during active hostile combat engagements."
+                combat = None
+                msg = f"Deployed {item_info.name}! Scrambled hostile sensor lock and escaped combat encounter."
+            else:
+                return False, f"Unknown item effect '{item_info.effect_type}'."
+
+            cargo[item_id] -= 1
+            if cargo[item_id] <= 0:
+                del cargo[item_id]
+
+            new_log = list(ship.flight_log[-19:]) + [f"Item used: {msg}"]
+            new_ship = self._clone_ship(
+                hull=new_hull,
+                shield=new_shield,
+                fuel=new_fuel,
+                cargo=cargo,
+                flight_log=tuple(new_log),
+            )
+            self.state = self._clone_state(ship=new_ship, active_combat=combat)
+            return True, msg
+
+    def buy_item(self, item_id: str, quantity: int = 1) -> tuple[bool, str]:
+        """Purchase consumable items from an orbital station terminal."""
+        with self.lock:
+            if quantity <= 0:
+                return False, "Quantity must be greater than zero."
+
+            body = self.orbiting_body
+            if not body or not body.station_dockable:
+                return False, "Station terminal requires docking at a station or colony."
+
+            info = get_item_info(item_id)
+            if info.category != "consumable" or not info.is_usable:
+                return False, f"'{info.name}' is not sold at station terminals. Trade commodities via the local exchange instead."
+
+            total_cost = info.base_price * quantity
+            if self.state.ship.credits < total_cost:
+                return False, f"Insufficient credits: {total_cost} cr required, {self.state.ship.credits} cr available."
+
+            cargo = dict(self.state.ship.cargo)
+            needed_volume = info.volume * quantity
+            if calculate_cargo_volume(cargo) + needed_volume > self.state.ship.cargo_capacity:
+                return False, f"Cargo hold capacity exceeded: cannot load {needed_volume} units."
+
+            cargo[item_id] = cargo.get(item_id, 0) + quantity
+            new_credits = self.state.ship.credits - total_cost
+            msg = f"Purchased {quantity}x {info.name} for {total_cost} cr."
+            new_log = list(self.state.ship.flight_log[-19:]) + [f"Station terminal: {msg}"]
+            new_ship = self._clone_ship(credits=new_credits, cargo=cargo, flight_log=tuple(new_log))
+            self.state = self._clone_state(ship=new_ship)
+            return True, msg
+
+    def jettison_cargo(self, item_id: str, quantity: int) -> tuple[bool, str]:
+        """Jettison cargo into the cosmic vacuum to free hold space."""
+        with self.lock:
+            if quantity <= 0:
+                return False, "Quantity must be greater than zero."
+            cargo = dict(self.state.ship.cargo)
+            owned = cargo.get(item_id, 0)
+            if owned < quantity:
+                return False, f"Cannot jettison {quantity} units: you only have {owned} in hold."
+
+            cargo[item_id] = owned - quantity
+            if cargo[item_id] <= 0:
+                del cargo[item_id]
+
+            item_info = get_item_info(item_id)
+            freed_space = quantity * item_info.volume
+            msg = f"Jettisoned {quantity}x {item_info.name} into space, freeing {freed_space} cargo hold units."
+            new_log = list(self.state.ship.flight_log[-19:]) + [msg]
+            new_ship = self._clone_ship(cargo=cargo, flight_log=tuple(new_log))
+            self.state = self._clone_state(ship=new_ship)
+            return True, msg
 
     def buy_drone(self, drone_type: str, assigned_system_id: str | None = None) -> tuple[bool, str]:
         """Purchase and commission an autonomous fleet drone."""
@@ -1739,6 +2075,14 @@ class SimulationEngine:
             self.state = self._clone_state(ship=self._clone_ship(tutorial=new_tut, flight_log=tuple(new_log[-20:])))
             return True, "Cadet Flight Academy reset to Step 1."
 
+    @property
+    def current_chassis_id(self) -> str:
+        """Id of the chassis matching the ship's commissioned class (falls back to the class name)."""
+        return next(
+            (c.id for c in CATALOG_CHASSIS if c.ship_class == self.state.ship.ship_class),
+            self.state.ship.ship_class,
+        )
+
     def get_status_snapshot(self) -> dict[str, Any]:
         """Produce a comprehensive JSON serializable telemetry snapshot for the HUD."""
         with self.lock:
@@ -1746,7 +2090,10 @@ class SimulationEngine:
             orb_body = self.orbiting_body
             market_quotes = []
             if orb_body and orb_body.station_dockable:
-                quotes = GalaxyGenerator.get_market_quotes(cur_sys, orb_body)
+                quotes = [
+                    calculate_dynamic_market_quote(cur_sys, orb_body, c, self.state.economy)
+                    for c in CANONICAL_COMMODITIES
+                ]
                 market_quotes = [
                     {
                         "commodity_id": q.commodity_id,
@@ -1793,6 +2140,11 @@ class SimulationEngine:
                     for cid, c in CANONICAL_CORPORATIONS.items()
                 },
                 "enemy_archetypes": {aid: asdict(a) for aid, a in ENEMY_ARCHETYPES.items()},
+                "economy": self.state.economy.to_dict(),
+                "inventory_manifest": get_inventory_manifest(self.state.ship.cargo),
+                "trade_routes": get_galactic_trade_routes(self.state.systems, self.state.economy),
+                "catalog_chassis": [c.to_dict() for c in CATALOG_CHASSIS],
+                "available_chassis": [c.to_dict() for c in get_available_chassis(self.current_chassis_id)],
             }
 
     def tick(self, num_ticks: int = 1) -> dict[str, Any]:
@@ -1886,26 +2238,27 @@ class SimulationEngine:
             new_combat = self.state.active_combat
             if new_combat and new_combat.ability_cooldown > 0:
                 new_cooldown = max(0, new_combat.ability_cooldown - num_ticks)
-                new_combat = CombatEncounter(
-                    enemy_name=new_combat.enemy_name,
-                    enemy_type=new_combat.enemy_type,
-                    enemy_hull=new_combat.enemy_hull,
-                    enemy_max_hull=new_combat.enemy_max_hull,
-                    enemy_shield=new_combat.enemy_shield,
-                    enemy_max_shield=new_combat.enemy_max_shield,
-                    enemy_weapons=new_combat.enemy_weapons,
-                    threat_level=new_combat.threat_level,
-                    tactical_turn=new_combat.tactical_turn,
-                    combat_log=new_combat.combat_log,
-                    faction_id=new_combat.faction_id,
-                    special_ability=new_combat.special_ability,
-                    ability_cooldown=new_cooldown,
-                    telegraphed_action=new_combat.telegraphed_action,
-                )
+                new_combat = replace(new_combat, ability_cooldown=new_cooldown)
+
+            # 5. Advance global economy simulation
+            new_econ, econ_logs = tick_global_economy(self.state.economy, num_ticks, self.state.systems, self.rng)
+
+            # 6. Automated repair bay module passive hull healing
+            new_hull = cur_ship.hull
+            for u_id in cur_ship.equipped_upgrades.values():
+                u = get_upgrade(u_id)
+                if u and "hull_repair_per_tick" in u.stat_bonus:
+                    new_hull = min(cur_ship.max_hull, new_hull + int(u.stat_bonus["hull_repair_per_tick"] * num_ticks))
+
+            new_flight_log = list(cur_ship.flight_log)
+            if econ_logs:
+                new_flight_log.extend(econ_logs)
 
             new_ship = self._clone_ship(
+                hull=new_hull,
                 shield=new_shield,
                 fleet_drones=new_drones,
+                flight_log=tuple(new_flight_log[-20:]),
             )
 
             self.state = self._clone_state(
@@ -1913,6 +2266,7 @@ class SimulationEngine:
                 systems=updated_systems,
                 active_combat=new_combat,
                 time=new_time,
+                economy=new_econ,
             )
 
             return {

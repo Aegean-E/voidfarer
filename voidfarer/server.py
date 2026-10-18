@@ -14,8 +14,16 @@ from pathlib import Path
 from socketserver import ThreadingMixIn
 from typing import Any
 
+from voidfarer.economy import get_galactic_trade_routes
 from voidfarer.engine import SimulationEngine
+from voidfarer.inventory import get_inventory_manifest
 from voidfarer.storage import StorageManager
+from voidfarer.upgrades import (
+    CATALOG_CHASSIS,
+    CATALOG_UPGRADES,
+    get_available_chassis,
+    get_available_upgrades,
+)
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -107,6 +115,40 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             with self.engine.lock:
                 time_data = self.engine.state.time.to_dict()
             self._send_json({"ok": True, "time": time_data})
+            return
+
+        if path == "/api/economy":
+            with self.engine.lock:
+                econ_data = self.engine.state.economy.to_dict()
+                routes = get_galactic_trade_routes(self.engine.state.systems, self.engine.state.economy)
+            self._send_json({"ok": True, "economy": econ_data, "trade_routes": routes})
+            return
+
+        if path == "/api/inventory":
+            with self.engine.lock:
+                manifest = get_inventory_manifest(self.engine.state.ship.cargo)
+                cargo_data = dict(self.engine.state.ship.cargo)
+                capacity = self.engine.state.ship.cargo_capacity
+            self._send_json({"ok": True, "cargo": cargo_data, "cargo_capacity": capacity, "manifest": manifest})
+            return
+
+        if path == "/api/shipyard":
+            with self.engine.lock:
+                ship = self.engine.state.ship
+                equipped = dict(ship.equipped_upgrades)
+                avail_upg = [u.to_dict() for u in get_available_upgrades(ship.equipped_upgrades)]
+                avail_chassis = [c.to_dict() for c in get_available_chassis(self.engine.current_chassis_id)]
+                cat_upg = [u.to_dict() for u in CATALOG_UPGRADES]
+                cat_chassis = [c.to_dict() for c in CATALOG_CHASSIS]
+            self._send_json({
+                "ok": True,
+                "equipped_upgrades": equipped,
+                "available_upgrades": avail_upg,
+                "catalog_upgrades": cat_upg,
+                "available_chassis": avail_chassis,
+                "catalog_chassis": cat_chassis,
+                "current_ship_class": ship.ship_class,
+            })
             return
 
         # Serve static assets
@@ -315,6 +357,51 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/inventory/use":
+            item_id = str(body.get("item_id", ""))
+            ok, msg = self.engine.use_item(item_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/inventory/buy":
+            item_id = str(body.get("item_id", ""))
+            try:
+                quantity = int(body.get("quantity", 1))
+            except (TypeError, ValueError):
+                self._send_error_json("Quantity must be an integer")
+                return
+            ok, msg = self.engine.buy_item(item_id, quantity)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/inventory/jettison":
+            item_id = str(body.get("item_id", ""))
+            try:
+                quantity = int(body.get("quantity", 1))
+            except (TypeError, ValueError):
+                self._send_error_json("Quantity must be an integer")
+                return
+            ok, msg = self.engine.jettison_cargo(item_id, quantity)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/shipyard/sell":
+            slot = str(body.get("slot", ""))
+            ok, msg = self.engine.sell_upgrade(slot)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/shipyard/chassis":
+            chassis_id = str(body.get("chassis_id", ""))
+            ok, msg = self.engine.buy_ship_chassis(chassis_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/reset":
             seed = int(body.get("seed", 42))
             self.engine.state = self.engine._create_initial_state(seed)
@@ -378,8 +465,8 @@ def run_server(
         def _launch():
             try:
                 getattr(webbrowser, "open")(url)
-            except Exception:
-                pass
+            except (webbrowser.Error, OSError) as exc:
+                print(f"Could not open the browser automatically ({exc}). Visit {url} manually.")
 
         threading.Timer(0.4, _launch).start()
 
@@ -391,10 +478,10 @@ def run_server(
         ticker_stop.set()
         try:
             server.shutdown()
-        except Exception:
+        except (OSError, RuntimeError):
             pass
         try:
             server.server_close()
-        except Exception:
+        except OSError:
             pass
 

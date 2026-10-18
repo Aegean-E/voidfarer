@@ -88,16 +88,7 @@ class SimulationEngine:
                 st = generate_initial_story()
             if tut != ship.tutorial or st != ship.story:
                 self.state = state
-                self.state = GameState(
-                    version=state.version,
-                    galaxy_seed=state.galaxy_seed,
-                    ship=self._clone_ship(tutorial=tut, story=st),
-                    systems=state.systems,
-                    visited_systems=state.visited_systems,
-                    active_anomaly=state.active_anomaly,
-                    active_combat=state.active_combat,
-                    stats=state.stats,
-                )
+                self.state = self._clone_state(ship=self._clone_ship(tutorial=tut, story=st))
             else:
                 self.state = state
         else:
@@ -136,6 +127,21 @@ class SimulationEngine:
             story=kwargs.get("story", cur.story),
             faction_standings=kwargs.get("faction_standings", cur.faction_standings),
             corp_standings=kwargs.get("corp_standings", cur.corp_standings),
+        )
+
+    def _clone_state(self, **kwargs: Any) -> GameState:
+        """Create a new GameState preserving time, stats, and all unspecified universe fields."""
+        cur = self.state
+        return GameState(
+            version=kwargs.get("version", cur.version),
+            galaxy_seed=kwargs.get("galaxy_seed", cur.galaxy_seed),
+            ship=kwargs.get("ship", cur.ship),
+            systems=kwargs.get("systems", cur.systems),
+            visited_systems=kwargs.get("visited_systems", cur.visited_systems),
+            active_anomaly=kwargs["active_anomaly"] if "active_anomaly" in kwargs else cur.active_anomaly,
+            active_combat=kwargs["active_combat"] if "active_combat" in kwargs else cur.active_combat,
+            time=kwargs.get("time", cur.time),
+            stats=kwargs.get("stats", cur.stats),
         )
 
     def _progress_tutorial(self, action_type: str) -> tuple[TutorialState, int, int, list[PrecursorRelic], list[str]]:
@@ -517,15 +523,66 @@ class SimulationEngine:
             stats = dict(self.state.stats)
             stats["jumps"] += 1
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
+            # Advance cosmic time by 2 ticks (12 hours transit) during interstellar hyperspace jump
+            cur_time = self.state.time
+            new_tick = cur_time.tick + 2
+            new_days = cur_time.elapsed_days + 0.5
+            new_stardate = 3042.0 + (new_days / 365.25)
+            transit_time = TimeState(
+                tick=new_tick,
+                stardate=new_stardate,
+                speed=cur_time.speed,
+                is_paused=cur_time.is_paused,
+                time_scale=cur_time.time_scale,
+                elapsed_days=new_days,
+            )
+
+            # Advance planetary orbits across all systems by 2 transit ticks
+            updated_systems = {}
+            for sys_id, system in self.state.systems.items():
+                updated_bodies = []
+                for body in system.bodies:
+                    d_angle = body.orbit_speed * 0.05 * 2
+                    updated_bodies.append(
+                        CelestialBody(
+                            id=body.id,
+                            name=body.name,
+                            body_type=body.body_type,
+                            orbit_radius=body.orbit_radius,
+                            orbit_speed=body.orbit_speed,
+                            current_angle=(body.current_angle + d_angle) % (2.0 * math.pi),
+                            radius_km=body.radius_km,
+                            color=body.color,
+                            hazards=body.hazards,
+                            station_dockable=body.station_dockable,
+                            market_archetype=body.market_archetype,
+                            scan_completed=body.scan_completed,
+                            scan_discovery=body.scan_discovery,
+                        )
+                    )
+                updated_systems[sys_id] = StarSystem(
+                    id=system.id,
+                    name=system.name,
+                    seed=system.seed,
+                    x=system.x,
+                    y=system.y,
+                    spectral_type=system.spectral_type,
+                    color=system.color,
+                    security=system.security,
+                    faction=system.faction,
+                    bodies=tuple(updated_bodies),
+                    connections=system.connections,
+                    dominant_corp=system.dominant_corp,
+                )
+
+            self.state = self._clone_state(
                 ship=new_ship,
-                systems=self.state.systems,
+                systems=updated_systems,
                 visited_systems=tuple(sorted(visited)),
                 active_anomaly=anomaly,
                 active_combat=combat,
                 stats=stats,
+                time=transit_time,
             )
 
             msg = f"Jump successful: arrived in {target_sys.name}."
@@ -563,17 +620,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
-
+            self.state = self._clone_state(ship=new_ship)
             return True, f"Now in orbit around {matched.name}."
 
     def scan(self) -> tuple[bool, str, dict[str, Any]]:
@@ -676,16 +723,7 @@ class SimulationEngine:
             stats["scans"] += 1
             stats["credits_earned"] += credit_bounty
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=stats,
-            )
+            self.state = self._clone_state(ship=new_ship, systems=systems, stats=stats)
 
             discovery_info = {
                 "body_name": body.name,
@@ -723,16 +761,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(ship=new_ship)
 
             return True, "Reactor power routed successfully."
 
@@ -840,16 +869,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=stats,
-            )
+            self.state = self._clone_state(ship=new_ship, stats=stats)
 
             return True, msg
 
@@ -903,17 +923,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
-
+            self.state = self._clone_state(ship=new_ship)
             return True, f"Successfully installed {upgrade.name} in {upgrade.slot} slot."
 
     def buy_drone(self, drone_type: str, assigned_system_id: str | None = None) -> tuple[bool, str]:
@@ -961,17 +971,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
-
+            self.state = self._clone_state(ship=new_ship)
             return True, f"Commissioned {new_drone.name} stationed in {target_sys}."
 
     def deploy_drone(self, drone_id: str, target_system_id: str) -> tuple[bool, str]:
@@ -1007,16 +1007,7 @@ class SimulationEngine:
                 flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [f"Drone {drone_id} redeployed to {target_system_id}."]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(ship=new_ship)
 
             return True, f"Drone '{drone_id}' redeployed to {target_system_id}."
 
@@ -1077,14 +1068,8 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
+            self.state = self._clone_state(
                 ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
                 stats=stats,
             )
 
@@ -1199,7 +1184,7 @@ class SimulationEngine:
                 )
                 new_log = list(self.state.ship.flight_log[-19:]) + [msg]
                 new_ship = self._clone_ship(hull=new_hull, shield=new_shield, tactical_combo=new_combo, streak=new_streak, flight_log=tuple(new_log[-20:]))
-                self.state = GameState(version=self.state.version, galaxy_seed=self.state.galaxy_seed, ship=new_ship, systems=self.state.systems, visited_systems=self.state.visited_systems, active_anomaly=self.state.active_anomaly, active_combat=new_combat, stats=self.state.stats)
+                self.state = self._clone_state(ship=new_ship, active_combat=new_combat)
                 return True, msg
 
             elif action == "evasive_burn":
@@ -1219,7 +1204,7 @@ class SimulationEngine:
                     new_combat = combat
                 new_log = list(self.state.ship.flight_log[-19:]) + [msg]
                 new_ship = self._clone_ship(hull=new_hull, shield=new_shield, tactical_combo=new_combo, streak=new_streak, flight_log=tuple(new_log[-20:]))
-                self.state = GameState(version=self.state.version, galaxy_seed=self.state.galaxy_seed, ship=new_ship, systems=self.state.systems, visited_systems=self.state.visited_systems, active_anomaly=self.state.active_anomaly, active_combat=new_combat, stats=self.state.stats)
+                self.state = self._clone_state(ship=new_ship, active_combat=new_combat)
                 return True, msg
 
             elif action == "flee":
@@ -1228,7 +1213,7 @@ class SimulationEngine:
                 new_fuel = self.state.ship.fuel - 8
                 msg = "Emergency hyperspace micro-jump executed. Safely disengaged from hostile sector (expedition streak reset)."
                 new_ship = self._clone_ship(hull=new_hull, shield=new_shield, fuel=new_fuel, streak=1, tactical_combo=0, flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [msg]))
-                self.state = GameState(version=self.state.version, galaxy_seed=self.state.galaxy_seed, ship=new_ship, systems=self.state.systems, visited_systems=self.state.visited_systems, active_anomaly=self.state.active_anomaly, active_combat=None, stats=self.state.stats)
+                self.state = self._clone_state(ship=new_ship, active_combat=None)
                 return True, msg
 
             else:
@@ -1293,13 +1278,8 @@ class SimulationEngine:
                     flight_log=tuple(new_log[-20:]),
                 )
 
-                self.state = GameState(
-                    version=self.state.version,
-                    galaxy_seed=self.state.galaxy_seed,
+                self.state = self._clone_state(
                     ship=new_ship,
-                    systems=self.state.systems,
-                    visited_systems=self.state.visited_systems,
-                    active_anomaly=self.state.active_anomaly,
                     active_combat=None,
                     stats=stats,
                 )
@@ -1376,13 +1356,8 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
+            self.state = self._clone_state(
                 ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
                 active_combat=new_combat,
                 stats=stats,
             )
@@ -1417,15 +1392,9 @@ class SimulationEngine:
                         flight_log=tuple(new_log),
                     )
 
-                    self.state = GameState(
-                        version=self.state.version,
-                        galaxy_seed=self.state.galaxy_seed,
+                    self.state = self._clone_state(
                         ship=new_ship,
-                        systems=self.state.systems,
-                        visited_systems=self.state.visited_systems,
                         active_anomaly=None,
-                        active_combat=self.state.active_combat,
-                        stats=self.state.stats,
                     )
 
                     return False, log_entry
@@ -1455,14 +1424,9 @@ class SimulationEngine:
             if choice.credits_delta > 0:
                 stats["credits_earned"] += choice.credits_delta
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
+            self.state = self._clone_state(
                 ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
                 active_anomaly=None,
-                active_combat=self.state.active_combat,
                 stats=stats,
             )
 
@@ -1490,17 +1454,7 @@ class SimulationEngine:
                 flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [f"Drydock repair: +{actual} HP for {cost} cr."]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
-
+            self.state = self._clone_state(ship=new_ship)
             return True, f"Repairs completed: +{actual} HP restored for {cost} cr."
 
     def refuel(self, amount: int = 20) -> tuple[bool, str]:
@@ -1525,16 +1479,7 @@ class SimulationEngine:
                 flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [f"Refueled +{actual} quantum fuel for {cost} cr."]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(ship=new_ship)
 
             return True, f"Fuel tanks replenished: +{actual} units for {cost} cr."
 
@@ -1577,16 +1522,7 @@ class SimulationEngine:
                     connections=sys_obj.connections,
                 )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=self.state.ship,
-                systems=updated_systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(systems=updated_systems)
 
     def claim_contract(self, contract_id: str) -> tuple[bool, str, dict[str, Any]]:
         """Claim rewards for a fulfilled contract and immediately draw a new assignment."""
@@ -1634,16 +1570,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=stats,
-            )
+            self.state = self._clone_state(ship=new_ship, stats=stats)
 
             return True, f"Claimed {found.title}: +{found.reward_credits} cr, +{found.reward_xp} XP.{relic_msg} New contract: [{new_contract.title}].", {
                 "reward_credits": found.reward_credits,
@@ -1683,17 +1610,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
-
+            self.state = self._clone_state(ship=new_ship)
             return True, f"Specialization unlocked: {talent['name']}."
 
     def make_story_choice(self, choice_id: str) -> tuple[bool, str]:
@@ -1792,17 +1709,7 @@ class SimulationEngine:
                 flight_log=tuple(new_log[-20:]),
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=new_ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
-
+            self.state = self._clone_state(ship=new_ship)
             msg = f"Decision resolved: {found_choice.outcome_text}{relic_msg}"
             if is_campaign_done:
                 msg += " CAMPAIGN FINALE: The Precursor Cipher storyline concluded!"
@@ -1821,16 +1728,7 @@ class SimulationEngine:
                 skipped=True,
             )
             new_log = list(self.state.ship.flight_log[-19:]) + ["ACADEMY: Cadet Flight Academy skipped by commander."]
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=self._clone_ship(tutorial=new_tut, flight_log=tuple(new_log[-20:])),
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(ship=self._clone_ship(tutorial=new_tut, flight_log=tuple(new_log[-20:])))
             return True, "Cadet Flight Academy skipped. Full operational control active."
 
     def reset_tutorial(self) -> tuple[bool, str]:
@@ -1838,16 +1736,7 @@ class SimulationEngine:
         with self.lock:
             new_tut = generate_initial_tutorial()
             new_log = list(self.state.ship.flight_log[-19:]) + ["ACADEMY: Cadet Flight Academy restarted."]
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=self._clone_ship(tutorial=new_tut, flight_log=tuple(new_log[-20:])),
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(ship=self._clone_ship(tutorial=new_tut, flight_log=tuple(new_log[-20:])))
             return True, "Cadet Flight Academy reset to Step 1."
 
     def get_status_snapshot(self) -> dict[str, Any]:
@@ -1973,11 +1862,17 @@ class SimulationEngine:
             cur_ship = self.state.ship
             new_drones = cur_ship.fleet_drones
             drone_cycles = max(1, num_ticks // 4) if num_ticks >= 4 else (1 if new_tick % 4 == 0 else 0)
+            drone_cargo_harvested = 0
+            drone_credits_harvested = 0
             if drone_cycles > 0 and cur_ship.fleet_drones:
+                cargo_before = sum(d.cargo_accumulated for d in cur_ship.fleet_drones)
+                credits_before = sum(d.credits_accumulated for d in cur_ship.fleet_drones)
                 for _ in range(min(drone_cycles, 10)):
                     new_drones = self._process_drone_cycle(
                         self._clone_ship(fleet_drones=new_drones)
                     )
+                drone_cargo_harvested = sum(d.cargo_accumulated for d in new_drones) - cargo_before
+                drone_credits_harvested = sum(d.credits_accumulated for d in new_drones) - credits_before
 
             # 3. Passive shield capacitor regeneration
             new_shield = cur_ship.shield
@@ -2013,16 +1908,11 @@ class SimulationEngine:
                 fleet_drones=new_drones,
             )
 
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
+            self.state = self._clone_state(
                 ship=new_ship,
                 systems=updated_systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
                 active_combat=new_combat,
                 time=new_time,
-                stats=self.state.stats,
             )
 
             return {
@@ -2031,59 +1921,44 @@ class SimulationEngine:
                 "tick": new_tick,
                 "elapsed_days": round(new_days, 2),
                 "shield_recharged": shield_recharged,
+                "drone_cargo_harvested": drone_cargo_harvested,
+                "drone_credits_harvested": drone_credits_harvested,
                 "time_scale": new_time.time_scale,
                 "is_paused": new_time.is_paused,
             }
 
     def pause_time(self) -> tuple[bool, str]:
-        """Pause simulation temporal clock."""
+        """Pause simulation temporal clock while preserving current playback rate."""
         with self.lock:
             cur = self.state.time
+            saved_speed = cur.speed if cur.speed > 0.0 else 1.0
             new_time = TimeState(
                 tick=cur.tick,
                 stardate=cur.stardate,
-                speed=0.0,
+                speed=saved_speed,
                 is_paused=True,
                 time_scale="PAUSED",
                 elapsed_days=cur.elapsed_days,
             )
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=self.state.ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                time=new_time,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(time=new_time)
             return True, "Simulation clock paused."
 
     def resume_time(self) -> tuple[bool, str]:
-        """Resume simulation temporal clock at 1.0x normal speed."""
+        """Resume simulation temporal clock restoring previous speed multiplier."""
         with self.lock:
             cur = self.state.time
+            resumed_speed = cur.speed if cur.speed > 0.0 else 1.0
+            scale_str = f"{int(resumed_speed)}x" if resumed_speed.is_integer() else f"{resumed_speed}x"
             new_time = TimeState(
                 tick=cur.tick,
                 stardate=cur.stardate,
-                speed=1.0,
+                speed=resumed_speed,
                 is_paused=False,
-                time_scale="1x",
+                time_scale=scale_str,
                 elapsed_days=cur.elapsed_days,
             )
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=self.state.ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                time=new_time,
-                stats=self.state.stats,
-            )
-            return True, "Simulation clock resumed at 1.0x speed."
+            self.state = self._clone_state(time=new_time)
+            return True, f"Simulation clock resumed at {scale_str} speed."
 
     def set_time_speed(self, speed: float) -> tuple[bool, str]:
         """Set simulation speed multiplier (0.0x to 10.0x)."""
@@ -2095,22 +1970,12 @@ class SimulationEngine:
             new_time = TimeState(
                 tick=cur.tick,
                 stardate=cur.stardate,
-                speed=clamped,
+                speed=clamped if not is_paused else (cur.speed if cur.speed > 0.0 else 1.0),
                 is_paused=is_paused,
                 time_scale=time_scale,
                 elapsed_days=cur.elapsed_days,
             )
-            self.state = GameState(
-                version=self.state.version,
-                galaxy_seed=self.state.galaxy_seed,
-                ship=self.state.ship,
-                systems=self.state.systems,
-                visited_systems=self.state.visited_systems,
-                active_anomaly=self.state.active_anomaly,
-                active_combat=self.state.active_combat,
-                time=new_time,
-                stats=self.state.stats,
-            )
+            self.state = self._clone_state(time=new_time)
             return True, f"Simulation clock speed set to {time_scale}."
 
     def step_time(self, num_ticks: int = 1) -> tuple[bool, str, dict[str, Any]]:

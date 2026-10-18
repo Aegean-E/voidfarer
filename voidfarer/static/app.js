@@ -593,6 +593,7 @@ class CockpitApp {
 
         // Global hotkeys for temporal controls (Space = Pause/Resume, 1-4 = Speeds, T = Step)
         window.addEventListener("keydown", (e) => {
+            if (e.repeat) return;
             if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
             if (e.code === "Space") {
                 e.preventDefault();
@@ -1505,6 +1506,14 @@ class CockpitApp {
                 this.state = json.state;
                 this.renderHUD();
                 this.appendLog(json.message, "system");
+                if (json.summary) {
+                    if (json.summary.shield_recharged > 0) {
+                        this.appendLog(`[DEFLECTOR] Shields restored +${json.summary.shield_recharged} MW during time advance.`, "system");
+                    }
+                    if (json.summary.drone_cargo_harvested > 0 || json.summary.drone_credits_harvested > 0) {
+                        this.appendLog(`[FLEET] Drones gathered +${json.summary.drone_cargo_harvested} ore, +${json.summary.drone_credits_harvested} cr over elapsed time.`, "reward");
+                    }
+                }
             } else if (json.message) {
                 this.appendLog(`[TIME] ${json.message}`, "system");
             }

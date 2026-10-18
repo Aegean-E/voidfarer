@@ -173,6 +173,66 @@ class TestSimulationEngineTimeAndTicks(unittest.TestCase):
         self.assertEqual(time_data["speed"], self.engine.state.time.speed)
         self.assertEqual(time_data["is_paused"], self.engine.state.time.is_paused)
 
+    def test_pause_resume_speed_memory(self):
+        """Verify speed rate (e.g. 5x) is retained across pause and resume cycles."""
+        ok, _ = self.engine.set_time_speed(5.0)
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.time.speed, 5.0)
+        self.assertEqual(self.engine.state.time.time_scale, "5x")
+        self.assertFalse(self.engine.state.time.is_paused)
+
+        ok, _ = self.engine.pause_time()
+        self.assertTrue(ok)
+        self.assertTrue(self.engine.state.time.is_paused)
+        self.assertEqual(self.engine.state.time.time_scale, "PAUSED")
+        self.assertEqual(self.engine.state.time.speed, 5.0)
+
+        ok, _ = self.engine.resume_time()
+        self.assertTrue(ok)
+        self.assertFalse(self.engine.state.time.is_paused)
+        self.assertEqual(self.engine.state.time.speed, 5.0)
+        self.assertEqual(self.engine.state.time.time_scale, "5x")
+
+    def test_jump_advances_transit_time(self):
+        """Verify interstellar hyperspace jumps advance cosmic time and orbits by 2 ticks (12 hours)."""
+        initial_tick = self.engine.state.time.tick
+        initial_days = self.engine.state.time.elapsed_days
+        initial_stardate = self.engine.state.time.stardate
+
+        # Jump from sol to sirius
+        ok, msg = self.engine.jump("sirius")
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.engine.state.time.tick, initial_tick + 2)
+        self.assertAlmostEqual(self.engine.state.time.elapsed_days, initial_days + 0.5, places=2)
+        self.assertGreater(self.engine.state.time.stardate, initial_stardate)
+
+    def test_state_preservation_across_operations(self):
+        """Verify operations like orbit, scan, and power routing never wipe temporal clock state."""
+        self.engine.tick(7)
+        self.assertEqual(self.engine.state.time.tick, 7)
+        saved_stardate = self.engine.state.time.stardate
+        saved_days = self.engine.state.time.elapsed_days
+
+        # Perform orbit
+        first_body_id = self.engine.current_system.bodies[0].id
+        ok, _ = self.engine.orbit(first_body_id)
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.time.tick, 7)
+        self.assertEqual(self.engine.state.time.stardate, saved_stardate)
+        self.assertEqual(self.engine.state.time.elapsed_days, saved_days)
+
+        # Perform scan
+        ok, _, _ = self.engine.scan()
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.time.tick, 7)
+        self.assertEqual(self.engine.state.time.stardate, saved_stardate)
+
+        # Perform power route
+        ok, _ = self.engine.route_power(30, 30, 20, 20)
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.time.tick, 7)
+        self.assertEqual(self.engine.state.time.stardate, saved_stardate)
+
 
 class TestServerTimeEndpoints(unittest.TestCase):
     """Verify REST API time endpoints: /api/time, /api/time/step, /api/time/speed, etc."""

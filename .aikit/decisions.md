@@ -103,3 +103,21 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   7. Maintain thread safety via re-entrant engine locking and sub-second test execution across 84 automated unit tests.
 - **Consequences**: Gives players full god-like temporal command over cosmic simulation flow, deepens orbital and fleet autonomy dynamics, aligns canvas radar motion with physics state, and preserves zero third-party dependencies.
 
+### ADR-009: Universal State Preservation, Temporal Speed Memory, and Hyperspace Transit Dynamics
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: In-depth audit of recent temporal mechanics and simulation state updates revealed critical gaps and regressions:
+  1. Manual `GameState(...)` instantiation across 25 engine operations (orbit, scan, trade, refuel, repair, route_power, combat, anomaly resolution, upgrades, drones, contracts, talents, story choices, tutorial controls) omitted the `time` field, silently resetting cosmic ticks and stardate back to `tick=0, stardate=3042.0` on every action.
+  2. Temporal speed memory was lost when pausing: resuming the clock defaulted to 1.0x even if the commander previously set 5.0x or 10.0x.
+  3. Hyperspace jumps took instantaneous zero cosmic time, failing to advance planetary orbital revolutions or fleet drone harvest cycles during long interstellar transit.
+  4. Server ticker daemon loop utilized non-interruptible `time.sleep()`, causing delay during server shutdown and missing RAII socket cleanup on Windows.
+  5. Rapid keyboard repeat on Spacebar/hotkeys caused uncontrolled HTTP request stampedes to the temporal control endpoints.
+- **Decision**:
+  1. Introduce `_clone_state(**kwargs) -> GameState` in `SimulationEngine` that preserves `time` and `stats` fields unless explicitly overwritten, and refactor all 25 methods across `engine.py` to use `_clone_state(...)`.
+  2. Upgrade `pause_time()`, `resume_time()`, and `set_time_speed()` to store and remember configured playback speed rate across pause/resume cycles.
+  3. Advance cosmic time by 2 ticks (12 hours / 0.5 days transit) on interstellar hyperspace jumps, updating planetary orbits across all systems and persisting realistic transit duration.
+  4. Refactor `_ticker_loop` to use `ticker_stop.wait(interval)` for instant thread termination, and add a `finally:` block in `run_server` ensuring `server.server_close()` is always invoked.
+  5. Add hotkey repeat suppression (`if (e.repeat) return;`) and drone harvest yield telemetry logging in Web Cockpit `app.js`.
+  6. Expand automated test coverage with regression tests for state preservation, speed memory, and hyperspace transit time.
+- **Consequences**: Guarantees zero simulation clock resets across any player action, realistic cosmic transit time during interstellar jumps, smooth temporal control UX, instant clean server shutdown, and 100% test pass rate across all automated suites.
+

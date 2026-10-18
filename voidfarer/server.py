@@ -357,14 +357,16 @@ def run_server(
             time_obj = engine.state.time
             if not time_obj.is_paused and time_obj.speed > 0:
                 interval = max(0.1, 1.0 / time_obj.speed)
-                time.sleep(interval)
+                if ticker_stop.wait(interval):
+                    break
                 engine.tick(1)
                 save_counter += 1
                 if save_counter >= 10:
                     storage.save(engine.state)
                     save_counter = 0
             else:
-                time.sleep(0.2)
+                if ticker_stop.wait(0.2):
+                    break
 
     if enable_ticker:
         ticker = threading.Thread(target=_ticker_loop, daemon=True)
@@ -384,7 +386,15 @@ def run_server(
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        ticker_stop.set()
         print("\nShutting down sub-space uplink...")
-        server.shutdown()
+    finally:
+        ticker_stop.set()
+        try:
+            server.shutdown()
+        except Exception:
+            pass
+        try:
+            server.server_close()
+        except Exception:
+            pass
 

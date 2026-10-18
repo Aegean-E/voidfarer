@@ -1,64 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-v8-time-and-ticks",
-    "last_phase": "in_progress",
+    "task_id": "task-voidfarer-v9-hardening",
+    "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792346554.3339112,
-    "completed_at": 1792346558.0425427
+    "updated_at": 1792347266.7196364,
+    "completed_at": 1792347270.858492
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-v3-retention-mechanics",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/5] Architectural planning: psychological attention loops, dynamic bounties, procedural relics, and pilot mastery",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792339503.0014536,
-      "timestamp_str": "2026-10-18 19:05:03",
-      "impact_assessment": {
-        "why": "Incorporate behavioral psychology literature on game retention and attention mechanics into VoidFarer",
-        "benefits": "Transforms VoidFarer with deep dopaminergic feedback, Zeigarnik goal tension, loss aversion streaks, and player competence loops",
-        "risks": "contract: model schema backward compatibility; dependency: zero external packages; concurrency: thread-safe engine mutations; state: savegame backward compatibility",
-        "mitigation": "Default field values in frozen dataclasses, pure stdlib algorithms, sub-second test coverage, and non-destructive JSON state migration"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-v3-retention-mechanics",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-v3-retention-mechanics' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792340866.992696,
-      "timestamp_str": "2026-10-18 19:27:46"
-    },
-    {
-      "task_id": "task-voidfarer-v4-tutorial-narrative",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/6] Architectural design & literature review for interactive tutorial, narrative transportation, and story campaign",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792340984.6455238,
-      "timestamp_str": "2026-10-18 19:29:44",
-      "impact_assessment": {
-        "why": "Incorporate literature review on cognitive scaffolding, tutorial design, and narrative transportation into VoidFarer, integrating an interactive Cadet Flight Academy and branching story campaign",
-        "benefits": "Dramatically flattens onboarding learning curve, immerses player in compelling sci-fi mystery, maximizes attention retention, and rewards progression through story relics",
-        "risks": "contract: API/CLI backward compatibility with existing save states; dependency: zero external packages allowed; concurrency: thread-safe engine mutations for story choices and tutorial advancement; state: seamless migration of existing saved ships without tutorial/story fields",
-        "mitigation": "Default field values in frozen dataclasses, pure standard library implementation, thread mutex locks on story resolution, and comprehensive unit test coverage"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-v4-tutorial-narrative",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-v4-tutorial-narrative' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792342758.034123,
-      "timestamp_str": "2026-10-18 19:59:18"
-    },
     {
       "task_id": "task-voidfarer-v5-audit-hardening",
       "phase": "phase 2",
@@ -238,6 +188,51 @@
       "status": "completed",
       "timestamp": 1792346558.0425444,
       "timestamp_str": "2026-10-18 21:02:38"
+    },
+    {
+      "task_id": "task-voidfarer-v9-hardening",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/4] Deep architectural analysis and planning for state preservation, pause/resume speed memory, and hyperspace transit time",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792346737.1240113,
+      "timestamp_str": "2026-10-18 21:05:37",
+      "impact_assessment": {
+        "why": "Fix state loss bug where GameState reconstruction resets TimeState to tick 0 across ship actions, preserve speed on pause/resume, advance time during hyperspace jumps, and prevent Web HUD keyrepeat spamming",
+        "benefits": "Guarantees temporal state persistence across all actions (orbit, scan, trade, combat, etc.), makes hyperspace travel advance simulation time naturally, remembers chosen speeds across pause toggles, and hardens daemon lifecycle",
+        "risks": "contract: preserve all existing REST and CLI return types; dependency: pure standard library; concurrency: thread-safe state cloning; state: no schema migration needed",
+        "mitigation": "Implement _clone_state helper to eliminate manual GameState reconstruction errors, add automated unit tests for time persistence across actions, and verify 100% test pass gate"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-v9-hardening",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[2/4] Implementation of _clone_state, speed memory preservation, transit time, and ticker cleanup",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792347261.8876731,
+      "timestamp_str": "2026-10-18 21:14:21"
+    },
+    {
+      "task_id": "task-voidfarer-v9-hardening",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[3/4] Automated unit tests, ADR-009, and full AIKit gate verification",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792347266.7196364,
+      "timestamp_str": "2026-10-18 21:14:26"
+    },
+    {
+      "task_id": "task-voidfarer-v9-hardening",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-v9-hardening' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792347270.8584933,
+      "timestamp_str": "2026-10-18 21:14:30"
     }
   ]
 }

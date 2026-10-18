@@ -21,6 +21,10 @@ if sys.platform == "win32":
 
 from voidfarer.engine import SimulationEngine
 from voidfarer.galaxy import COMMODITY_MAP, GalaxyGenerator
+from voidfarer.retention import (
+    PILOT_TALENTS,
+    calculate_passive_multipliers,
+)
 from voidfarer.server import ThreadedHTTPServer, VoidFarerHandler, run_server
 from voidfarer.storage import StorageManager
 from voidfarer.upgrades import (
@@ -81,6 +85,8 @@ def cmd_status(engine: SimulationEngine) -> int:
     print(f"║ Commander: {CYAN}{ship.commander_name:<16}{RESET} Callsign: {YELLOW}{ship.callsign:<16}{RESET} Class: {ship.ship_class:<12} ║")
     print(f"║ Credits:   {YELLOW}{ship.credits:>8} cr{RESET}       Cargo:    {sum(ship.cargo.values()):>2}/{ship.cargo_capacity:<2} units                     ║")
     print(f"╠════ VITAL TELEMETRY ════════════════════════════════════════════════╣{RESET}")
+    streak_mult = 1.0 + min(1.5, (ship.streak - 1) * 0.15)
+    print(f"║ Streak:    {RED}🔥 {ship.streak} jumps (x{streak_mult:.2f}){RESET}   Mastery:  {YELLOW}★ Lvl {ship.mastery.level} [{ship.mastery.xp}/{ship.mastery.next_level_xp} XP]{RESET}           ║")
     print(f"║ Hull:      {_bar(ship.hull, ship.max_hull, 24, RED if ship.hull < 30 else GREEN)}                      ║")
     print(f"║ Shields:   {_bar(ship.shield, ship.max_shield, 24, BLUE)}                      ║")
     print(f"║ Fuel:      {_bar(ship.fuel, ship.max_fuel, 24, YELLOW)}                      ║")
@@ -92,6 +98,12 @@ def cmd_status(engine: SimulationEngine) -> int:
     upg_str = ", ".join(ship.upgrades) if ship.upgrades else "Standard Baseline"
     print(f"╠════ INSTALLED HARDWARE MODULES ═════════════════════════════════════╣{RESET}")
     print(f"║ {CYAN}{upg_str:<67}{RESET} ║")
+
+    # Active contracts summary
+    ready_cnt = sum(1 for c in ship.active_contracts if c.completed)
+    contract_note = f"{len(ship.active_contracts)} active assignments ({ready_cnt} ready to claim!)" if ready_cnt > 0 else f"{len(ship.active_contracts)} active bounty contracts"
+    print(f"╠════ SECTOR CONTRACTS & BOUNTIES ════════════════════════════════════╣{RESET}")
+    print(f"║ {YELLOW}{contract_note:<67}{RESET} ║")
 
     # Fleet summary
     num_drones = len(ship.fleet_drones)
@@ -110,6 +122,9 @@ def cmd_status(engine: SimulationEngine) -> int:
         c = engine.state.active_combat
         print(f"\n{RED}{BOLD}⚔️  COMBAT INTERCEPT: {c.enemy_name.upper()} [{c.enemy_class.upper()}]{RESET}")
         print(f"   Enemy Hull: {_bar(c.enemy_hull, c.enemy_max_hull, 20, RED)}")
+        if ship.tactical_combo > 0:
+            crit_alert = f" {YELLOW}{BOLD}(CRITICAL OVERCHARGE READY!){RESET}" if ship.tactical_combo >= 2 else ""
+            print(f"   Tactical Combo: {YELLOW}{BOLD}⚡ x{ship.tactical_combo}{crit_alert}{RESET}")
         print(f"   Tactical Options: {BOLD}combat fire{RESET} | {BOLD}combat absorb{RESET} | {BOLD}combat evade{RESET} | {BOLD}combat flee{RESET}")
 
     elif engine.state.active_anomaly:
@@ -287,6 +302,140 @@ def cmd_combat(engine: SimulationEngine, storage: StorageManager, parts: list[st
     return 0 if ok else 1
 
 
+def cmd_contracts(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Inspect dynamic sector bounties, claim completed contracts, and trigger fresh assignments."""
+    if len(parts) == 1 or parts[1].lower() in ("list", "show"):
+        contracts = engine.state.ship.active_contracts
+        print(f"\n{BOLD}{CYAN}=== ACTIVE SECTOR BOUNTIES & CONTRACTS ==={RESET}")
+        if not contracts:
+            print(f"{DIM}No active contracts in flight recorder.{RESET}")
+            return 0
+
+        for c in contracts:
+            status_tag = f"{GREEN}[READY TO CLAIM]{RESET}" if c.completed else f"{YELLOW}[IN PROGRESS]{RESET}"
+            prog_bar = _bar(c.current_count, c.target_count, 14, GREEN if c.completed else YELLOW)
+            relic_tag = f" + Relic [{c.reward_relic_tier.upper()}]" if c.reward_relic_tier else ""
+            print(f"• {BOLD}{c.title}{RESET} ({c.id}) - {CYAN}{c.category.upper()}{RESET} {status_tag}")
+            print(f"  {DIM}{c.description}{RESET}")
+            print(f"  Progress: {prog_bar} | Reward: {YELLOW}+{c.reward_credits} cr{RESET}, {CYAN}+{c.reward_xp} XP{RESET}{relic_tag}\n")
+
+        ready = [c for c in contracts if c.completed]
+        if ready:
+            print(f"{GREEN}{BOLD}Claim completed assignment: contracts claim <id>{RESET}")
+        else:
+            print(f"{DIM}Advance contracts by exploring, scanning, trading, or defeating hostiles.{RESET}")
+        return 0
+
+    sub = parts[1].lower()
+    if sub in ("claim", "complete"):
+        if len(parts) < 3:
+            ready = [c for c in engine.state.ship.active_contracts if c.completed]
+            if len(ready) == 1:
+                cid = ready[0].id
+            else:
+                print(f"{RED}Usage:{RESET} contracts claim <contract_id>")
+                return 1
+        else:
+            cid = parts[2]
+
+        ok, msg, _ = engine.claim_contract(cid)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    print(f"{RED}Unknown contracts command '{sub}'. Options: list, claim <id>.{RESET}")
+    return 1
+
+
+def cmd_mastery(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Display pilot progression rank, talent tree specializations, and allocate perks."""
+    ship = engine.state.ship
+    mastery = ship.mastery
+
+    if len(parts) == 1 or parts[1].lower() in ("list", "status"):
+        print(f"\n{BOLD}{CYAN}=== PILOT MASTERY & SPECIALIZATION TREE ==={RESET}")
+        print(f"Pilot Level: {YELLOW}{BOLD}Rank {mastery.level}{RESET} | Unspent Talent Points: {GREEN}{BOLD}{mastery.talent_points}{RESET}")
+        print(f"Career XP:   {_bar(mastery.xp, mastery.next_level_xp, 24, YELLOW)}")
+        print(f"{'-' * 70}")
+
+        for tid, t in PILOT_TALENTS.items():
+            is_unlocked = tid in mastery.specializations
+            status = f"{GREEN}[UNLOCKED]{RESET}" if is_unlocked else f"{YELLOW}[LOCKED - 1 PT]{RESET}"
+            print(f"• {BOLD}{t['name']:<24}{RESET} ({tid}) | {CYAN}{t['category'].upper():<12}{RESET} {status}")
+            print(f"  {DIM}{t['description']}{RESET}\n")
+
+        print(f"{'-' * 70}")
+        if mastery.talent_points > 0:
+            print(f"{GREEN}{BOLD}Unlock specialization: mastery unlock <talent_id>{RESET}")
+        else:
+            print(f"{DIM}Earn Pilot XP through contracts, jump streaks, and combat to earn Talent Points.{RESET}")
+        return 0
+
+    sub = parts[1].lower()
+    if sub in ("unlock", "learn", "buy"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} mastery unlock <talent_id>")
+            return 1
+
+        tid = parts[2].lower()
+        ok, msg = engine.unlock_talent(tid)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    print(f"{RED}Unknown mastery command '{sub}'. Options: list, unlock <id>.{RESET}")
+    return 1
+
+
+def cmd_relics(engine: SimulationEngine) -> int:
+    """Display recovered ancient Precursor relics and passive fleet bonuses."""
+    relics = engine.state.ship.relics
+    print(f"\n{BOLD}{CYAN}=== ANCIENT PRECURSOR RELICS VAULT ==={RESET}")
+    if not relics:
+        print(f"{DIM}No Precursor Relics recovered yet.{RESET}")
+        print(f"Relics drop via sensor scans of planets, combat victories, and high-tier bounty contracts.")
+        return 0
+
+    rarity_colors = {
+        "common": DIM,
+        "rare": CYAN,
+        "epic": MAGENTA,
+        "legendary": YELLOW + BOLD,
+    }
+
+    for r in relics:
+        color = rarity_colors.get(r.rarity, RESET)
+        print(f"• {color}[{r.rarity.upper()}]{RESET} {BOLD}{r.name}{RESET} ({r.id})")
+        print(f"  {DIM}{r.description}{RESET}\n")
+
+    multipliers = calculate_passive_multipliers(relics, engine.state.ship.mastery.specializations)
+    print(f"{BOLD}Active Passive Fleet Modifiers:{RESET}")
+    print(f"  Scan Bounty Boost:    +{int(multipliers['scanner_bounty_mult'] * 100)}%")
+    print(f"  Trade Profit Margin:  +{int(multipliers['trade_margin_mult'] * 100)}%")
+    print(f"  Laser Strike Power:   +{int(multipliers['laser_damage_mult'] * 100)}%")
+    print(f"  Shield Capacity:      +{int(multipliers['shield_capacity_bonus'])} MW")
+    print(f"  Hull Reinforcement:   +{int(multipliers['max_hull_bonus'])} HP")
+    print(f"  Jump Fuel Efficiency: +{int(multipliers['fuel_efficiency_mult'] * 100)}%")
+    print(f"  Fleet Drone Yield:    +{int(multipliers['drone_yield_mult'] * 100)}%")
+    return 0
+
+
+def cmd_streak(engine: SimulationEngine) -> int:
+    """Display current expedition jump streak and active loss aversion multiplier."""
+    ship = engine.state.ship
+    mult = 1.0 + min(1.5, (ship.streak - 1) * 0.15)
+    print(f"\n{BOLD}{CYAN}=== EXPEDITION JUMP STREAK ==={RESET}")
+    print(f"Current Streak: {RED}{BOLD}🔥 {ship.streak} consecutive jumps{RESET}")
+    print(f"Streak Multiplier: {YELLOW}{BOLD}x{mult:.2f}{RESET} (+{int((mult - 1.0) * 100)}% to all trade, scan, and contract rewards)")
+    print(f"\n{DIM}Mechanics (Loss Aversion):{RESET}")
+    print(f"  • Every successful hyperlane jump increments streak by +1 (capped at x2.50).")
+    print(f"  • All scan credits, trade profits, and pilot XP scale with this multiplier.")
+    print(f"  • {RED}CAUTION:{RESET} Fleeing from hostile combat resets your streak back to 1!")
+    return 0
+
+
 def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
     """Launch interactive terminal command session."""
     # Print status upon entry
@@ -334,6 +483,18 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             cmd_upgrades(engine, storage, parts)
         elif cmd in ("combat", "fight", "battle"):
             cmd_combat(engine, storage, parts)
+        elif cmd in ("contracts", "contract", "bounties", "bounty"):
+            cmd_contracts(engine, storage, parts)
+        elif cmd in ("claim",):
+            cmd_contracts(engine, storage, ["contracts", "claim"] + parts[1:])
+        elif cmd in ("mastery", "talents", "talent", "perks"):
+            cmd_mastery(engine, storage, parts)
+        elif cmd in ("unlock",):
+            cmd_mastery(engine, storage, ["mastery", "unlock"] + parts[1:])
+        elif cmd in ("relics", "relic", "vault", "artifacts"):
+            cmd_relics(engine)
+        elif cmd in ("streak", "fire"):
+            cmd_streak(engine)
         elif cmd in ("serve", "web", "gui", "hud"):
             port = 8080
             for i, p in enumerate(parts):
@@ -436,7 +597,11 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             print("  chart / map                    - Hyperlane network & orbital bodies")
             print("  jump <system_id>               - Hyperspace jump to adjacent star")
             print("  orbit <body_id>                - Enter orbit around planet or station")
-            print("  scan                           - Sensor sweep of orbiting body")
+            print("  scan                           - Sensor sweep of orbiting body (relic discovery)")
+            print("  contracts [claim <id>]         - Active sector bounty contracts (Zeigarnik loop)")
+            print("  mastery [unlock <id>]          - Pilot rank, XP progression, and talent tree")
+            print("  relics                         - Ancient Precursor Relic vault & passive fleet buffs")
+            print("  streak                         - Expedition jump streak & multiplier status")
             print("  market                         - Check commodity trade prices")
             print("  buy <comm> <qty>               - Buy commodities from local exchange")
             print("  sell <comm> <qty>              - Sell commodities to local exchange")
@@ -483,6 +648,17 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     combat_p = subparsers.add_parser("combat", help="Execute tactical combat maneuver")
     combat_p.add_argument("action", choices=["fire", "absorb", "evade", "flee"], help="Tactical maneuver")
+
+    contracts_p = subparsers.add_parser("contracts", help="Inspect and claim dynamic sector bounty contracts")
+    contracts_p.add_argument("action", nargs="?", default="list", choices=["list", "claim"])
+    contracts_p.add_argument("contract_id", nargs="?", help="Contract ID to claim")
+
+    mastery_p = subparsers.add_parser("mastery", help="Pilot rank progression and talent specializations")
+    mastery_p.add_argument("action", nargs="?", default="status", choices=["status", "list", "unlock"])
+    mastery_p.add_argument("talent_id", nargs="?", help="Talent ID to unlock")
+
+    subparsers.add_parser("relics", help="Display ancient Precursor Relics and passive modifiers")
+    subparsers.add_parser("streak", help="Display expedition jump streak and multiplier")
 
     jump_p = subparsers.add_parser("jump", help="Jump to adjacent star system")
     jump_p.add_argument("system_id", help="Target star system ID")
@@ -548,6 +724,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         return cmd_upgrades(engine, storage, parts)
     elif args.command == "combat":
         return cmd_combat(engine, storage, ["combat", args.action])
+    elif args.command == "contracts":
+        parts = ["contracts"]
+        if args.action != "list":
+            parts.append(args.action)
+            if args.contract_id:
+                parts.append(args.contract_id)
+        return cmd_contracts(engine, storage, parts)
+    elif args.command == "mastery":
+        parts = ["mastery"]
+        if args.action not in ("status", "list"):
+            parts.append(args.action)
+            if args.talent_id:
+                parts.append(args.talent_id)
+        return cmd_mastery(engine, storage, parts)
+    elif args.command == "relics":
+        return cmd_relics(engine)
+    elif args.command == "streak":
+        return cmd_streak(engine)
     elif args.command == "scan":
         ok, msg, _ = engine.scan()
         print((GREEN if ok else RED) + msg + RESET)

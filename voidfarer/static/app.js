@@ -132,6 +132,81 @@ class SoundController {
             osc.stop(now + 0.22);
         } catch (e) {}
     }
+
+    playLevelUp() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.38);
+            });
+        } catch (e) {}
+    }
+
+    playBountyChime() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            [392.00, 523.25, 659.25].forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = "triangle";
+                osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+                gain.gain.setValueAtTime(0.2, now + idx * 0.09);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.4);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + idx * 0.09);
+                osc.stop(now + idx * 0.09 + 0.42);
+            });
+        } catch (e) {}
+    }
+
+    playCritHit() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.exponentialRampToValueAtTime(60, now + 0.35);
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } catch (e) {}
+    }
+
+    playNearMiss() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(987.77, now);
+            osc.frequency.linearRampToValueAtTime(1318.51, now + 0.2);
+            osc.frequency.linearRampToValueAtTime(1174.66, now + 0.45);
+            gain.gain.setValueAtTime(0.16, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.52);
+        } catch (e) {}
+    }
 }
 
 class CockpitApp {
@@ -219,6 +294,9 @@ class CockpitApp {
         this.btnCombatAbsorb = document.getElementById("btnCombatAbsorb");
         this.btnCombatEvade = document.getElementById("btnCombatEvade");
         this.btnCombatFlee = document.getElementById("btnCombatFlee");
+        this.combatComboBadge = document.getElementById("combatComboBadge");
+        this.combatComboCount = document.getElementById("combatComboCount");
+        this.critReadyText = document.getElementById("critReadyText");
 
         // Anomaly Card
         this.anomalyCard = document.getElementById("anomalyCard");
@@ -226,13 +304,34 @@ class CockpitApp {
         this.anomalyDesc = document.getElementById("anomalyDesc");
         this.anomalyChoices = document.getElementById("anomalyChoices");
 
+        // Vitals: Streak & Mastery
+        this.vitalStreakCard = document.getElementById("vitalStreakCard");
+        this.streakVal = document.getElementById("streakVal");
+        this.streakSubtext = document.getElementById("streakSubtext");
+        this.vitalMasteryCard = document.getElementById("vitalMasteryCard");
+        this.masteryLevelVal = document.getElementById("masteryLevelVal");
+        this.masteryBar = document.getElementById("masteryBar");
+        this.masterySubtext = document.getElementById("masterySubtext");
+
         // Right Deck Tabs
         this.tabBtnMarket = document.getElementById("tabBtnMarket");
         this.tabBtnArsenal = document.getElementById("tabBtnArsenal");
         this.tabBtnFleet = document.getElementById("tabBtnFleet");
+        this.tabBtnContracts = document.getElementById("tabBtnContracts");
+        this.tabBtnMastery = document.getElementById("tabBtnMastery");
+        this.contractsBadge = document.getElementById("contractsBadge");
+
         this.tabContentMarket = document.getElementById("tabContentMarket");
         this.tabContentArsenal = document.getElementById("tabContentArsenal");
         this.tabContentFleet = document.getElementById("tabContentFleet");
+        this.tabContentContracts = document.getElementById("tabContentContracts");
+        this.tabContentMastery = document.getElementById("tabContentMastery");
+
+        // Contracts & Mastery Containers
+        this.contractsList = document.getElementById("contractsList");
+        this.availableTalentPoints = document.getElementById("availableTalentPoints");
+        this.talentsGrid = document.getElementById("talentsGrid");
+        this.relicsGrid = document.getElementById("relicsGrid");
 
         // Market
         this.marketTitle = document.getElementById("marketTitle");
@@ -338,6 +437,8 @@ class CockpitApp {
         this.tabBtnMarket.addEventListener("click", () => this.switchRightTab("market"));
         this.tabBtnArsenal.addEventListener("click", () => this.switchRightTab("arsenal"));
         this.tabBtnFleet.addEventListener("click", () => this.switchRightTab("fleet"));
+        this.tabBtnContracts.addEventListener("click", () => this.switchRightTab("contracts"));
+        this.tabBtnMastery.addEventListener("click", () => this.switchRightTab("mastery"));
 
         // Combat Buttons
         this.btnCombatFire.addEventListener("click", () => this.handleCombat("fire_lasers"));
@@ -398,13 +499,19 @@ class CockpitApp {
         this.tabBtnMarket.classList.toggle("active", tabName === "market");
         this.tabBtnArsenal.classList.toggle("active", tabName === "arsenal");
         this.tabBtnFleet.classList.toggle("active", tabName === "fleet");
+        this.tabBtnContracts.classList.toggle("active", tabName === "contracts");
+        this.tabBtnMastery.classList.toggle("active", tabName === "mastery");
 
         this.tabContentMarket.style.display = (tabName === "market") ? "flex" : "none";
         this.tabContentArsenal.style.display = (tabName === "arsenal") ? "flex" : "none";
         this.tabContentFleet.style.display = (tabName === "fleet") ? "flex" : "none";
+        this.tabContentContracts.style.display = (tabName === "contracts") ? "flex" : "none";
+        this.tabContentMastery.style.display = (tabName === "mastery") ? "flex" : "none";
 
         if (tabName === "arsenal") this.renderArsenal();
         if (tabName === "fleet") this.renderFleet();
+        if (tabName === "contracts") this.renderContracts();
+        if (tabName === "mastery") this.renderMastery();
     }
 
     setPowerSliders(e, sh, se, w) {
@@ -491,6 +598,32 @@ class CockpitApp {
         this.cargoDetailed.textContent = `${totalCargo} / ${ship.cargo_capacity} UNITS`;
         this.cargoMeterFill.style.width = `${Math.min(100, Math.round((totalCargo / ship.cargo_capacity) * 100))}%`;
 
+        // Streak render
+        const streak = ship.streak || 1;
+        const streakMult = 1.0 + Math.min(1.5, (streak - 1) * 0.15);
+        this.streakVal.textContent = `🔥 ${streak} JUMP${streak > 1 ? 'S' : ''} (x${streakMult.toFixed(2)})`;
+        this.vitalStreakCard.classList.toggle("high-streak", streak >= 3);
+        this.streakSubtext.textContent = streak > 1 
+            ? `+${Math.round((streakMult - 1.0) * 100)}% ALL REWARDS // FLEE RESETS`
+            : "LOSS AVERSION: FLEE RESETS";
+
+        // Mastery render
+        const mastery = ship.mastery || { level: 1, xp: 0, next_level_xp: 500, talent_points: 0 };
+        this.masteryLevelVal.textContent = `★ LVL ${mastery.level}`;
+        const xpPct = Math.min(100, Math.round((mastery.xp / mastery.next_level_xp) * 100));
+        this.masteryBar.style.width = `${xpPct}%`;
+        this.masterySubtext.textContent = `${mastery.xp}/${mastery.next_level_xp} XP // ${mastery.talent_points} PERK${mastery.talent_points !== 1 ? 'S' : ''}`;
+
+        // Contract ready notification badge
+        const contracts = ship.active_contracts || [];
+        const readyContracts = contracts.filter(c => c.completed);
+        if (readyContracts.length > 0) {
+            this.contractsBadge.style.display = "inline-block";
+            this.contractsBadge.textContent = readyContracts.length;
+        } else {
+            this.contractsBadge.style.display = "none";
+        }
+
         // Nav titles
         this.radarTitle.textContent = this.viewMode === "ORBITS" 
             ? `${curSys.name.toUpperCase()} CELESTIAL ORBITS`
@@ -513,6 +646,16 @@ class CockpitApp {
             this.combatEnemyHp.textContent = `${c.enemy_hull} / ${c.enemy_max_hull}`;
             const pct = Math.round((c.enemy_hull / c.enemy_max_hull) * 100);
             this.combatEnemyBar.style.width = `${pct}%`;
+
+            // Tactical Combo Counter
+            const combo = ship.tactical_combo || 0;
+            if (combo > 0) {
+                this.combatComboBadge.style.display = "flex";
+                this.combatComboCount.textContent = `x${combo}`;
+                this.critReadyText.style.display = (combo >= 2) ? "inline" : "none";
+            } else {
+                this.combatComboBadge.style.display = "none";
+            }
         } else {
             this.combatCard.style.display = "none";
         }
@@ -555,6 +698,10 @@ class CockpitApp {
             this.renderArsenal();
         } else if (this.activeRightTab === "fleet") {
             this.renderFleet();
+        } else if (this.activeRightTab === "contracts") {
+            this.renderContracts();
+        } else if (this.activeRightTab === "mastery") {
+            this.renderMastery();
         }
     }
 
@@ -650,6 +797,119 @@ class CockpitApp {
         });
     }
 
+    renderContracts() {
+        this.contractsList.innerHTML = "";
+        const contracts = this.state.ship.active_contracts || [];
+
+        if (contracts.length === 0) {
+            this.contractsList.innerHTML = `<p style="padding:12px;font-size:0.75rem;color:var(--text-muted);text-align:center;">No active bounty contracts in flight log.</p>`;
+            return;
+        }
+
+        contracts.forEach(c => {
+            const card = document.createElement("div");
+            card.className = `contract-card ${c.completed ? 'completed' : ''}`;
+
+            const pct = Math.min(100, Math.round((c.current_count / c.target_count) * 100));
+            const relicBadge = c.reward_relic_tier ? `<span class="reward-pill relic">+Relic [${c.reward_relic_tier.toUpperCase()}]</span>` : '';
+
+            card.innerHTML = `
+                <div class="contract-header">
+                    <span class="contract-cat-badge cat-${c.category}">${c.category}</span>
+                    <strong class="contract-title">${c.title}</strong>
+                </div>
+                <p class="contract-desc">${c.description}</p>
+                <div class="contract-progress-box">
+                    <div class="contract-progress-label">
+                        <span>PROGRESS</span>
+                        <span>${c.current_count} / ${c.target_count} (${pct}%)</span>
+                    </div>
+                    <div class="contract-progress-meter">
+                        <div class="contract-progress-fill" style="width: ${pct}%;"></div>
+                    </div>
+                </div>
+                <div class="contract-footer">
+                    <div class="contract-rewards">
+                        <span class="reward-pill">+${c.reward_credits.toLocaleString()} CR</span>
+                        <span class="reward-pill xp">+${c.reward_xp} XP</span>
+                        ${relicBadge}
+                    </div>
+                    ${c.completed ? `<button class="btn-claim-contract" data-id="${c.id}">CLAIM REWARD</button>` : `<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">IN PROGRESS</span>`}
+                </div>
+            `;
+
+            if (c.completed) {
+                card.querySelector(".btn-claim-contract").addEventListener("click", () => this.handleClaimContract(c.id));
+            }
+
+            this.contractsList.appendChild(card);
+        });
+    }
+
+    renderMastery() {
+        const mastery = this.state.ship.mastery || { level: 1, xp: 0, next_level_xp: 500, talent_points: 0, specializations: [] };
+        this.availableTalentPoints.textContent = mastery.talent_points;
+
+        // Render Talents Grid
+        this.talentsGrid.innerHTML = "";
+        const talents = this.state.catalog_talents || {
+            "void_cartographer": { id: "void_cartographer", name: "Void Cartographer", category: "exploration", description: "+30% sensor scan research credits and +20% Precursor Relic resonance detection." },
+            "dreadnought_tactics": { id: "dreadnought_tactics", name: "Dreadnought Tactician", category: "combat", description: "+25% tactical laser damage and +25 MW shield overcharge absorption." },
+            "swarm_commander": { id: "swarm_commander", name: "Swarm Fleet Overlord", category: "fleet", description: "+50% autonomous fleet drone harvest yields across all deployed systems." },
+            "quantum_smuggler": { id: "quantum_smuggler", name: "Quantum Smuggler", category: "trade", description: "-25% hyperlane jump fuel burn and +20% commodity market profit margins." }
+        };
+
+        const specs = mastery.specializations || [];
+
+        Object.values(talents).forEach(t => {
+            const isUnlocked = specs.includes(t.id);
+            const card = document.createElement("div");
+            card.className = `talent-card ${isUnlocked ? 'unlocked' : ''}`;
+
+            card.innerHTML = `
+                <div class="talent-top">
+                    <div class="talent-header-row">
+                        <strong class="talent-name">${t.name}</strong>
+                        <span class="contract-cat-badge cat-${t.category}">${t.category}</span>
+                    </div>
+                    <p class="talent-desc">${t.description}</p>
+                </div>
+                <button class="btn-talent-unlock" ${isUnlocked || mastery.talent_points <= 0 ? 'disabled' : ''} data-id="${t.id}">
+                    ${isUnlocked ? 'ACQUIRED' : (mastery.talent_points > 0 ? 'UNLOCK PERK (1 PT)' : 'LOCKED (1 PT)')}
+                </button>
+            `;
+
+            if (!isUnlocked && mastery.talent_points > 0) {
+                card.querySelector(".btn-talent-unlock").addEventListener("click", () => this.handleUnlockTalent(t.id));
+            }
+
+            this.talentsGrid.appendChild(card);
+        });
+
+        // Render Precursor Relics Grid
+        this.relicsGrid.innerHTML = "";
+        const relics = this.state.ship.relics || [];
+
+        if (relics.length === 0) {
+            this.relicsGrid.innerHTML = `<p style="padding:10px;font-size:0.72rem;color:var(--text-muted);text-align:center;">No ancient Precursor Relics recovered yet. Recover them via planet sensor sweeps, anomalies, and contracts.</p>`;
+            return;
+        }
+
+        relics.forEach(r => {
+            const card = document.createElement("div");
+            card.className = "relic-card";
+
+            card.innerHTML = `
+                <div class="relic-header-row">
+                    <strong class="relic-name">${r.name}</strong>
+                    <span class="relic-rarity-pill rarity-${r.rarity}">${r.rarity}</span>
+                </div>
+                <p class="relic-desc">${r.description}</p>
+            `;
+            this.relicsGrid.appendChild(card);
+        });
+    }
+
     appendLog(text, type = "system") {
         const line = document.createElement("div");
         line.className = `log-line log-${type}`;
@@ -663,8 +923,16 @@ class CockpitApp {
 
     async handleCombat(action) {
         this.sound.init();
-        if (action === "fire_lasers") this.sound.playLaser();
-        else this.sound.playBeep(600);
+        const currentCombo = (this.state && this.state.ship) ? (this.state.ship.tactical_combo || 0) : 0;
+        if (action === "fire_lasers") {
+            if (currentCombo >= 2) {
+                this.sound.playCritHit();
+            } else {
+                this.sound.playLaser();
+            }
+        } else {
+            this.sound.playBeep(600);
+        }
 
         try {
             const res = await fetch("/api/combat", {
@@ -683,6 +951,50 @@ class CockpitApp {
             this.renderHUD();
         } catch (e) {
             this.appendLog(`[ERROR] Tactical maneuver failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleClaimContract(contractId) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/contract/claim", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contract_id: contractId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playBountyChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[CONTRACT] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Contract claim failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleUnlockTalent(talentId) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/mastery/unlock", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ talent_id: talentId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playLevelUp();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[MASTERY] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Talent unlock failed: ${e.message}`, "hazard");
         }
     }
 
@@ -755,7 +1067,11 @@ class CockpitApp {
             const res = await fetch("/api/scan", { method: "POST" });
             const json = await res.json();
             if (json.ok) {
-                this.sound.playChime();
+                if (json.relic || json.near_miss) {
+                    this.sound.playNearMiss();
+                } else {
+                    this.sound.playChime();
+                }
                 this.appendLog(json.message, "reward");
                 this.state = json.state;
                 this.renderHUD();

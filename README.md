@@ -33,6 +33,8 @@ voidfarer/
 │   ├── guidelines.md         <- project-specific guidelines
 │   ├── project.json          <- stack and gate configuration
 │   └── task_ledger.json      <- power-loss safe task state
+├── docs/                     <- comprehensive system design & research
+│   └── ATTENTION_MECHANICS_LITERATURE_REVIEW.md <- behavioral psychology review
 ├── .gitignore                <- transient state & python caches excluded
 ├── pyproject.toml            <- build and package configuration
 ├── README.md                 <- living documentation
@@ -41,6 +43,7 @@ voidfarer/
 │   ├── models.py             <- frozen dataclass DTOs and schema validators
 │   ├── galaxy.py             <- procedural star system & hyperlane generator
 │   ├── engine.py             <- deterministic state machine & coordinator
+│   ├── retention.py          <- relics, dynamic contracts & pilot mastery
 │   ├── upgrades.py           <- hardware upgrades catalog & drone templates
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
@@ -124,7 +127,38 @@ python -m voidfarer.cli combat evade    # High-G thruster burn
 python -m voidfarer.cli combat flee     # Emergency hyperspace micro-jump
 ```
 
-### 7. Commodity Commerce & Drydock Services
+### 7. Dynamic Sector Bounties & Contracts (Zeigarnik Loop)
+```bash
+# View active contracts, progress bars, and rewards
+python -m voidfarer.cli contracts
+
+# Claim completed contract reward and draw replacement assignment
+python -m voidfarer.cli contracts claim contract_explore_alpha_centauri
+```
+
+### 8. Pilot Mastery & Specializations (Self-Determination)
+```bash
+# Display Pilot rank, XP progress, and available talent perks
+python -m voidfarer.cli mastery
+
+# Unlock specialization perk using earned Talent Points
+python -m voidfarer.cli mastery unlock void_cartographer
+python -m voidfarer.cli mastery unlock dreadnought_tactics
+```
+
+### 9. Ancient Precursor Relics Vault (Variable-Ratio)
+```bash
+# Inspect recovered alien artifacts and active passive fleet modifiers
+python -m voidfarer.cli relics
+```
+
+### 10. Expedition Jump Streaks (Loss Aversion)
+```bash
+# Check current jump streak and cumulative multiplier (+15% up to x2.50)
+python -m voidfarer.cli streak
+```
+
+### 11. Commodity Commerce & Drydock Services
 ```bash
 # Inspect local exchange prices
 python -m voidfarer.cli market
@@ -138,13 +172,13 @@ python -m voidfarer.cli repair --amount 25
 python -m voidfarer.cli refuel --amount 20
 ```
 
-### 8. Interactive Terminal Cockpit REPL
+### 12. Interactive Terminal Cockpit REPL
 ```bash
 python -m voidfarer.cli repl
 ```
-Inside the interactive REPL, you can execute all commands (`status`, `chart`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
+Inside the interactive REPL, you can execute all commands (`status`, `chart`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
-### 9. Holographic Web Cockpit Interface
+### 13. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 ```bash
 python -m voidfarer.cli serve --port 8080
@@ -152,10 +186,13 @@ python -m voidfarer.cli serve --port 8080
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom.
 - **Galaxy Sector Chart**: Hyperlane corridor network visualization and jump routing.
+- **Contracts & Bounties Tab**: Active operational task cards with live progress bars, Zeigarnik task renewal, and reward claim buttons.
+- **Mastery & Relics Tab**: Pilot rank progression, talent perk allocation grid, and ancient Precursor Relic vault.
+- **Expedition Streak Multiplier**: Real-time loss aversion flame badge scaling all trade and scan yields.
 - **Station Arsenal Tab**: Modular hardware upgrades shop with real-time stat bonuses.
 - **Fleet Command Tab**: Roster of autonomous mining/scout drones with live harvest buttons.
-- **Tactical Combat Overlay**: Real-time battle HUD with enemy health bar and tactical action buttons.
-- **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, button clicks, and alarms.
+- **Tactical Combat Overlay**: Battle HUD with tactical maneuvers, tactical combo counter, and critical overcharge state.
+- **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, level-up arpeggios, bounty chimes, and alarms.
 - **Reactor Power Matrix**: Dynamic power allocation sliders with instant subsystem re-routing.
 
 ---
@@ -164,5 +201,5 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Sub-Second Test Verification**: Comprehensive 33-test suite runs in under 0.8 seconds (`python -m unittest discover`).
+3. **Sub-Second Test Verification**: Comprehensive 44-test suite runs in under 0.8 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.

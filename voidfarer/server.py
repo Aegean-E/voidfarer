@@ -77,6 +77,18 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "systems": systems_data})
             return
 
+        if path == "/api/contracts":
+            with self.engine.lock:
+                contracts = [c.to_dict() for c in self.engine.state.ship.active_contracts]
+            self._send_json({"ok": True, "contracts": contracts})
+            return
+
+        if path == "/api/relics":
+            with self.engine.lock:
+                relics = [r.to_dict() for r in self.engine.state.ship.relics]
+            self._send_json({"ok": True, "relics": relics})
+            return
+
         # Serve static assets
         if path == "/" or path == "":
             rel_path = "index.html"
@@ -214,6 +226,20 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         if path == "/api/combat":
             action = str(body.get("action", "fire_lasers"))
             ok, msg = self.engine.combat_action(action)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/contract/claim":
+            contract_id = str(body.get("contract_id", ""))
+            ok, msg, info = self.engine.claim_contract(contract_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "claim_info": info, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/mastery/unlock":
+            talent_id = str(body.get("talent_id", ""))
+            ok, msg = self.engine.unlock_talent(talent_id)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return

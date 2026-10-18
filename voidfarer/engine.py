@@ -12,15 +12,26 @@ from voidfarer.galaxy import (
     GalaxyGenerator,
 )
 from voidfarer.models import (
+    BountyContract,
     CelestialBody,
     CombatEncounter,
     FleetDrone,
     GameState,
     MarketQuote,
+    PilotMastery,
+    PrecursorRelic,
     ShipPower,
     ShipState,
     ShipUpgrade,
     StarSystem,
+)
+from voidfarer.retention import (
+    CATALOG_RELICS,
+    PILOT_TALENTS,
+    calculate_passive_multipliers,
+    generate_contract,
+    generate_initial_contracts,
+    roll_relic_drop,
 )
 from voidfarer.upgrades import (
     CATALOG_DRONE_TEMPLATES,
@@ -44,10 +55,93 @@ class SimulationEngine:
         else:
             self.state = self._create_initial_state(seed)
 
+    def _clone_ship(self, **kwargs: Any) -> ShipState:
+        """Create a new ShipState preserving all unspecified telemetry and inventory attributes."""
+        cur = self.state.ship
+        return ShipState(
+            commander_name=kwargs.get("commander_name", cur.commander_name),
+            callsign=kwargs.get("callsign", cur.callsign),
+            ship_class=kwargs.get("ship_class", cur.ship_class),
+            hull=kwargs.get("hull", cur.hull),
+            max_hull=kwargs.get("max_hull", cur.max_hull),
+            shield=kwargs.get("shield", cur.shield),
+            max_shield=kwargs.get("max_shield", cur.max_shield),
+            fuel=kwargs.get("fuel", cur.fuel),
+            max_fuel=kwargs.get("max_fuel", cur.max_fuel),
+            credits=kwargs.get("credits", cur.credits),
+            cargo=kwargs.get("cargo", cur.cargo),
+            cargo_capacity=kwargs.get("cargo_capacity", cur.cargo_capacity),
+            current_system_id=kwargs.get("current_system_id", cur.current_system_id),
+            orbiting_body_id=kwargs.get("orbiting_body_id", cur.orbiting_body_id),
+            power=kwargs.get("power", cur.power),
+            upgrades=kwargs.get("upgrades", cur.upgrades),
+            equipped_upgrades=kwargs.get("equipped_upgrades", cur.equipped_upgrades),
+            fleet_drones=kwargs.get("fleet_drones", cur.fleet_drones),
+            flight_log=kwargs.get("flight_log", cur.flight_log),
+            streak=kwargs.get("streak", cur.streak),
+            relics=kwargs.get("relics", cur.relics),
+            mastery=kwargs.get("mastery", cur.mastery),
+            active_contracts=kwargs.get("active_contracts", cur.active_contracts),
+            tactical_combo=kwargs.get("tactical_combo", cur.tactical_combo),
+            near_miss_scanner_bonus=kwargs.get("near_miss_scanner_bonus", cur.near_miss_scanner_bonus),
+        )
+
+    def _award_pilot_xp(self, amount: int, current_mastery: PilotMastery) -> tuple[PilotMastery, list[str]]:
+        """Award experience points and compute level promotions and talent points."""
+        new_xp = current_mastery.xp + amount
+        level = current_mastery.level
+        next_xp = current_mastery.next_level_xp
+        points = current_mastery.talent_points
+        logs: list[str] = []
+
+        while new_xp >= next_xp:
+            new_xp -= next_xp
+            level += 1
+            points += 1
+            next_xp = int(next_xp * 1.5)
+            logs.append(f"★ PILOT PROMOTION: Reached Pilot Mastery Level {level}! Earned +1 Specialization Point.")
+
+        return PilotMastery(
+            level=level,
+            xp=new_xp,
+            next_level_xp=next_xp,
+            talent_points=points,
+            specializations=current_mastery.specializations,
+        ), logs
+
+    def _progress_contracts(self, category: str, amount: int = 1) -> tuple[tuple[BountyContract, ...], list[str]]:
+        """Advance matching active contracts toward completion objectives."""
+        updated: list[BountyContract] = []
+        logs: list[str] = []
+        for c in self.state.ship.active_contracts:
+            if c.category == category and not c.completed:
+                new_cnt = min(c.target_count, c.current_count + amount)
+                is_done = new_cnt >= c.target_count
+                updated.append(
+                    BountyContract(
+                        id=c.id,
+                        title=c.title,
+                        description=c.description,
+                        category=c.category,
+                        target_count=c.target_count,
+                        current_count=new_cnt,
+                        reward_credits=c.reward_credits,
+                        reward_xp=c.reward_xp,
+                        reward_relic_tier=c.reward_relic_tier,
+                        completed=is_done,
+                    )
+                )
+                if is_done:
+                    logs.append(f"OBJECTIVE COMPLETE: [{c.title}] ready to claim ({c.reward_credits} cr, {c.reward_xp} XP)!")
+            else:
+                updated.append(c)
+        return tuple(updated), logs
+
     def _create_initial_state(self, seed: int) -> GameState:
         """Construct a fresh universe state rooted at Sol System."""
         generator = GalaxyGenerator(seed=seed)
         systems = generator.generate_galaxy()
+        initial_contracts = generate_initial_contracts(self.rng)
 
         ship = ShipState(
             commander_name="Astraea",
@@ -77,6 +171,12 @@ class SimulationEngine:
                 ),
             ),
             flight_log=("Command initialization verified at Sol Starport.",),
+            streak=1,
+            relics=(),
+            mastery=PilotMastery(level=1, xp=0, next_level_xp=500, talent_points=0, specializations=()),
+            active_contracts=initial_contracts,
+            tactical_combo=0,
+            near_miss_scanner_bonus=0.0,
         )
 
         return GameState(
@@ -94,6 +194,7 @@ class SimulationEngine:
                 "anomalies_resolved": 0,
                 "combat_victories": 0,
                 "credits_earned": 0,
+                "contracts_completed": 0,
             },
         )
 
@@ -162,7 +263,8 @@ class SimulationEngine:
             if not target_sys:
                 return False, f"Unknown system target '{target_system_id}'."
 
-            # Calculate fuel cost (with warp booster upgrade bonus)
+            # Calculate fuel cost (with warp booster upgrade bonus, relics, and talents)
+            passives = calculate_passive_multipliers(self.state.ship)
             eng_pwr = self.state.ship.power.engines
             base_fuel = 8
             if eng_pwr >= 40:
@@ -175,6 +277,8 @@ class SimulationEngine:
             if "warp_booster_mk2" in self.state.ship.equipped_upgrades.values():
                 fuel_cost = max(2, int(fuel_cost * 0.65))
 
+            fuel_cost = max(1, int(fuel_cost * passives["fuel_efficiency"]))
+
             if self.state.ship.fuel < fuel_cost:
                 return False, f"Insufficient Quantum Fuel: {fuel_cost} units required, {self.state.ship.fuel} available."
 
@@ -183,11 +287,20 @@ class SimulationEngine:
             visited = set(self.state.visited_systems)
             visited.add(target_system_id)
 
-            log_entry = f"Hyperspace jump completed to {target_sys.name} (fuel consumed: {fuel_cost})."
+            # Update streak (rewarding safe transit under loss aversion mechanics)
+            new_streak = min(10, self.state.ship.streak + 1) if self.state.ship.hull >= 75 else self.state.ship.streak
+            streak_mult = 1.0 + min(1.5, (new_streak - 1) * 0.15)
+            log_entry = f"Hyperspace jump completed to {target_sys.name} (fuel: {fuel_cost}). Streak: x{streak_mult:.2f} ({new_streak} jumps)."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
             # Process autonomous fleet drone cycle
             updated_drones = self._process_drone_cycle(self.state.ship)
+
+            # Progress exploration contracts and award navigation pilot XP
+            updated_contracts, contract_logs = self._progress_contracts("exploration", 1)
+            new_log.extend(contract_logs)
+            new_mastery, xp_logs = self._award_pilot_xp(35, self.state.ship.mastery)
+            new_log.extend(xp_logs)
 
             # Encounter calculation
             anomaly = None
@@ -215,26 +328,16 @@ class SimulationEngine:
                 anomaly = GalaxyGenerator.get_random_anomaly(self.rng.randint(1, 99999))
                 new_log.append(f"WARNING: Deep-space anomaly detected! [{anomaly.title}]")
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
+            new_ship = self._clone_ship(
                 fuel=new_fuel,
-                max_fuel=self.state.ship.max_fuel,
-                credits=self.state.ship.credits,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
                 current_system_id=target_system_id,
                 orbiting_body_id=target_sys.bodies[0].id if target_sys.bodies else None,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
                 fleet_drones=updated_drones,
-                flight_log=tuple(new_log),
+                flight_log=tuple(new_log[-20:]),
+                streak=new_streak,
+                mastery=new_mastery,
+                active_contracts=updated_contracts,
+                tactical_combo=0,
             )
 
             stats = dict(self.state.stats)
@@ -272,25 +375,8 @@ class SimulationEngine:
             log_entry = f"Orbital capture achieved around {matched.name}."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
-                credits=self.state.ship.credits,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
+            new_ship = self._clone_ship(
                 orbiting_body_id=body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
                 flight_log=tuple(new_log),
             )
 
@@ -314,10 +400,12 @@ class SimulationEngine:
             if not body:
                 return False, "Cannot scan: ship must establish orbit around a celestial body first.", {}
 
+            passives = calculate_passive_multipliers(self.state.ship)
             pwr = self.state.ship.power.sensors
             credit_bounty = int(100 * (pwr / 25.0))
             if "deep_core_scanner" in self.state.ship.equipped_upgrades.values():
                 credit_bounty = int(credit_bounty * 1.5)
+            credit_bounty = int(credit_bounty * passives["scan_bounty"])
 
             # Mark scan completed on body
             updated_bodies = []
@@ -362,29 +450,36 @@ class SimulationEngine:
 
             # Award credit bounty
             new_credits = self.state.ship.credits + credit_bounty
+
+            # Variable Ratio relic drop and near-miss feedback
+            relic_bonus = passives["relic_find"] + self.state.ship.near_miss_scanner_bonus
+            found_relic, is_near_miss = roll_relic_drop(self.rng, bonus_prob=relic_bonus, current_system=cur_sys.name)
+            new_relics = list(self.state.ship.relics)
+            new_near_miss = 0.0
+
             log_entry = f"Sensor scan completed for {body.name}: awarded {credit_bounty} cr scientific research bounty."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
+            if found_relic:
+                new_relics.append(found_relic)
+                new_log.append(f"★ PRECURSOR ARTIFACT DISCOVERED: Salvaged {found_relic.rarity.upper()} relic [{found_relic.name}]! {found_relic.description}")
+            elif is_near_miss:
+                new_near_miss = 0.25
+                new_log.append("RESONANCE NEAR-MISS: Faint Precursor harmonics slipped out of phase! Sensor array tuned (+25% discovery chance next scan).")
+
+            # Progress exploration contracts and award survey pilot XP
+            updated_contracts, contract_logs = self._progress_contracts("exploration", 1)
+            new_log.extend(contract_logs)
+            new_mastery, xp_logs = self._award_pilot_xp(50, self.state.ship.mastery)
+            new_log.extend(xp_logs)
+
+            new_ship = self._clone_ship(
                 credits=new_credits,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
-                flight_log=tuple(new_log),
+                relics=tuple(new_relics),
+                near_miss_scanner_bonus=new_near_miss,
+                mastery=new_mastery,
+                active_contracts=updated_contracts,
+                flight_log=tuple(new_log[-20:]),
             )
 
             stats = dict(self.state.stats)
@@ -424,25 +519,8 @@ class SimulationEngine:
             log_entry = f"Reactor power redistributed: ENG {engines}%, SHD {shields}%, SEN {sensors}%, WEP {weapons}%."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
-                credits=self.state.ship.credits,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
+            new_ship = self._clone_ship(
                 power=new_power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
                 flight_log=tuple(new_log),
             )
 
@@ -480,6 +558,8 @@ class SimulationEngine:
             cargo = dict(self.state.ship.cargo)
             stats = dict(self.state.stats)
 
+            passives = calculate_passive_multipliers(self.state.ship)
+
             if is_buy:
                 total_cost = quote.buy_price * quantity
                 if self.state.ship.credits < total_cost:
@@ -498,38 +578,31 @@ class SimulationEngine:
                 if owned < quantity:
                     return False, f"Insufficient inventory: you have {owned} units, tried to sell {quantity}."
 
-                revenue = quote.sell_price * quantity
+                margin_mult = passives.get("trade_margin", 1.0)
+                revenue = int(quote.sell_price * quantity * margin_mult)
                 new_credits = self.state.ship.credits + revenue
                 cargo[commodity_id] = owned - quantity
                 if cargo[commodity_id] == 0:
                     del cargo[commodity_id]
                 stats["credits_earned"] += revenue
-                msg = f"Sold {quantity}x {quote.name} for {revenue} cr."
+                msg = f"Sold {quantity}x {quote.name} for {revenue} cr (trade margin: x{margin_mult:.2f})."
 
             stats["trades"] += 1
             log_entry = f"Market transaction: {msg}"
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
+            # Progress trade contracts and award merchant pilot XP
+            updated_contracts, contract_logs = self._progress_contracts("trade", 1)
+            new_log.extend(contract_logs)
+            new_mastery, xp_logs = self._award_pilot_xp(25, self.state.ship.mastery)
+            new_log.extend(xp_logs)
+
+            new_ship = self._clone_ship(
                 credits=new_credits,
                 cargo=cargo,
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
-                flight_log=tuple(new_log),
+                mastery=new_mastery,
+                active_contracts=updated_contracts,
+                flight_log=tuple(new_log[-20:]),
             )
 
             self.state = GameState(
@@ -585,25 +658,13 @@ class SimulationEngine:
             log_entry = f"Arsenal upgrade: Installed {upgrade.name} ({upgrade.slot.upper()}) for {upgrade.cost} cr."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
+            new_ship = self._clone_ship(
                 shield=new_shield,
                 max_shield=new_max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
                 credits=new_credits,
-                cargo=dict(self.state.ship.cargo),
                 cargo_capacity=new_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
                 upgrades=tuple(upg_list),
                 equipped_upgrades=equipped,
-                fleet_drones=self.state.ship.fleet_drones,
                 flight_log=tuple(new_log),
             )
 
@@ -651,24 +712,8 @@ class SimulationEngine:
             log_entry = f"Fleet expansion: Commissioned {new_drone.name} deployed to {target_sys}."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
+            new_ship = self._clone_ship(
                 credits=new_credits,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
                 fleet_drones=tuple(drones),
                 flight_log=tuple(new_log),
             )
@@ -714,24 +759,7 @@ class SimulationEngine:
             if not found:
                 return False, f"Drone with ID '{drone_id}' not found in fleet."
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
-                credits=self.state.ship.credits,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
+            new_ship = self._clone_ship(
                 fleet_drones=tuple(updated_drones),
                 flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [f"Drone {drone_id} redeployed to {target_system_id}."]),
             )
@@ -777,37 +805,33 @@ class SimulationEngine:
             if total_cargo == 0 and total_credits == 0:
                 return False, "No yield accumulated by fleet drones yet.", {"credits": 0, "cargo": 0}
 
+            passives = calculate_passive_multipliers(self.state.ship)
+            total_cargo = int(total_cargo * passives.get("drone_yield", 1.0))
+            total_credits = int(total_credits * passives.get("drone_yield", 1.0))
+
             cargo = dict(self.state.ship.cargo)
-            # Add cargo (titanium)
             cargo["titanium"] = cargo.get("titanium", 0) + total_cargo
             new_credits = self.state.ship.credits + total_credits
 
             stats = dict(self.state.stats)
             stats["credits_earned"] += total_credits
 
-            log_entry = f"Fleet harvest collected: +{total_credits} cr and +{total_cargo} titanium units."
+            log_entry = f"Fleet harvest collected: +{total_credits} cr and +{total_cargo} titanium units (yield multiplier x{passives.get('drone_yield', 1.0):.2f})."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
+            # Progress mining contracts and award fleet commander pilot XP
+            updated_contracts, contract_logs = self._progress_contracts("mining", total_cargo)
+            new_log.extend(contract_logs)
+            new_mastery, xp_logs = self._award_pilot_xp(40, self.state.ship.mastery)
+            new_log.extend(xp_logs)
+
+            new_ship = self._clone_ship(
                 credits=new_credits,
                 cargo=cargo,
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
                 fleet_drones=tuple(updated_drones),
-                flight_log=tuple(new_log),
+                mastery=new_mastery,
+                active_contracts=updated_contracts,
+                flight_log=tuple(new_log[-20:]),
             )
 
             self.state = GameState(
@@ -839,12 +863,20 @@ class SimulationEngine:
             cargo = dict(self.state.ship.cargo)
             stats = dict(self.state.stats)
 
+            passives = calculate_passive_multipliers(self.state.ship)
+
             if action == "fire_lasers":
-                # Calculate player strike damage
+                # Calculate player strike damage with upgrades, relics, and pilot talents
                 wep_power = self.state.ship.power.weapons
-                base_dmg = 20 + int(wep_power * 0.75)
-                if "pulse_cannon_array" in self.state.ship.equipped_upgrades.values():
-                    base_dmg += 15
+                bonus_wep = 15 if "pulse_cannon_array" in self.state.ship.equipped_upgrades.values() else 0
+                base_dmg = int((20 + int(wep_power * 0.75) + bonus_wep) * passives.get("laser_dmg", 1.0))
+
+                # Tactical Combo Overcharge loop (Flow & rhythmic attention)
+                new_combo = self.state.ship.tactical_combo + 1
+                crit_text = ""
+                if new_combo >= 3:
+                    base_dmg = int(base_dmg * 1.5)
+                    crit_text = f" (TACTICAL OVERCHARGE x{new_combo}: +50% CRIT DAMAGE!)"
 
                 enemy_remaining = combat.enemy_hull - base_dmg
 
@@ -855,33 +887,35 @@ class SimulationEngine:
                     stats["combat_victories"] += 1
                     stats["credits_earned"] += combat.bounty_credits
 
+                    # Variable Ratio salvage drop from hostile wreckage
+                    salvage_relic, _ = roll_relic_drop(self.rng, bonus_prob=0.20, current_system=self.current_system.name)
+                    new_relics = list(self.state.ship.relics)
+                    relic_note = ""
+                    if salvage_relic:
+                        new_relics.append(salvage_relic)
+                        relic_note = f" Salvaged Precursor relic: [{salvage_relic.name}] ({salvage_relic.rarity.upper()})!"
+
+                    # Progress combat contracts and award pilot combat XP
+                    updated_contracts, contract_logs = self._progress_contracts("combat", 1)
+                    new_mastery, xp_logs = self._award_pilot_xp(200, self.state.ship.mastery)
+
                     msg = (
                         f"VICTORY: {combat.enemy_name} neutralized! "
-                        f"Collected {combat.bounty_credits} cr bounty and salvaged 2x {combat.salvage_commodity}."
+                        f"Collected {combat.bounty_credits} cr bounty, salvaged 2x {combat.salvage_commodity}.{relic_note}"
                     )
                     log_entry = f"Combat outcome: {msg}"
-                    new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+                    new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + contract_logs + xp_logs
 
-                    new_ship = ShipState(
-                        commander_name=self.state.ship.commander_name,
-                        callsign=self.state.ship.callsign,
-                        ship_class=self.state.ship.ship_class,
+                    new_ship = self._clone_ship(
                         hull=new_hull,
-                        max_hull=self.state.ship.max_hull,
                         shield=new_shield,
-                        max_shield=self.state.ship.max_shield,
-                        fuel=self.state.ship.fuel,
-                        max_fuel=self.state.ship.max_fuel,
                         credits=new_credits,
                         cargo=cargo,
-                        cargo_capacity=self.state.ship.cargo_capacity,
-                        current_system_id=self.state.ship.current_system_id,
-                        orbiting_body_id=self.state.ship.orbiting_body_id,
-                        power=self.state.ship.power,
-                        upgrades=self.state.ship.upgrades,
-                        equipped_upgrades=self.state.ship.equipped_upgrades,
-                        fleet_drones=self.state.ship.fleet_drones,
-                        flight_log=tuple(new_log),
+                        relics=tuple(new_relics),
+                        mastery=new_mastery,
+                        active_contracts=updated_contracts,
+                        tactical_combo=0,
+                        flight_log=tuple(new_log[-20:]),
                     )
 
                     self.state = GameState(
@@ -898,14 +932,18 @@ class SimulationEngine:
 
                 # Enemy counter-attack
                 inbound = combat.enemy_damage
+                new_streak = self.state.ship.streak
                 if new_shield >= inbound:
                     new_shield -= inbound
                 else:
                     overflow = inbound - new_shield
                     new_shield = 0
                     new_hull = max(0, new_hull - overflow)
+                    new_combo = 0  # Combo disrupted on hull breach
+                    if new_hull < 50:
+                        new_streak = max(1, self.state.ship.streak - 1)
 
-                msg = f"Laser barrage dealt {base_dmg} damage (Enemy HP: {enemy_remaining}/{combat.enemy_max_hull}). Inbound counter-battery dealt {inbound} damage."
+                msg = f"Laser strike dealt {base_dmg} damage{crit_text} (Enemy HP: {enemy_remaining}/{combat.enemy_max_hull}). Inbound counter-battery dealt {inbound} damage."
                 new_combat = CombatEncounter(
                     id=combat.id,
                     enemy_name=combat.enemy_name,
@@ -918,16 +956,19 @@ class SimulationEngine:
                 )
 
             elif action == "shield_absorb":
-                # Emergency shield boost
-                new_shield = min(self.state.ship.max_shield, new_shield + 30)
+                # Emergency shield boost with Dreadnought mastery talent bonus
+                boost = 30 + (25 if "dreadnought_tactics" in self.state.ship.mastery.specializations else 0)
+                new_shield = min(self.state.ship.max_shield, new_shield + boost)
                 mitigated = max(1, int(combat.enemy_damage * 0.35))
                 if new_shield >= mitigated:
                     new_shield -= mitigated
                 else:
                     new_hull = max(0, new_hull - (mitigated - new_shield))
                     new_shield = 0
-                msg = f"Shield capacitors overcharged (+30 MW). Enemy barrage deflected, taking only {mitigated} damage."
+                msg = f"Shield capacitors overcharged (+{boost} MW). Enemy barrage deflected, taking only {mitigated} damage."
                 new_combat = combat
+                new_combo = self.state.ship.tactical_combo
+                new_streak = self.state.ship.streak
 
             elif action == "evasive_burn":
                 # Thruster evasion
@@ -945,32 +986,20 @@ class SimulationEngine:
                         new_shield = 0
                     msg = f"Evasive burn failed! Suffered {dmg} damage during high-G maneuver."
                     new_combat = combat
+                new_combo = self.state.ship.tactical_combo
+                new_streak = self.state.ship.streak
 
             elif action == "flee":
                 if self.state.ship.fuel < 8:
                     return False, "Insufficient fuel for emergency jump (8 units required)."
                 new_fuel = self.state.ship.fuel - 8
-                msg = "Emergency hyperspace micro-jump executed. Safely disengaged from hostile sector."
-                new_combat = None
-                new_ship = ShipState(
-                    commander_name=self.state.ship.commander_name,
-                    callsign=self.state.ship.callsign,
-                    ship_class=self.state.ship.ship_class,
+                msg = "Emergency hyperspace micro-jump executed. Safely disengaged from hostile sector (expedition streak reset)."
+                new_ship = self._clone_ship(
                     hull=new_hull,
-                    max_hull=self.state.ship.max_hull,
                     shield=new_shield,
-                    max_shield=self.state.ship.max_shield,
                     fuel=new_fuel,
-                    max_fuel=self.state.ship.max_fuel,
-                    credits=self.state.ship.credits,
-                    cargo=dict(self.state.ship.cargo),
-                    cargo_capacity=self.state.ship.cargo_capacity,
-                    current_system_id=self.state.ship.current_system_id,
-                    orbiting_body_id=self.state.ship.orbiting_body_id,
-                    power=self.state.ship.power,
-                    upgrades=self.state.ship.upgrades,
-                    equipped_upgrades=self.state.ship.equipped_upgrades,
-                    fleet_drones=self.state.ship.fleet_drones,
+                    streak=1,
+                    tactical_combo=0,
                     flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [msg]),
                 )
                 self.state = GameState(
@@ -988,26 +1017,12 @@ class SimulationEngine:
                 return False, f"Unknown combat action '{action}'."
 
             new_log = list(self.state.ship.flight_log[-19:]) + [msg]
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
+            new_ship = self._clone_ship(
                 hull=new_hull,
-                max_hull=self.state.ship.max_hull,
                 shield=new_shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
-                credits=new_credits,
-                cargo=cargo,
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
-                flight_log=tuple(new_log),
+                tactical_combo=new_combo,
+                streak=new_streak,
+                flight_log=tuple(new_log[-20:]),
             )
 
             self.state = GameState(
@@ -1047,25 +1062,8 @@ class SimulationEngine:
                     )
                     new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-                    new_ship = ShipState(
-                        commander_name=self.state.ship.commander_name,
-                        callsign=self.state.ship.callsign,
-                        ship_class=self.state.ship.ship_class,
+                    new_ship = self._clone_ship(
                         hull=new_hull,
-                        max_hull=self.state.ship.max_hull,
-                        shield=self.state.ship.shield,
-                        max_shield=self.state.ship.max_shield,
-                        fuel=self.state.ship.fuel,
-                        max_fuel=self.state.ship.max_fuel,
-                        credits=self.state.ship.credits,
-                        cargo=dict(self.state.ship.cargo),
-                        cargo_capacity=self.state.ship.cargo_capacity,
-                        current_system_id=self.state.ship.current_system_id,
-                        orbiting_body_id=self.state.ship.orbiting_body_id,
-                        power=self.state.ship.power,
-                        upgrades=self.state.ship.upgrades,
-                        equipped_upgrades=self.state.ship.equipped_upgrades,
-                        fleet_drones=self.state.ship.fleet_drones,
                         flight_log=tuple(new_log),
                     )
 
@@ -1094,25 +1092,11 @@ class SimulationEngine:
             log_entry = f"Anomaly resolved: {choice.outcome_text}"
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
+            new_ship = self._clone_ship(
                 hull=new_hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
                 fuel=new_fuel,
-                max_fuel=self.state.ship.max_fuel,
                 credits=new_credits,
                 cargo=cargo,
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
                 flight_log=tuple(new_log),
             )
 
@@ -1150,25 +1134,9 @@ class SimulationEngine:
             if self.state.ship.credits < cost:
                 return False, f"Insufficient credits: repair costs {cost} cr ({actual} HP)."
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
+            new_ship = self._clone_ship(
                 hull=self.state.ship.hull + actual,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
-                fuel=self.state.ship.fuel,
-                max_fuel=self.state.ship.max_fuel,
                 credits=self.state.ship.credits - cost,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
                 flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [f"Drydock repair: +{actual} HP for {cost} cr."]),
             )
 
@@ -1201,25 +1169,9 @@ class SimulationEngine:
             if self.state.ship.credits < cost:
                 return False, f"Insufficient credits: refueling costs {cost} cr ({actual} fuel)."
 
-            new_ship = ShipState(
-                commander_name=self.state.ship.commander_name,
-                callsign=self.state.ship.callsign,
-                ship_class=self.state.ship.ship_class,
-                hull=self.state.ship.hull,
-                max_hull=self.state.ship.max_hull,
-                shield=self.state.ship.shield,
-                max_shield=self.state.ship.max_shield,
+            new_ship = self._clone_ship(
                 fuel=self.state.ship.fuel + actual,
-                max_fuel=self.state.ship.max_fuel,
                 credits=self.state.ship.credits - cost,
-                cargo=dict(self.state.ship.cargo),
-                cargo_capacity=self.state.ship.cargo_capacity,
-                current_system_id=self.state.ship.current_system_id,
-                orbiting_body_id=self.state.ship.orbiting_body_id,
-                power=self.state.ship.power,
-                upgrades=self.state.ship.upgrades,
-                equipped_upgrades=self.state.ship.equipped_upgrades,
-                fleet_drones=self.state.ship.fleet_drones,
                 flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [f"Refueled +{actual} quantum fuel for {cost} cr."]),
             )
 
@@ -1286,6 +1238,114 @@ class SimulationEngine:
                 stats=self.state.stats,
             )
 
+    def claim_contract(self, contract_id: str) -> tuple[bool, str, dict[str, Any]]:
+        """Claim rewards for a fulfilled contract and immediately draw a new assignment."""
+        with self.lock:
+            found = None
+            for c in self.state.ship.active_contracts:
+                if c.id == contract_id:
+                    found = c
+                    break
+
+            if not found:
+                return False, f"Contract '{contract_id}' not found in active assignments.", {}
+
+            if not found.completed:
+                return False, f"Contract '{found.title}' is not yet completed ({found.current_count}/{found.target_count}).", {}
+
+            new_credits = self.state.ship.credits + found.reward_credits
+            new_mastery, xp_logs = self._award_pilot_xp(found.reward_xp, self.state.ship.mastery)
+
+            # Roll relic if tier specified
+            relic = None
+            new_relics = list(self.state.ship.relics)
+            if found.reward_relic_tier:
+                relic, _ = roll_relic_drop(self.rng, forced_tier=found.reward_relic_tier, current_system=self.current_system.name)
+                if relic:
+                    new_relics.append(relic)
+
+            # Continuous Zeigarnik cycle: replace completed contract with a new task
+            new_contract = generate_contract(self.rng, category=found.category)
+            updated_contracts = tuple([c for c in self.state.ship.active_contracts if c.id != contract_id] + [new_contract])
+
+            relic_msg = f" Discovered Precursor Relic [{relic.name}] ({relic.rarity.upper()})!" if relic else ""
+            log_entry = f"CONTRACT CLAIMED: [{found.title}] rewarded {found.reward_credits} cr and {found.reward_xp} XP.{relic_msg}"
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + xp_logs
+
+            stats = dict(self.state.stats)
+            stats["credits_earned"] += found.reward_credits
+            stats["contracts_completed"] = stats.get("contracts_completed", 0) + 1
+
+            new_ship = self._clone_ship(
+                credits=new_credits,
+                mastery=new_mastery,
+                relics=tuple(new_relics),
+                active_contracts=updated_contracts,
+                flight_log=tuple(new_log[-20:]),
+            )
+
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=new_ship,
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                stats=stats,
+            )
+
+            return True, f"Claimed {found.title}: +{found.reward_credits} cr, +{found.reward_xp} XP.{relic_msg} New contract: [{new_contract.title}].", {
+                "reward_credits": found.reward_credits,
+                "reward_xp": found.reward_xp,
+                "relic": relic.to_dict() if relic else None,
+                "new_contract": new_contract.to_dict(),
+            }
+
+    def unlock_talent(self, talent_id: str) -> tuple[bool, str]:
+        """Unlock a Pilot Specialization Perk using available talent points."""
+        with self.lock:
+            talent = PILOT_TALENTS.get(talent_id)
+            if not talent:
+                return False, f"Unknown pilot talent '{talent_id}'. Available: {', '.join(PILOT_TALENTS.keys())}."
+
+            mastery = self.state.ship.mastery
+            if mastery.talent_points < 1:
+                return False, "Insufficient talent points (0 available). Advance Pilot Mastery level first."
+
+            if talent_id in mastery.specializations:
+                return False, f"Perk '{talent['name']}' is already unlocked."
+
+            new_specs = tuple(list(mastery.specializations) + [talent_id])
+            new_mastery = PilotMastery(
+                level=mastery.level,
+                xp=mastery.xp,
+                next_level_xp=mastery.next_level_xp,
+                talent_points=mastery.talent_points - 1,
+                specializations=new_specs,
+            )
+
+            log_entry = f"★ SPECIALIZATION UNLOCKED: Pilot mastered [{talent['name']}]! {talent['description']}"
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+
+            new_ship = self._clone_ship(
+                mastery=new_mastery,
+                flight_log=tuple(new_log[-20:]),
+            )
+
+            self.state = GameState(
+                version=self.state.version,
+                galaxy_seed=self.state.galaxy_seed,
+                ship=new_ship,
+                systems=self.state.systems,
+                visited_systems=self.state.visited_systems,
+                active_anomaly=self.state.active_anomaly,
+                active_combat=self.state.active_combat,
+                stats=self.state.stats,
+            )
+
+            return True, f"Specialization unlocked: {talent['name']}."
+
     def get_status_snapshot(self) -> dict[str, Any]:
         """Produce a comprehensive JSON serializable telemetry snapshot for the HUD."""
         with self.lock:
@@ -1318,4 +1378,6 @@ class SimulationEngine:
                 "market_quotes": market_quotes,
                 "catalog_upgrades": [u.to_dict() for u in CATALOG_UPGRADES],
                 "catalog_drones": CATALOG_DRONE_TEMPLATES,
+                "catalog_talents": PILOT_TALENTS,
+                "catalog_relics": [r.to_dict() for r in CATALOG_RELICS],
             }

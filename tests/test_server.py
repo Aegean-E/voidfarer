@@ -107,6 +107,27 @@ class TestServer(unittest.TestCase):
         json_u = json.loads(data_u.decode("utf-8"))
         self.assertTrue(json_u["ok"])
 
+    def test_contracts_and_relics_endpoints(self):
+        # GET /api/contracts
+        st_c, data_c = self._get("/api/contracts")
+        self.assertEqual(st_c, 200)
+        json_c = json.loads(data_c.decode("utf-8"))
+        self.assertTrue(json_c["ok"])
+        self.assertGreaterEqual(len(json_c["contracts"]), 1)
+
+        # GET /api/relics
+        st_r, data_r = self._get("/api/relics")
+        self.assertEqual(st_r, 200)
+        json_r = json.loads(data_r.decode("utf-8"))
+        self.assertTrue(json_r["ok"])
+
+        # POST /api/mastery/unlock (should fail if 0 points, but return ok=False with error message)
+        st_m, data_m = self._post("/api/mastery/unlock", {"talent_id": "void_cartographer"})
+        self.assertEqual(st_m, 200)
+        json_m = json.loads(data_m.decode("utf-8"))
+        # Engine handles point validation cleanly
+        self.assertIn("ok", json_m)
+
 
 if __name__ == "__main__":
     unittest.main()

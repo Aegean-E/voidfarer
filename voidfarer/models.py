@@ -300,6 +300,98 @@ class CombatEncounter:
 
 
 @dataclass(frozen=True)
+class BountyContract:
+    """Dynamic mission contract leveraging Zeigarnik task completion tension."""
+
+    id: str
+    title: str
+    description: str
+    category: str  # 'combat', 'mining', 'exploration', 'trade'
+    target_count: int
+    current_count: int = 0
+    reward_credits: int = 500
+    reward_xp: int = 150
+    reward_relic_tier: str | None = None
+    completed: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> BountyContract:
+        return cls(
+            id=str(data["id"]),
+            title=str(data["title"]),
+            description=str(data["description"]),
+            category=str(data.get("category", "exploration")),
+            target_count=int(data.get("target_count", 1)),
+            current_count=int(data.get("current_count", 0)),
+            reward_credits=int(data.get("reward_credits", 500)),
+            reward_xp=int(data.get("reward_xp", 150)),
+            reward_relic_tier=data.get("reward_relic_tier"),
+            completed=bool(data.get("completed", False)),
+        )
+
+
+@dataclass(frozen=True)
+class PrecursorRelic:
+    """Ancient artifact dropped via variable ratio schedule with passive multipliers."""
+
+    id: str
+    name: str
+    rarity: str  # 'common', 'rare', 'epic', 'legendary'
+    description: str
+    passive_stat: str  # 'laser_dmg', 'shield_cap', 'fuel_efficiency', 'trade_margin', 'scanner_bounty'
+    stat_multiplier: float  # e.g. 0.15 for +15%
+    discovered_at_system: str = "sol"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> PrecursorRelic:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            rarity=str(data.get("rarity", "common")),
+            description=str(data.get("description", "")),
+            passive_stat=str(data.get("passive_stat", "laser_dmg")),
+            stat_multiplier=float(data.get("stat_multiplier", 0.05)),
+            discovered_at_system=str(data.get("discovered_at_system", "sol")),
+        )
+
+
+@dataclass(frozen=True)
+class PilotMastery:
+    """Self-Determination Theory competence framework: XP, levels, and talent specs."""
+
+    level: int = 1
+    xp: int = 0
+    next_level_xp: int = 500
+    talent_points: int = 0
+    specializations: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "level": self.level,
+            "xp": self.xp,
+            "next_level_xp": self.next_level_xp,
+            "talent_points": self.talent_points,
+            "specializations": list(self.specializations),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> PilotMastery:
+        return cls(
+            level=int(data.get("level", 1)),
+            xp=int(data.get("xp", 0)),
+            next_level_xp=int(data.get("next_level_xp", 500)),
+            talent_points=int(data.get("talent_points", 0)),
+            specializations=tuple(data.get("specializations", ())),
+        )
+
+
+@dataclass(frozen=True)
 class ShipState:
     """Complete telemetry, resource inventory, and status of the player's flagship."""
 
@@ -322,6 +414,12 @@ class ShipState:
     equipped_upgrades: dict[str, str] = field(default_factory=dict)
     fleet_drones: tuple[FleetDrone, ...] = ()
     flight_log: tuple[str, ...] = ()
+    streak: int = 1
+    relics: tuple[PrecursorRelic, ...] = ()
+    mastery: PilotMastery = field(default_factory=PilotMastery)
+    active_contracts: tuple[BountyContract, ...] = ()
+    tactical_combo: int = 0
+    near_miss_scanner_bonus: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -344,6 +442,12 @@ class ShipState:
             "equipped_upgrades": dict(self.equipped_upgrades),
             "fleet_drones": [d.to_dict() for d in self.fleet_drones],
             "flight_log": list(self.flight_log),
+            "streak": self.streak,
+            "relics": [r.to_dict() for r in self.relics],
+            "mastery": self.mastery.to_dict(),
+            "active_contracts": [c.to_dict() for c in self.active_contracts],
+            "tactical_combo": self.tactical_combo,
+            "near_miss_scanner_bonus": self.near_miss_scanner_bonus,
         }
 
     @classmethod
@@ -368,6 +472,12 @@ class ShipState:
             equipped_upgrades=dict(data.get("equipped_upgrades", {})),
             fleet_drones=tuple(FleetDrone.from_dict(d) for d in data.get("fleet_drones", [])),
             flight_log=tuple(data.get("flight_log", ())),
+            streak=int(data.get("streak", 1)),
+            relics=tuple(PrecursorRelic.from_dict(r) for r in data.get("relics", [])),
+            mastery=PilotMastery.from_dict(data.get("mastery", {})),
+            active_contracts=tuple(BountyContract.from_dict(c) for c in data.get("active_contracts", [])),
+            tactical_combo=int(data.get("tactical_combo", 0)),
+            near_miss_scanner_bonus=float(data.get("near_miss_scanner_bonus", 0.0)),
         )
 
 

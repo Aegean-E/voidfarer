@@ -154,6 +154,121 @@ class TestEngine(unittest.TestCase):
         self.assertIsNone(self.engine.state.active_combat)
         self.assertEqual(self.engine.state.stats["combat_victories"], 1)
 
+    def test_contracts_progression_and_claiming(self):
+        self.assertGreaterEqual(len(self.engine.state.ship.active_contracts), 1)
+        contract = self.engine.state.ship.active_contracts[0]
+
+        # Artificially set contract as fulfilled
+        fulfilled = contract.__class__(
+            id=contract.id,
+            title=contract.title,
+            description=contract.description,
+            category=contract.category,
+            target_count=contract.target_count,
+            current_count=contract.target_count,
+            reward_credits=500,
+            reward_xp=150,
+            reward_relic_tier="common",
+            completed=True,
+        )
+        remaining = [c for c in self.engine.state.ship.active_contracts if c.id != contract.id] + [fulfilled]
+        self.engine.state = self.engine.state.__class__(
+            version=self.engine.state.version,
+            galaxy_seed=self.engine.state.galaxy_seed,
+            ship=self.engine._clone_ship(active_contracts=tuple(remaining)),
+            systems=self.engine.state.systems,
+            visited_systems=self.engine.state.visited_systems,
+            active_anomaly=None,
+            active_combat=None,
+            stats=self.engine.state.stats,
+        )
+
+        creds_before = self.engine.state.ship.credits
+        xp_before = self.engine.state.ship.mastery.xp
+        ok, msg, info = self.engine.claim_contract(fulfilled.id)
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.credits, creds_before + 500)
+        self.assertEqual(self.engine.state.ship.mastery.xp, xp_before + 150)
+        self.assertIn("new_contract", info)
+        self.assertIsNotNone(info["relic"])
+        self.assertEqual(len(self.engine.state.ship.active_contracts), 3)
+
+    def test_pilot_mastery_and_talents(self):
+        # Promote pilot by granting talent point
+        promoted_mastery = self.engine.state.ship.mastery.__class__(
+            level=2,
+            xp=200,
+            next_level_xp=750,
+            talent_points=1,
+            specializations=(),
+        )
+        self.engine.state = self.engine.state.__class__(
+            version=self.engine.state.version,
+            galaxy_seed=self.engine.state.galaxy_seed,
+            ship=self.engine._clone_ship(mastery=promoted_mastery),
+            systems=self.engine.state.systems,
+            visited_systems=self.engine.state.visited_systems,
+            active_anomaly=None,
+            active_combat=None,
+            stats=self.engine.state.stats,
+        )
+
+        # Unlock talent
+        ok, msg = self.engine.unlock_talent("void_cartographer")
+        self.assertTrue(ok)
+        self.assertIn("void_cartographer", self.engine.state.ship.mastery.specializations)
+        self.assertEqual(self.engine.state.ship.mastery.talent_points, 0)
+
+        # Fail when 0 points remaining
+        ok_fail, _ = self.engine.unlock_talent("dreadnought_tactics")
+        self.assertFalse(ok_fail)
+
+    def test_expedition_streak_and_combos(self):
+        # Consecutive jump increments streak
+        conn = self.engine.current_system.connections[0]
+        self.engine.jump(conn)
+        self.assertGreaterEqual(self.engine.state.ship.streak, 2)
+
+        # Initiate combat and test combo overcharge
+        combat = CombatEncounter(
+            id="combat_boss",
+            enemy_name="Dread Raider",
+            enemy_class="Cruiser",
+            enemy_hull=200,
+            enemy_max_hull=200,
+            enemy_damage=5,
+            bounty_credits=1000,
+        )
+        self.engine.state = self.engine.state.__class__(
+            version=self.engine.state.version,
+            galaxy_seed=self.engine.state.galaxy_seed,
+            ship=self.engine._clone_ship(shield=100),
+            systems=self.engine.state.systems,
+            visited_systems=self.engine.state.visited_systems,
+            active_anomaly=None,
+            active_combat=combat,
+            stats=self.engine.state.stats,
+        )
+
+        # Fire 1
+        self.engine.combat_action("fire_lasers")
+        self.assertEqual(self.engine.state.ship.tactical_combo, 1)
+
+        # Fire 2
+        self.engine.combat_action("fire_lasers")
+        self.assertEqual(self.engine.state.ship.tactical_combo, 2)
+
+        # Fire 3 triggers overcharge crit
+        ok3, msg3 = self.engine.combat_action("fire_lasers")
+        self.assertTrue(ok3)
+        self.assertIn("TACTICAL OVERCHARGE", msg3)
+
+        # Fleeing resets streak and combo
+        ok_flee, _ = self.engine.combat_action("flee")
+        self.assertTrue(ok_flee)
+        self.assertEqual(self.engine.state.ship.streak, 1)
+        self.assertEqual(self.engine.state.ship.tactical_combo, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

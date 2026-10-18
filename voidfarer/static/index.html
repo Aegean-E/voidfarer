@@ -62,6 +62,23 @@
                     </div>
                     <div class="vital-subtext" id="cargoSummary">HOLD: 15/40</div>
                 </div>
+
+                <div class="vital-card streak-card" id="vitalStreakCard">
+                    <div class="vital-label">
+                        <span>EXPEDITION STREAK</span>
+                        <strong class="flame-text" id="streakVal">🔥 1 JUMP (x1.00)</strong>
+                    </div>
+                    <div class="vital-subtext" id="streakSubtext">LOSS AVERSION: FLEE RESETS</div>
+                </div>
+
+                <div class="vital-card mastery-card" id="vitalMasteryCard">
+                    <div class="vital-label">
+                        <span>PILOT MASTERY</span>
+                        <strong class="mastery-text" id="masteryLevelVal">★ LVL 1</strong>
+                    </div>
+                    <div class="vital-meter"><div class="meter-fill mastery-fill" id="masteryBar" style="width: 0%;"></div></div>
+                    <div class="vital-subtext" id="masterySubtext">0/500 XP // 0 PERKS</div>
+                </div>
             </div>
 
             <!-- Quick Action & Audio Controls -->
@@ -216,6 +233,9 @@
                         <button class="btn-combat btn-amber" id="btnCombatEvade">🚀 EVASIVE BURN</button>
                         <button class="btn-combat btn-purple" id="btnCombatFlee">⚡ FLEE SECTOR (-8 FUEL)</button>
                     </div>
+                    <div class="combat-combo-badge" id="combatComboBadge" style="display: none;">
+                        ⚡ TACTICAL COMBO: <span id="combatComboCount">0</span> <strong class="crit-ready-text" id="critReadyText">(CRITICAL OVERCHARGE READY!)</strong>
+                    </div>
                 </div>
 
                 <!-- Anomaly Modal / Card (Prominent when active) -->
@@ -235,7 +255,9 @@
                 <div class="deck-tabs-header">
                     <button class="deck-tab-btn active" id="tabBtnMarket">COMMERCE</button>
                     <button class="deck-tab-btn" id="tabBtnArsenal">ARSENAL</button>
-                    <button class="deck-tab-btn" id="tabBtnFleet">FLEET COMMAND</button>
+                    <button class="deck-tab-btn" id="tabBtnFleet">FLEET</button>
+                    <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
+                    <button class="deck-tab-btn" id="tabBtnMastery">MASTERY & RELICS</button>
                 </div>
 
                 <!-- Tab 1: Station Market / Exchange -->
@@ -339,6 +361,47 @@
                                 <small>1,300 cr // Repels Pirates</small>
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Sector Bounties & Dynamic Contracts -->
+                <div class="contracts-panel tab-content" id="tabContentContracts" style="display: none;">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot dot-amber"></span> ZEIGARNIK-LOOP</div>
+                        <h2 class="panel-title">SECTOR BOUNTIES & CONTRACTS</h2>
+                    </div>
+                    <p class="panel-intro-text">Continuous operational assignments. Completing tasks yields credits, pilot XP, and Precursor Relics while immediately deploying next-tier assignments.</p>
+                    <div class="contracts-list" id="contractsList">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Tab 5: Pilot Mastery Tree & Precursor Relics -->
+                <div class="mastery-panel tab-content" id="tabContentMastery" style="display: none;">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot dot-purple"></span> SELF-DETERMINATION</div>
+                        <h2 class="panel-title">PILOT SPECIALIZATIONS</h2>
+                    </div>
+                    
+                    <div class="mastery-perks-banner">
+                        <div class="perks-badge">
+                            <span>AVAILABLE TALENT POINTS</span>
+                            <strong id="availableTalentPoints">0</strong>
+                        </div>
+                        <p class="perks-desc">Allocate talent perks to specialize in exploration, dreadnought combat, swarm fleets, or quantum smuggling.</p>
+                    </div>
+
+                    <div class="talents-grid" id="talentsGrid">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="panel-header" style="margin-top: 1.2rem;">
+                        <div class="panel-tag"><span class="badge-dot dot-cyan"></span> REINFORCEMENT-VAULT</div>
+                        <h2 class="panel-title">PRECURSOR RELICS VAULT</h2>
+                    </div>
+                    <p class="panel-intro-text">Alien artifacts recovered via sensor sweeps, hazardous anomalies, and contracts. Provide permanent fleet bonuses.</p>
+                    <div class="relics-grid" id="relicsGrid">
+                        <!-- Populated dynamically -->
                     </div>
                 </div>
 

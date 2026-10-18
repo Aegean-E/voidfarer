@@ -1288,3 +1288,452 @@ body.cockpit-theme {
     color: #ffd700;
 }
 
+/* === Retention & Behavioral Attention Mechanics Styles === */
+
+/* Expedition Streak Card */
+.streak-card {
+    border-color: rgba(255, 75, 43, 0.4);
+    background: linear-gradient(135deg, rgba(255, 65, 108, 0.12), rgba(255, 75, 43, 0.05));
+}
+
+.flame-text {
+    font-family: var(--font-display);
+    color: #ff5e36;
+    text-shadow: 0 0 10px rgba(255, 94, 54, 0.6);
+    letter-spacing: 0.5px;
+}
+
+.streak-card.high-streak {
+    animation: flamePulse 2s infinite alternate;
+}
+
+@keyframes flamePulse {
+    0% { box-shadow: 0 0 5px rgba(255, 94, 54, 0.3); border-color: rgba(255, 94, 54, 0.5); }
+    100% { box-shadow: 0 0 18px rgba(255, 94, 54, 0.7); border-color: rgba(255, 94, 54, 0.9); }
+}
+
+/* Pilot Mastery Card */
+.mastery-card {
+    border-color: rgba(199, 125, 255, 0.35);
+    background: linear-gradient(135deg, rgba(199, 125, 255, 0.1), rgba(114, 9, 183, 0.05));
+}
+
+.mastery-text {
+    font-family: var(--font-display);
+    color: var(--neon-purple);
+    text-shadow: 0 0 8px rgba(199, 125, 255, 0.5);
+}
+
+.mastery-fill {
+    background: linear-gradient(90deg, #7209b7, #c77dff);
+    box-shadow: 0 0 8px rgba(199, 125, 255, 0.6);
+}
+
+/* Tactical Combat Combo Badge */
+.combat-combo-badge {
+    background: rgba(255, 170, 0, 0.15);
+    border: 1px solid var(--neon-amber);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    color: var(--neon-amber);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 0 12px rgba(255, 170, 0, 0.3);
+    animation: comboGlow 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes comboGlow {
+    0% { transform: scale(1); filter: brightness(1); }
+    100% { transform: scale(1.02); filter: brightness(1.25); }
+}
+
+.crit-ready-text {
+    color: #ff3355;
+    font-size: 0.7rem;
+    animation: blinkCrit 0.8s infinite;
+}
+
+@keyframes blinkCrit {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Deck Tab Notification Badge */
+.tab-badge {
+    background: var(--neon-red);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+    margin-left: 4px;
+    box-shadow: 0 0 8px var(--neon-red);
+    animation: pulseBadge 1.5s infinite;
+}
+
+@keyframes pulseBadge {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+.panel-intro-text {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+    margin-bottom: 10px;
+    padding: 0 4px;
+}
+
+/* Contracts Panel */
+.contracts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.contract-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.contract-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-glow);
+}
+
+.contract-card.completed {
+    border-color: rgba(0, 255, 170, 0.6);
+    background: linear-gradient(135deg, rgba(0, 255, 170, 0.1), rgba(10, 18, 38, 0.8));
+    box-shadow: 0 0 15px rgba(0, 255, 170, 0.2);
+}
+
+.contract-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.contract-cat-badge {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.cat-exploration { background: rgba(0, 240, 255, 0.2); color: var(--neon-cyan); border: 1px solid rgba(0, 240, 255, 0.3); }
+.cat-trade { background: rgba(255, 170, 0, 0.2); color: var(--neon-amber); border: 1px solid rgba(255, 170, 0, 0.3); }
+.cat-combat { background: rgba(255, 51, 85, 0.2); color: var(--neon-red); border: 1px solid rgba(255, 51, 85, 0.3); }
+.cat-fleet { background: rgba(0, 255, 170, 0.2); color: var(--neon-green); border: 1px solid rgba(0, 255, 170, 0.3); }
+
+.contract-title {
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    color: var(--text-primary);
+}
+
+.contract-desc {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.contract-progress-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contract-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.contract-progress-meter {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.contract-progress-fill {
+    height: 100%;
+    background: var(--neon-cyan);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.contract-card.completed .contract-progress-fill {
+    background: var(--neon-green);
+    box-shadow: 0 0 8px var(--neon-green);
+}
+
+.contract-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.contract-rewards {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.reward-pill {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #ffd700;
+}
+
+.reward-pill.xp {
+    color: var(--neon-purple);
+    border-color: rgba(199, 125, 255, 0.3);
+}
+
+.reward-pill.relic {
+    color: var(--neon-cyan);
+    border-color: rgba(0, 240, 255, 0.4);
+}
+
+.btn-claim-contract {
+    background: linear-gradient(135deg, #00ffaa, #00b4d8);
+    color: #030611;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 800;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(0, 255, 170, 0.4);
+    transition: all 0.2s ease;
+}
+
+.btn-claim-contract:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(0, 255, 170, 0.7);
+}
+
+/* Pilot Mastery & Talents Panel */
+.mastery-perks-banner {
+    background: linear-gradient(135deg, rgba(114, 9, 183, 0.2), rgba(199, 125, 255, 0.08));
+    border: 1px solid rgba(199, 125, 255, 0.35);
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.perks-badge {
+    background: rgba(199, 125, 255, 0.25);
+    border: 1px solid var(--neon-purple);
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 90px;
+}
+
+.perks-badge span {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--neon-purple);
+    text-align: center;
+}
+
+.perks-badge strong {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    color: #fff;
+    text-shadow: 0 0 10px var(--neon-purple);
+}
+
+.perks-desc {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.talents-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.talent-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.talent-card.unlocked {
+    border-color: rgba(199, 125, 255, 0.6);
+    background: linear-gradient(135deg, rgba(199, 125, 255, 0.12), rgba(10, 18, 38, 0.85));
+    box-shadow: 0 0 10px rgba(199, 125, 255, 0.25);
+}
+
+.talent-top {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.talent-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.talent-name {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    color: var(--text-primary);
+}
+
+.talent-desc {
+    font-size: 0.67rem;
+    color: var(--text-secondary);
+    line-height: 1.25;
+}
+
+.btn-talent-unlock {
+    background: rgba(199, 125, 255, 0.2);
+    border: 1px solid var(--neon-purple);
+    color: var(--neon-purple);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    align-self: flex-start;
+}
+
+.btn-talent-unlock:hover:not(:disabled) {
+    background: var(--neon-purple);
+    color: #030611;
+    box-shadow: 0 0 10px var(--neon-purple);
+}
+
+.btn-talent-unlock:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.talent-card.unlocked .btn-talent-unlock {
+    background: rgba(0, 255, 170, 0.15);
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+    cursor: default;
+}
+
+/* Precursor Relics Grid */
+.relics-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.relic-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 5px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.relic-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.relic-name {
+    font-family: var(--font-display);
+    font-size: 0.74rem;
+    color: var(--text-primary);
+}
+
+.relic-rarity-pill {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.rarity-common {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.rarity-rare {
+    background: rgba(0, 240, 255, 0.15);
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 6px rgba(0, 240, 255, 0.3);
+}
+
+.rarity-epic {
+    background: rgba(199, 125, 255, 0.15);
+    border: 1px solid var(--neon-purple);
+    color: var(--neon-purple);
+    box-shadow: 0 0 8px rgba(199, 125, 255, 0.4);
+}
+
+.rarity-legendary {
+    background: rgba(255, 215, 0, 0.2);
+    border: 1px solid #ffd700;
+    color: #ffd700;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+}
+
+.relic-desc {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    line-height: 1.25;
+}
+
+

@@ -47,6 +47,31 @@ class TestCLI(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("STATION ARSENAL", mock_out.getvalue())
 
+    def test_cli_contracts_list(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["contracts", "list"])
+            self.assertEqual(code, 0)
+            self.assertIn("ACTIVE SECTOR BOUNTIES", mock_out.getvalue())
+
+    def test_cli_mastery_status(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["mastery", "status"])
+            self.assertEqual(code, 0)
+            self.assertIn("PILOT MASTERY", mock_out.getvalue())
+            self.assertIn("Void Cartographer", mock_out.getvalue())
+
+    def test_cli_relics(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["relics"])
+            self.assertEqual(code, 0)
+            self.assertIn("PRECURSOR RELICS VAULT", mock_out.getvalue())
+
+    def test_cli_streak(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["streak"])
+            self.assertEqual(code, 0)
+            self.assertIn("EXPEDITION JUMP STREAK", mock_out.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

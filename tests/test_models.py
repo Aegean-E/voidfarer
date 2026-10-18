@@ -2,10 +2,13 @@
 
 import unittest
 from voidfarer.models import (
+    BountyContract,
     CelestialBody,
     CombatEncounter,
     FleetDrone,
     GameState,
+    PilotMastery,
+    PrecursorRelic,
     ShipPower,
     ShipState,
     ShipUpgrade,
@@ -124,7 +127,75 @@ class TestModels(unittest.TestCase):
         self.assertEqual(restored.enemy_name, "Outlaw Raider")
         self.assertEqual(restored.bounty_credits, 500)
 
+    def test_bounty_contract_serialization(self):
+        contract = BountyContract(
+            id="contract_1",
+            title="Pirate Sweep",
+            description="Eliminate 2 corsairs",
+            category="combat",
+            target_count=2,
+            current_count=1,
+            reward_credits=800,
+            reward_xp=200,
+            reward_relic_tier="rare",
+            completed=False,
+        )
+        d = contract.to_dict()
+        restored = BountyContract.from_dict(d)
+        self.assertEqual(restored.id, "contract_1")
+        self.assertEqual(restored.category, "combat")
+        self.assertEqual(restored.reward_relic_tier, "rare")
+        self.assertEqual(restored.current_count, 1)
+
+    def test_precursor_relic_serialization(self):
+        relic = PrecursorRelic(
+            id="relic_void_eye",
+            name="Eye of the Void",
+            rarity="legendary",
+            description="Precursor tachyon resonator",
+            passive_stat="laser_dmg",
+            stat_multiplier=0.25,
+            discovered_at_system="sol",
+        )
+        d = relic.to_dict()
+        restored = PrecursorRelic.from_dict(d)
+        self.assertEqual(restored.id, "relic_void_eye")
+        self.assertEqual(restored.rarity, "legendary")
+        self.assertEqual(restored.stat_multiplier, 0.25)
+
+    def test_pilot_mastery_serialization(self):
+        mastery = PilotMastery(
+            level=3,
+            xp=1250,
+            next_level_xp=1500,
+            talent_points=1,
+            specializations=("void_cartographer",),
+        )
+        d = mastery.to_dict()
+        restored = PilotMastery.from_dict(d)
+        self.assertEqual(restored.level, 3)
+        self.assertEqual(restored.talent_points, 1)
+        self.assertEqual(restored.specializations, ("void_cartographer",))
+
     def test_game_state_roundtrip(self):
+        contract = BountyContract(
+            id="c1",
+            title="Scan Vega",
+            description="Scan planets",
+            category="exploration",
+            target_count=1,
+            current_count=0,
+            reward_credits=500,
+        )
+        relic = PrecursorRelic(
+            id="r1",
+            name="Dark Core",
+            rarity="rare",
+            description="Dark matter diode",
+            passive_stat="shield_cap",
+            stat_multiplier=0.15,
+        )
+        mastery = PilotMastery(level=2, xp=600, next_level_xp=1000, talent_points=1)
         ship = ShipState(
             commander_name="Astraea",
             callsign="VF-Vanguard",
@@ -149,6 +220,12 @@ class TestModels(unittest.TestCase):
                     assigned_system_id="sol",
                 ),
             ),
+            streak=3,
+            relics=(relic,),
+            mastery=mastery,
+            active_contracts=(contract,),
+            tactical_combo=2,
+            near_miss_scanner_bonus=0.25,
         )
         state = GameState(
             version=1,
@@ -163,6 +240,13 @@ class TestModels(unittest.TestCase):
         self.assertEqual(restored.ship.commander_name, "Astraea")
         self.assertEqual(restored.ship.credits, 3500)
         self.assertEqual(len(restored.ship.fleet_drones), 1)
+        self.assertEqual(restored.ship.streak, 3)
+        self.assertEqual(len(restored.ship.relics), 1)
+        self.assertEqual(restored.ship.relics[0].name, "Dark Core")
+        self.assertEqual(restored.ship.mastery.level, 2)
+        self.assertEqual(len(restored.ship.active_contracts), 1)
+        self.assertEqual(restored.ship.tactical_combo, 2)
+        self.assertAlmostEqual(restored.ship.near_miss_scanner_bonus, 0.25)
 
 
 if __name__ == "__main__":

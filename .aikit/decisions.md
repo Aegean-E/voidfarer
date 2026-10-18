@@ -61,6 +61,15 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   4. Enrich CLI `cmd_story` and `cmd_status` with prominent celebratory campaign epilogue views once all acts are resolved.
   5. Expand automated regression test coverage to 58 tests across all edge cases.
 - **Consequences**: Guarantees zero UI rendering failures, aligns narrative progression with spatial flight mechanics, activates all passive story relic mechanics, and provides celebratory feedback across both web and terminal interfaces.
-
-
-
+### ADR-006: Sovereign Factions, Megacorporations, and Advanced Dual-Layer Tactical Combat Archetypes
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: Voidfarer's procedural galaxy lacked geopolitical depth, sovereign territorial borders, corporate commerce incentives, and tactical enemy depth beyond basic pirate skirmishes. Players required persistent diplomatic standing, ideological alliances, market price tariffs/discounts, and engaging tactical combat with deflector shields, telegraphed abilities, and subsystem targeting.
+- **Decision**:
+  1. Implement `Faction` and `Corporation` domain models (`factions.py`) featuring 5 canonical sovereign factions (Sol Coalition, Free Spacers Syndicate, Precursor Watch, Nebula Mining Collective, Orion Ascendancy) and 4 canonical megacorporations (Omnicorp Mining, Hyperion Dynamics, Astral Logistics, CyberneX Labs).
+  2. Implement dynamic Standing Tiers (-100 to +100: Hostile, Unfriendly, Neutral, Friendly, Allied) with geopolitical market purchase modifiers (-15% discount for Allied down to +25% punitive tariff for Hostile) and corporate specialty trade margin bonuses (+15% to +22% margin on specialty commodities).
+  3. Introduce star system territorial affiliation and emergent naval interdictions: hyperlane transit into systems controlled by Hostile factions (standing <= -50) triggers high-probability naval patrol interceptions.
+  4. Create `EnemyArchetype` procedural generation (`enemies.py`) with 5 tactical archetypes (Corsair Interceptor, Syndicate Marauder, Corporate Enforcer, Precursor Sentinel, Warlord Dreadnought), deflector shield capacitance, telegraphed special abilities (`shield_drain`, `emp_overload`, `nanite_regen`, `tachyon_lance`), and precision subsystem targeting (`target weapons`, `target shields`).
+  5. Add kinetic armor-piercing Drone Strike attacks that bypass deflector shields to directly damage enemy hulls, granting deployed fleet drone assets high-value tactical combat utility.
+  6. Deliver full CLI REPL and Web Cockpit parity, including interactive Factions & Corps tabs, dual Shield/Hull telemetry meters, pulsing telegraph warning banners, and victory reputation shifts.
+- **Consequences**: Deepens the galaxy with emergent geopolitical consequence, trade specialization, and high-stakes tactical space battles while preserving 100% Python standard library purity, backward compatibility for legacy save files, and sub-second test execution across 68 automated unit tests.

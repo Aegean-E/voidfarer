@@ -2164,4 +2164,133 @@ body.cockpit-theme {
     color: var(--text-secondary);
 }
 
+/* Tactical Combat Shields & Telegraph Styles */
+.combat-meter-fill.shield-fill {
+    background: linear-gradient(90deg, #00f3ff, #0077ff);
+    box-shadow: 0 0 8px #00f3ff;
+}
+
+.combat-telegraph-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.45);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: #ffcc00;
+    margin-top: 6px;
+    animation: pulseTelegraph 1.5s infinite alternate;
+}
+
+@keyframes pulseTelegraph {
+    0% { background: rgba(255, 170, 0, 0.10); border-color: rgba(255, 170, 0, 0.3); }
+    100% { background: rgba(255, 170, 0, 0.22); border-color: rgba(255, 170, 0, 0.7); box-shadow: 0 0 10px rgba(255, 170, 0, 0.2); }
+}
+
+/* Factions & Corporations Deck Styles */
+.factions-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    overflow-y: auto;
+    max-height: 520px;
+    padding-right: 6px;
+}
+
+.subpanel-title {
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--neon-cyan);
+    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+    padding-bottom: 4px;
+}
+
+.factions-grid, .corps-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.faction-card, .corp-card {
+    background: rgba(10, 16, 28, 0.85);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+}
+
+.faction-card:hover, .corp-card:hover {
+    border-color: rgba(0, 240, 255, 0.45);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.12);
+}
+
+.faction-top-row, .corp-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.faction-name, .corp-name {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.standing-badge {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+}
+
+.tier-hostile { background: rgba(255, 51, 85, 0.2); color: #ff3355; border: 1px solid #ff3355; }
+.tier-unfriendly { background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid #ffaa00; }
+.tier-neutral { background: rgba(255, 255, 255, 0.1); color: #ccc; border: 1px solid #666; }
+.tier-friendly { background: rgba(0, 255, 136, 0.2); color: #00ff88; border: 1px solid #00ff88; }
+.tier-allied { background: rgba(0, 240, 255, 0.25); color: #00f0ff; border: 1px solid #00f0ff; box-shadow: 0 0 8px rgba(0, 240, 255, 0.3); }
+
+.faction-ideology, .corp-desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.standing-bar-wrap {
+    height: 6px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 4px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.standing-bar-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.faction-perk, .corp-perk {
+    font-family: var(--font-mono);
+    font-size: 0.70rem;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.25);
+    padding: 4px 8px;
+    border-radius: 3px;
+    border-left: 2px solid var(--neon-cyan);
+}
+
+
 

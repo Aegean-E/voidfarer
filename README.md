@@ -42,6 +42,8 @@ voidfarer/
 ├── voidfarer/                <- core simulation package
 │   ├── __init__.py           <- package metadata
 │   ├── models.py             <- frozen dataclass DTOs and schema validators
+│   ├── factions.py           <- sovereign factions, megacorps & standing tiers
+│   ├── enemies.py            <- tactical enemy archetypes, abilities & generator
 │   ├── galaxy.py             <- procedural star system & hyperlane generator
 │   ├── engine.py             <- deterministic state machine & coordinator
 │   ├── retention.py          <- relics, dynamic contracts & pilot mastery
@@ -59,6 +61,7 @@ voidfarer/
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
     ├── test_engine.py        <- state transitions, fleet & combat mechanics
+    ├── test_factions_and_enemies.py <- faction geopolitics & tactical combat tests
     ├── test_storage.py       <- power-loss safety & corruption quarantine
     ├── test_server.py        <- REST API request/response contracts
     ├── test_cli.py           <- command dispatch & argument parsing
@@ -121,13 +124,16 @@ python -m voidfarer.cli fleet harvest
 ```
 
 ### 6. Tactical Combat Maneuvers
-When intercepted by hostile corsairs in low-security space:
+When intercepted by hostile corsairs, syndicate marauders, or faction enforcers in low-security space:
 ```bash
 # Tactical maneuvers
-python -m voidfarer.cli combat fire     # Laser battery barrage
-python -m voidfarer.cli combat absorb   # Overcharge shield capacitors
-python -m voidfarer.cli combat evade    # High-G thruster burn
-python -m voidfarer.cli combat flee     # Emergency hyperspace micro-jump
+python -m voidfarer.cli combat fire             # Laser battery barrage (depletes deflector shields, overflows to hull)
+python -m voidfarer.cli combat drone            # Kinetic drone torpedo strike (armor-piercing; bypasses deflector shields)
+python -m voidfarer.cli combat target weapons   # Precision strike to disable enemy offensive arrays
+python -m voidfarer.cli combat target shields   # Precision strike to destabilize shield harmonic generators
+python -m voidfarer.cli combat absorb           # Overcharge deflector shield capacitors
+python -m voidfarer.cli combat evade            # High-G thruster burn to dodge telegraphed attacks
+python -m voidfarer.cli combat flee             # Emergency hyperspace micro-jump
 ```
 
 ### 7. Dynamic Sector Bounties & Contracts (Zeigarnik Loop)
@@ -194,13 +200,22 @@ python -m voidfarer.cli story
 python -m voidfarer.cli story choose choice_vance_telemetry
 ```
 
-### 14. Interactive Terminal Cockpit REPL
+### 14. Geopolitical Factions & Megacorporations
+```bash
+# View all sovereign galactic factions, ideologies, territorial HQs, and standing
+python -m voidfarer.cli factions
+
+# View galactic megacorporations, commercial specialties, and trade perks
+python -m voidfarer.cli corporations
+```
+
+### 15. Interactive Terminal Cockpit REPL
 ```bash
 python -m voidfarer.cli repl
 ```
-Inside the interactive REPL, you can execute all commands (`status`, `chart`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
+Inside the interactive REPL, you can execute all commands (`status`, `chart`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
-### 15. Holographic Web Cockpit Interface
+### 16. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 ```bash
 python -m voidfarer.cli serve --port 8080
@@ -208,6 +223,7 @@ python -m voidfarer.cli serve --port 8080
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Cadet Flight Academy Ribbon**: Persistent top-of-HUD progressive instruction banner with milestone progress, step hints, rewards, and one-click dismiss.
 - **COMMS LOG Subspace Radio Tab**: Subspace transmissions stream with animated character avatars (Admiral Vance, Cipher, Archon Prime), faction alignment chips, and interactive moral choice cards.
+- **Factions & Megacorporations Tab**: Live diplomatic standings (-100 to +100), territorial headquarters, tariff discounts, and corporate specialty trade margins.
 - **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom.
 - **Galaxy Sector Chart**: Hyperlane corridor network visualization and jump routing.
 - **Contracts & Bounties Tab**: Active operational task cards with live progress bars, Zeigarnik task renewal, and reward claim buttons.
@@ -215,7 +231,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Expedition Streak Multiplier**: Real-time loss aversion flame badge scaling all trade and scan yields.
 - **Station Arsenal Tab**: Modular hardware upgrades shop with real-time stat bonuses.
 - **Fleet Command Tab**: Roster of autonomous mining/scout drones with live harvest buttons.
-- **Tactical Combat Overlay**: Battle HUD with tactical maneuvers, tactical combo counter, and critical overcharge state.
+- **Tactical Combat Overlay**: Battle HUD with dual-layer deflector shield and hull meters, telegraphed enemy action warning banners, armor-piercing kinetic drone strikes, and subsystem targeting.
 - **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, level-up arpeggios, bounty chimes, radio dispatches, and alarms.
 - **Reactor Power Matrix**: Dynamic power allocation sliders with instant subsystem re-routing.
 
@@ -225,5 +241,6 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Sub-Second Test Verification**: Comprehensive 58-test suite runs in under 1.5 seconds (`python -m unittest discover`).
+3. **Sub-Second Test Verification**: Comprehensive 68-test suite runs in under 1.5 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
+

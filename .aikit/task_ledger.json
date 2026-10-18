@@ -1,18 +1,12 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-v5-audit-hardening",
-    "last_phase": "phase 2",
+    "task_id": "task-voidfarer-v6-factions-corps-enemies",
+    "last_phase": "testing",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792343105.786874,
-    "impact_assessment": {
-      "why": "Fulfill user /goal request: analyze changes for strengths, weaknesses, bugs, and gaps, and fix whatever is necessary",
-      "benefits": "Fixes Web HUD array/dict lookup bug, prevents story choice execution outside target system, connects story relic passives to core stats, adds graduation celebration and reset controls, and polishes CLI/HUD end-game campaign states",
-      "risks": "contract: REST API and CLI contracts remain unchanged; dependency: zero external packages; concurrency: thread-safe engine mutations; state: savegame backward compatibility preserved",
-      "mitigation": "Pure stdlib, thread locking, backward compatible defaults, and 100% test pass rate"
-    },
-    "completed_at": 1792343401.4263437
+    "updated_at": 1792344711.178528,
+    "completed_at": 1792344714.4626055
   },
   "checkpoints": [
     {
@@ -149,6 +143,71 @@
       "status": "completed",
       "timestamp": 1792343401.4263446,
       "timestamp_str": "2026-10-18 20:10:01"
+    },
+    {
+      "task_id": "task-voidfarer-v6-factions-corps-enemies",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/5] Architectural domain modeling for factions, corporations, and enemy archetypes",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792343626.0378473,
+      "timestamp_str": "2026-10-18 20:13:46",
+      "impact_assessment": {
+        "why": "Expand Voidfarer with dynamic galaxy factions, megacorporations, and rich tactical enemy encounters as requested by the user",
+        "benefits": "Deep strategic gameplay, meaningful faction allegiances, corporate market economies and contracts, diverse combat challenges with shields and abilities",
+        "risks": "contract: Backward-compatible serialization for GameState, ShipState, CombatEncounter, and StoryState; dependency: None, strictly zero third-party packages; concurrency: Engine lock protects all faction and combat mutations; state: Migration defaults for existing save games with default faction standings and combat structures.",
+        "mitigation": "Default fallback values in all deserializers, comprehensive unit tests for old and new structures, atomic state saves."
+      }
+    },
+    {
+      "task_id": "task-voidfarer-v6-factions-corps-enemies",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[2/5] Galaxy generator and market economy integration with factions and corporations",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792343806.476479,
+      "timestamp_str": "2026-10-18 20:16:46"
+    },
+    {
+      "task_id": "task-voidfarer-v6-factions-corps-enemies",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[3/5] Tactical combat engine evolution with enemy shields, abilities, drone strikes, and faction rep consequences",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792343923.8280985,
+      "timestamp_str": "2026-10-18 20:18:43"
+    },
+    {
+      "task_id": "task-voidfarer-v6-factions-corps-enemies",
+      "phase": "implementation",
+      "phase_num": 3,
+      "description": "[4/5] CLI REPL and Web Cockpit HUD updates for Factions, Megacorps, and Combat Tactical Overlays",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792344207.7626169,
+      "timestamp_str": "2026-10-18 20:23:27"
+    },
+    {
+      "task_id": "task-voidfarer-v6-factions-corps-enemies",
+      "phase": "testing",
+      "phase_num": 4,
+      "description": "[5/5] Verification, ADR-006, test suite expansion to 68 tests, and living documentation updates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792344711.178528,
+      "timestamp_str": "2026-10-18 20:31:51"
+    },
+    {
+      "task_id": "task-voidfarer-v6-factions-corps-enemies",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-v6-factions-corps-enemies' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792344714.46261,
+      "timestamp_str": "2026-10-18 20:31:54"
     }
   ]
 }

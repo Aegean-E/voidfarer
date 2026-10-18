@@ -27,16 +27,16 @@ CANONICAL_COMMODITIES: tuple[Commodity, ...] = (
 COMMODITY_MAP: dict[str, Commodity] = {c.id: c for c in CANONICAL_COMMODITIES}
 
 SYSTEM_ARCHETYPES = [
-    ("sol", "Sol System", 0.0, 0.0, "G", "#ffd700", 1.0, "Sol Federation"),
-    ("alpha_centauri", "Alpha Centauri", 18.0, 12.0, "K", "#ffaa44", 0.9, "Sol Federation"),
-    ("sirius", "Sirius Prime", -22.0, 15.0, "A", "#cce6ff", 0.85, "Vanguard Syndicate"),
-    ("procyon", "Procyon Nexus", 10.0, -28.0, "F", "#fff4e6", 0.8, "Vanguard Syndicate"),
-    ("vega", "Vega Outpost", -35.0, -18.0, "A", "#99ccff", 0.65, "Nebula Collective"),
-    ("arcturus", "Arcturus Foundry", 32.0, 30.0, "K", "#ff7733", 0.55, "Nebula Collective"),
-    ("betelgeuse", "Betelgeuse Forge", -45.0, 38.0, "M", "#ff3333", 0.40, "Outer Rim Syndicate"),
-    ("cygnus_x1", "Cygnus Void Gate", 48.0, -35.0, "BlackHole", "#8833ff", 0.15, "Outer Rim Anarchy"),
-    ("pulsar_psr", "PSR Core Beacon", -15.0, 52.0, "Neutron", "#33ffff", 0.20, "Independent"),
-    ("rift_station", "The Dark Abyss", 55.0, 42.0, "M", "#cc2255", 0.05, "Outlaw Haven"),
+    ("sol", "Sol System", 0.0, 0.0, "G", "#ffd700", 1.0, "Sol Coalition", "hyperion_dynamics"),
+    ("alpha_centauri", "Alpha Centauri", 18.0, 12.0, "K", "#ffaa44", 0.9, "Sol Coalition", "astraea_pharma"),
+    ("sirius", "Sirius Prime", -22.0, 15.0, "A", "#cce6ff", 0.85, "Free Spacers Syndicate", "nexus_cybernetics"),
+    ("procyon", "Procyon Nexus", 10.0, -28.0, "F", "#fff4e6", 0.8, "Free Spacers Syndicate", "nexus_cybernetics"),
+    ("vega", "Vega Outpost", -35.0, -18.0, "A", "#99ccff", 0.65, "Nebula Collective", "omnicorp_mining"),
+    ("arcturus", "Arcturus Foundry", 32.0, 30.0, "K", "#ff7733", 0.55, "Nebula Collective", "omnicorp_mining"),
+    ("betelgeuse", "Betelgeuse Forge", -45.0, 38.0, "M", "#ff3333", 0.40, "Free Spacers Syndicate", "vortex_fuel"),
+    ("cygnus_x1", "Cygnus Void Gate", 48.0, -35.0, "BlackHole", "#8833ff", 0.15, "Void Corsairs", None),
+    ("pulsar_psr", "PSR Core Beacon", -15.0, 52.0, "Neutron", "#33ffff", 0.20, "Precursor Watch", None),
+    ("rift_station", "The Dark Abyss", 55.0, 42.0, "M", "#cc2255", 0.05, "Void Corsairs", None),
 ]
 
 ANOMALIES_CATALOG = [
@@ -187,6 +187,7 @@ class GalaxyGenerator:
             color,
             sec,
             faction,
+            dominant_corp,
         ) in SYSTEM_ARCHETYPES:
             bodies = self._generate_bodies(sys_id, name, spectral)
             systems[sys_id] = StarSystem(
@@ -201,6 +202,7 @@ class GalaxyGenerator:
                 faction=faction,
                 bodies=tuple(bodies),
                 connections=(),
+                dominant_corp=dominant_corp,
             )
 
         # 2. Build hyperlane mesh ensuring full graph connectivity
@@ -219,6 +221,7 @@ class GalaxyGenerator:
                 faction=s_obj.faction,
                 bodies=s_obj.bodies,
                 connections=tuple(sorted(connections[s_id])),
+                dominant_corp=s_obj.dominant_corp,
             )
         return final_systems
 

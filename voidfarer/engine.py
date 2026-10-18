@@ -2,11 +2,25 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 import math
 import random
 import threading
 from typing import Any
 
+from voidfarer.enemies import (
+    ENEMY_ARCHETYPES,
+    generate_system_enemy,
+)
+from voidfarer.factions import (
+    CANONICAL_CORPORATIONS,
+    CANONICAL_FACTIONS,
+    calculate_faction_market_modifier,
+    get_corporation,
+    get_faction,
+    get_faction_id_from_name,
+    get_faction_standing_tier,
+)
 from voidfarer.galaxy import (
     COMMODITY_MAP,
     GalaxyGenerator,
@@ -119,6 +133,8 @@ class SimulationEngine:
             near_miss_scanner_bonus=kwargs.get("near_miss_scanner_bonus", cur.near_miss_scanner_bonus),
             tutorial=kwargs.get("tutorial", cur.tutorial),
             story=kwargs.get("story", cur.story),
+            faction_standings=kwargs.get("faction_standings", cur.faction_standings),
+            corp_standings=kwargs.get("corp_standings", cur.corp_standings),
         )
 
     def _progress_tutorial(self, action_type: str) -> tuple[TutorialState, int, int, list[PrecursorRelic], list[str]]:
@@ -274,6 +290,20 @@ class SimulationEngine:
             near_miss_scanner_bonus=0.0,
             tutorial=generate_initial_tutorial(),
             story=generate_initial_story(),
+            faction_standings={
+                "sol_coalition": 0,
+                "vanguard_syndicate": 0,
+                "precursor_watch": 0,
+                "nebula_collective": 0,
+                "outlaw_corsairs": -15,
+            },
+            corp_standings={
+                "hyperion_dynamics": 0,
+                "astraea_pharma": 0,
+                "omnicorp_mining": 0,
+                "nexus_cybernetics": 0,
+                "vortex_fuel": 0,
+            },
         )
 
         return GameState(
@@ -403,21 +433,29 @@ class SimulationEngine:
             anomaly = None
             combat = None
 
-            # Check low security ambush
+            # Check hostile faction interception or low security ambush
             has_escort = any(d.drone_type == "combat_escort" for d in self.state.ship.fleet_drones)
-            if target_sys.security < 0.35:
+            sys_faction_id = get_faction_id_from_name(target_sys.faction)
+            standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
+            is_hostile_territory = standing <= -50
+
+            if is_hostile_territory and self.rng.random() < 0.65:
+                combat = generate_system_enemy(
+                    system_id=target_system_id,
+                    security=target_sys.security,
+                    faction=target_sys.faction,
+                    seed=self.rng.randint(1000, 99999),
+                )
+                new_log.append(f"HOSTILE PATROL: Intercepted by {combat.enemy_name} due to hostile faction standing ({standing})!")
+            elif target_sys.security < 0.35:
                 if has_escort:
                     new_log.append("TACTICAL: Combat escort frigate dispersed hostile ambush.")
                 elif self.rng.random() < 0.40:
-                    combat = CombatEncounter(
-                        id=f"combat_{target_system_id}_{self.rng.randint(100, 999)}",
-                        enemy_name=f"{target_sys.faction} Corsair",
-                        enemy_class="Pirate Raider",
-                        enemy_hull=80,
-                        enemy_max_hull=80,
-                        enemy_damage=18,
-                        bounty_credits=650,
-                        salvage_commodity="titanium",
+                    combat = generate_system_enemy(
+                        system_id=target_system_id,
+                        security=target_sys.security,
+                        faction=target_sys.faction,
+                        seed=self.rng.randint(1000, 99999),
                     )
                     new_log.append(f"ALERT: Intercepted by hostile {combat.enemy_name}! Weapons locked.")
 
@@ -720,8 +758,16 @@ class SimulationEngine:
 
             passives = calculate_passive_multipliers(self.state.ship)
 
+            # Geopolitical faction & corporate commercial mechanics
+            sys_faction_id = get_faction_id_from_name(self.current_system.faction)
+            standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
+            faction_mod = calculate_faction_market_modifier(sys_faction_id, standing)
+            new_faction_standings = dict(self.state.ship.faction_standings)
+            new_corp_standings = dict(self.state.ship.corp_standings)
+
             if is_buy:
-                total_cost = quote.buy_price * quantity
+                unit_price = int(quote.buy_price * faction_mod)
+                total_cost = unit_price * quantity
                 if self.state.ship.credits < total_cost:
                     return False, f"Insufficient credits: {total_cost} cr required, {self.state.ship.credits} cr available."
 
@@ -732,20 +778,38 @@ class SimulationEngine:
 
                 new_credits = self.state.ship.credits - total_cost
                 cargo[commodity_id] = cargo.get(commodity_id, 0) + quantity
-                msg = f"Purchased {quantity}x {quote.name} for {total_cost} cr."
+                tariff_note = ""
+                if faction_mod > 1.0:
+                    tariff_note = f" (+{int((faction_mod - 1.0)*100)}% {self.current_system.faction} tariff)"
+                elif faction_mod < 1.0:
+                    tariff_note = f" (-{int((1.0 - faction_mod)*100)}% {self.current_system.faction} discount)"
+                msg = f"Purchased {quantity}x {quote.name} for {total_cost} cr{tariff_note}."
             else:
                 owned = cargo.get(commodity_id, 0)
                 if owned < quantity:
                     return False, f"Insufficient inventory: you have {owned} units, tried to sell {quantity}."
 
                 margin_mult = passives.get("trade_margin", 1.0)
-                revenue = int(quote.sell_price * quantity * margin_mult)
+                corp_mult = 1.0
+                corp_note = ""
+                dom_corp_id = self.current_system.dominant_corp
+                if dom_corp_id:
+                    corp = get_corporation(dom_corp_id)
+                    if corp and corp.specialty_commodity == commodity_id:
+                        corp_mult = 1.0 + corp.bonus_trade_margin
+                        corp_note = f" [{corp.name} specialty: +{int(corp.bonus_trade_margin*100)}%]"
+                        new_corp_standings[dom_corp_id] = min(100, new_corp_standings.get(dom_corp_id, 0) + 2)
+
+                # Lawful commerce slightly boosts local faction relations
+                new_faction_standings[sys_faction_id] = min(100, new_faction_standings.get(sys_faction_id, 0) + 1)
+
+                revenue = int(quote.sell_price * quantity * margin_mult * corp_mult)
                 new_credits = self.state.ship.credits + revenue
                 cargo[commodity_id] = owned - quantity
                 if cargo[commodity_id] == 0:
                     del cargo[commodity_id]
                 stats["credits_earned"] += revenue
-                msg = f"Sold {quantity}x {quote.name} for {revenue} cr (trade margin: x{margin_mult:.2f})."
+                msg = f"Sold {quantity}x {quote.name} for {revenue} cr (trade margin: x{margin_mult:.2f}){corp_note}."
 
             stats["trades"] += 1
             log_entry = f"Market transaction: {msg}"
@@ -770,6 +834,8 @@ class SimulationEngine:
                 relics=tuple(list(self.state.ship.relics) + tut_relics),
                 active_contracts=updated_contracts,
                 tutorial=new_tut,
+                faction_standings=new_faction_standings,
+                corp_standings=new_corp_standings,
                 flight_log=tuple(new_log[-20:]),
             )
 
@@ -1038,101 +1104,72 @@ class SimulationEngine:
             new_credits = self.state.ship.credits
             cargo = dict(self.state.ship.cargo)
             stats = dict(self.state.stats)
-
             passives = calculate_passive_multipliers(self.state.ship)
 
+            new_combo = self.state.ship.tactical_combo
+            new_streak = self.state.ship.streak
+            enemy_rem_shield = combat.enemy_shield
+            enemy_rem_hull = combat.enemy_hull
+            enemy_rem_damage = combat.enemy_damage
+            ability_cd = max(0, combat.ability_cooldown - 1)
+
             if action == "fire_lasers":
-                # Calculate player strike damage with upgrades, relics, and pilot talents
                 wep_power = self.state.ship.power.weapons
                 bonus_wep = 15 if "pulse_cannon_array" in self.state.ship.equipped_upgrades.values() else 0
                 base_dmg = int((20 + int(wep_power * 0.75) + bonus_wep) * passives.get("laser_dmg", 1.0))
 
-                # Tactical Combo Overcharge loop (Flow & rhythmic attention)
-                new_combo = self.state.ship.tactical_combo + 1
+                new_combo += 1
                 crit_text = ""
                 if new_combo >= 3:
                     base_dmg = int(base_dmg * 1.5)
                     crit_text = f" (TACTICAL OVERCHARGE x{new_combo}: +50% CRIT DAMAGE!)"
 
-                enemy_remaining = combat.enemy_hull - base_dmg
-
-                if enemy_remaining <= 0:
-                    # Enemy destroyed
-                    new_credits += combat.bounty_credits
-                    cargo[combat.salvage_commodity] = cargo.get(combat.salvage_commodity, 0) + 2
-                    stats["combat_victories"] += 1
-                    stats["credits_earned"] += combat.bounty_credits
-
-                    # Variable Ratio salvage drop from hostile wreckage
-                    salvage_relic, _ = roll_relic_drop(self.rng, bonus_prob=0.20, current_system=self.current_system.name)
-                    new_relics = list(self.state.ship.relics)
-                    relic_note = ""
-                    if salvage_relic:
-                        new_relics.append(salvage_relic)
-                        relic_note = f" Salvaged Precursor relic: [{salvage_relic.name}] ({salvage_relic.rarity.upper()})!"
-
-                    # Progress combat contracts and award pilot combat XP
-                    updated_contracts, contract_logs = self._progress_contracts("combat", 1)
-                    new_mastery, xp_logs = self._award_pilot_xp(200, self.state.ship.mastery)
-
-                    msg = (
-                        f"VICTORY: {combat.enemy_name} neutralized! "
-                        f"Collected {combat.bounty_credits} cr bounty, salvaged 2x {combat.salvage_commodity}.{relic_note}"
-                    )
-                    log_entry = f"Combat outcome: {msg}"
-                    new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + contract_logs + xp_logs
-
-                    new_ship = self._clone_ship(
-                        hull=new_hull,
-                        shield=new_shield,
-                        credits=new_credits,
-                        cargo=cargo,
-                        relics=tuple(new_relics),
-                        mastery=new_mastery,
-                        active_contracts=updated_contracts,
-                        tactical_combo=0,
-                        flight_log=tuple(new_log[-20:]),
-                    )
-
-                    self.state = GameState(
-                        version=self.state.version,
-                        galaxy_seed=self.state.galaxy_seed,
-                        ship=new_ship,
-                        systems=self.state.systems,
-                        visited_systems=self.state.visited_systems,
-                        active_anomaly=self.state.active_anomaly,
-                        active_combat=None,
-                        stats=stats,
-                    )
-                    return True, msg
-
-                # Enemy counter-attack
-                inbound = combat.enemy_damage
-                new_streak = self.state.ship.streak
-                if new_shield >= inbound:
-                    new_shield -= inbound
+                if enemy_rem_shield > 0:
+                    if base_dmg <= enemy_rem_shield:
+                        enemy_rem_shield -= base_dmg
+                        strike_desc = f"Laser strike absorbed by enemy deflector shields ({base_dmg} MW damage dealt, Shield: {enemy_rem_shield}/{combat.enemy_max_shield}){crit_text}."
+                    else:
+                        overflow = base_dmg - enemy_rem_shield
+                        enemy_rem_shield = 0
+                        enemy_rem_hull -= overflow
+                        strike_desc = f"Laser strike shattered enemy deflector shields! {overflow} overflow damage struck hull{crit_text}."
                 else:
-                    overflow = inbound - new_shield
-                    new_shield = 0
-                    new_hull = max(0, new_hull - overflow)
-                    new_combo = 0  # Combo disrupted on hull breach
-                    if new_hull < 50:
-                        new_streak = max(1, self.state.ship.streak - 1)
+                    enemy_rem_hull -= base_dmg
+                    strike_desc = f"Laser strike struck enemy hull directly for {base_dmg} damage{crit_text}."
 
-                msg = f"Laser strike dealt {base_dmg} damage{crit_text} (Enemy HP: {enemy_remaining}/{combat.enemy_max_hull}). Inbound counter-battery dealt {inbound} damage."
-                new_combat = CombatEncounter(
-                    id=combat.id,
-                    enemy_name=combat.enemy_name,
-                    enemy_class=combat.enemy_class,
-                    enemy_hull=enemy_remaining,
-                    enemy_max_hull=combat.enemy_max_hull,
-                    enemy_damage=combat.enemy_damage,
-                    bounty_credits=combat.bounty_credits,
-                    salvage_commodity=combat.salvage_commodity,
-                )
+            elif action == "drone_strike":
+                has_escort = any(d.drone_type == "combat_escort" for d in self.state.ship.fleet_drones)
+                has_scout = any(d.drone_type == "scout" for d in self.state.ship.fleet_drones)
+                if not has_escort and not has_scout:
+                    return False, "No tactical drones deployed. Deploy a Combat Escort or Scout drone first."
+
+                new_combo += 1
+                if has_escort:
+                    torpedo_dmg = 45
+                    enemy_rem_hull -= torpedo_dmg
+                    strike_desc = f"Combat Escort Frigate launched armor-piercing kinetic torpedo! Inflicted {torpedo_dmg} damage directly to hull (bypassing shields)!"
+                else:
+                    sensor_burn = 35
+                    enemy_rem_shield = max(0, enemy_rem_shield - sensor_burn)
+                    strike_desc = f"Scout Drone focused beam telemetry! Collapsed {sensor_burn} MW of enemy deflector shields!"
+
+            elif action in ("target_subsystem", "target_weapons", "target_shields"):
+                subsystem = "shields" if action == "target_shields" else "weapons"
+                new_combo += 1
+                if subsystem == "weapons":
+                    enemy_rem_damage = max(6, int(combat.enemy_damage * 0.60))
+                    strike_dmg = 15
+                    if enemy_rem_shield > 0:
+                        enemy_rem_shield = max(0, enemy_rem_shield - strike_dmg)
+                    else:
+                        enemy_rem_hull -= strike_dmg
+                    strike_desc = f"Targeted strike hit enemy weapon arrays! Disabled fire-control (-40% enemy firepower) and dealt {strike_dmg} damage!"
+                else:
+                    shield_ion = 40
+                    enemy_rem_shield = max(0, enemy_rem_shield - shield_ion)
+                    strike_desc = f"Ion pulse targeted enemy shield generators! EMP cascade drained {shield_ion} MW shields!"
 
             elif action == "shield_absorb":
-                # Emergency shield boost with Dreadnought mastery talent bonus
                 boost = 30 + (25 if "dreadnought_tactics" in self.state.ship.mastery.specializations else 0)
                 new_shield = min(self.state.ship.max_shield, new_shield + boost)
                 mitigated = max(1, int(combat.enemy_damage * 0.35))
@@ -1142,12 +1179,29 @@ class SimulationEngine:
                     new_hull = max(0, new_hull - (mitigated - new_shield))
                     new_shield = 0
                 msg = f"Shield capacitors overcharged (+{boost} MW). Enemy barrage deflected, taking only {mitigated} damage."
-                new_combat = combat
-                new_combo = self.state.ship.tactical_combo
-                new_streak = self.state.ship.streak
+                next_telegraph = "Enemy maneuvering into high-angle firing lane"
+                new_combat = CombatEncounter(
+                    id=combat.id,
+                    enemy_name=combat.enemy_name,
+                    enemy_class=combat.enemy_class,
+                    enemy_hull=combat.enemy_hull,
+                    enemy_max_hull=combat.enemy_max_hull,
+                    enemy_damage=combat.enemy_damage,
+                    bounty_credits=combat.bounty_credits,
+                    salvage_commodity=combat.salvage_commodity,
+                    enemy_shield=combat.enemy_shield,
+                    enemy_max_shield=combat.enemy_max_shield,
+                    faction_id=combat.faction_id,
+                    special_ability=combat.special_ability,
+                    ability_cooldown=max(0, combat.ability_cooldown - 1),
+                    telegraphed_action=next_telegraph,
+                )
+                new_log = list(self.state.ship.flight_log[-19:]) + [msg]
+                new_ship = self._clone_ship(hull=new_hull, shield=new_shield, tactical_combo=new_combo, streak=new_streak, flight_log=tuple(new_log[-20:]))
+                self.state = GameState(version=self.state.version, galaxy_seed=self.state.galaxy_seed, ship=new_ship, systems=self.state.systems, visited_systems=self.state.visited_systems, active_anomaly=self.state.active_anomaly, active_combat=new_combat, stats=self.state.stats)
+                return True, msg
 
             elif action == "evasive_burn":
-                # Thruster evasion
                 eng = self.state.ship.power.engines
                 chance = 0.50 + (eng / 25.0) * 0.20
                 if self.rng.random() < chance:
@@ -1162,22 +1216,82 @@ class SimulationEngine:
                         new_shield = 0
                     msg = f"Evasive burn failed! Suffered {dmg} damage during high-G maneuver."
                     new_combat = combat
-                new_combo = self.state.ship.tactical_combo
-                new_streak = self.state.ship.streak
+                new_log = list(self.state.ship.flight_log[-19:]) + [msg]
+                new_ship = self._clone_ship(hull=new_hull, shield=new_shield, tactical_combo=new_combo, streak=new_streak, flight_log=tuple(new_log[-20:]))
+                self.state = GameState(version=self.state.version, galaxy_seed=self.state.galaxy_seed, ship=new_ship, systems=self.state.systems, visited_systems=self.state.visited_systems, active_anomaly=self.state.active_anomaly, active_combat=new_combat, stats=self.state.stats)
+                return True, msg
 
             elif action == "flee":
                 if self.state.ship.fuel < 8:
                     return False, "Insufficient fuel for emergency jump (8 units required)."
                 new_fuel = self.state.ship.fuel - 8
                 msg = "Emergency hyperspace micro-jump executed. Safely disengaged from hostile sector (expedition streak reset)."
+                new_ship = self._clone_ship(hull=new_hull, shield=new_shield, fuel=new_fuel, streak=1, tactical_combo=0, flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [msg]))
+                self.state = GameState(version=self.state.version, galaxy_seed=self.state.galaxy_seed, ship=new_ship, systems=self.state.systems, visited_systems=self.state.visited_systems, active_anomaly=self.state.active_anomaly, active_combat=None, stats=self.state.stats)
+                return True, msg
+
+            else:
+                return False, f"Unknown combat action '{action}'. Choices: fire_lasers, drone_strike, target_subsystem, shield_absorb, evasive_burn, flee."
+
+            # Check if enemy was neutralized
+            if enemy_rem_hull <= 0:
+                new_credits += combat.bounty_credits
+                cargo[combat.salvage_commodity] = cargo.get(combat.salvage_commodity, 0) + 2
+                stats["combat_victories"] += 1
+                stats["credits_earned"] += combat.bounty_credits
+
+                salvage_relic, _ = roll_relic_drop(self.rng, bonus_prob=0.20, current_system=self.current_system.name)
+                new_relics = list(self.state.ship.relics)
+                relic_note = ""
+                if salvage_relic:
+                    new_relics.append(salvage_relic)
+                    relic_note = f" Salvaged Precursor relic: [{salvage_relic.name}] ({salvage_relic.rarity.upper()})!"
+
+                updated_contracts, contract_logs = self._progress_contracts("combat", 1)
+                new_mastery, xp_logs = self._award_pilot_xp(200, self.state.ship.mastery)
+
+                # Faction reputation shift upon victory
+                new_faction_standings = dict(self.state.ship.faction_standings)
+                f_id = combat.faction_id
+                rep_note = ""
+                if f_id == "outlaw_corsairs":
+                    new_faction_standings["sol_coalition"] = min(100, new_faction_standings.get("sol_coalition", 0) + 5)
+                    new_faction_standings["nebula_collective"] = min(100, new_faction_standings.get("nebula_collective", 0) + 4)
+                    new_faction_standings["vanguard_syndicate"] = min(100, new_faction_standings.get("vanguard_syndicate", 0) + 2)
+                    new_faction_standings["outlaw_corsairs"] = max(-100, new_faction_standings.get("outlaw_corsairs", 0) - 10)
+                    rep_note = " [Faction Standing: Sol Coalition (+5), Nebula Collective (+4), Void Corsairs (-10)]"
+                elif f_id == "vanguard_syndicate":
+                    new_faction_standings["sol_coalition"] = min(100, new_faction_standings.get("sol_coalition", 0) + 6)
+                    new_faction_standings["vanguard_syndicate"] = max(-100, new_faction_standings.get("vanguard_syndicate", 0) - 8)
+                    rep_note = " [Faction Standing: Sol Coalition (+6), Free Spacers Syndicate (-8)]"
+                elif f_id == "hyperion_dynamics":
+                    new_faction_standings["outlaw_corsairs"] = min(100, new_faction_standings.get("outlaw_corsairs", 0) + 6)
+                    new_faction_standings["sol_coalition"] = max(-100, new_faction_standings.get("sol_coalition", 0) - 6)
+                    rep_note = " [Faction Standing: Void Corsairs (+6), Sol Coalition (-6)]"
+                elif f_id == "precursor_watch":
+                    new_faction_standings["precursor_watch"] = min(100, new_faction_standings.get("precursor_watch", 0) + 8)
+                    rep_note = " [Faction Standing: Precursor Watch (+8)]"
+
+                msg = (
+                    f"VICTORY: {combat.enemy_name} neutralized! "
+                    f"Collected {combat.bounty_credits} cr bounty, salvaged 2x {combat.salvage_commodity}.{relic_note}{rep_note}"
+                )
+                log_entry = f"Combat outcome: {msg}"
+                new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + contract_logs + xp_logs
+
                 new_ship = self._clone_ship(
                     hull=new_hull,
                     shield=new_shield,
-                    fuel=new_fuel,
-                    streak=1,
+                    credits=new_credits,
+                    cargo=cargo,
+                    relics=tuple(new_relics),
+                    mastery=new_mastery,
+                    active_contracts=updated_contracts,
+                    faction_standings=new_faction_standings,
                     tactical_combo=0,
-                    flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [msg]),
+                    flight_log=tuple(new_log[-20:]),
                 )
+
                 self.state = GameState(
                     version=self.state.version,
                     galaxy_seed=self.state.galaxy_seed,
@@ -1186,11 +1300,71 @@ class SimulationEngine:
                     visited_systems=self.state.visited_systems,
                     active_anomaly=self.state.active_anomaly,
                     active_combat=None,
-                    stats=self.state.stats,
+                    stats=stats,
                 )
                 return True, msg
+
+            # Enemy counter-attack and tactical abilities
+            ability_note = ""
+            if ability_cd == 0 and combat.special_ability != "none":
+                if combat.special_ability == "shield_drain":
+                    drain_amt = min(15, new_shield)
+                    new_shield -= drain_amt
+                    enemy_rem_shield = min(combat.enemy_max_shield, enemy_rem_shield + drain_amt)
+                    ability_note = f" [ABILITY: Shield Drain siphoned {drain_amt} MW from your deflectors!]"
+                    ability_cd = 2
+                elif combat.special_ability == "emp_overload":
+                    new_combo = 0
+                    enemy_rem_damage += 8
+                    ability_note = " [ABILITY: EMP Overload shockwave disrupted tactical systems!]"
+                    ability_cd = 2
+                elif combat.special_ability == "nanite_regen" and enemy_rem_shield > 0:
+                    enemy_rem_hull = min(combat.enemy_max_hull, enemy_rem_hull + 20)
+                    ability_note = " [ABILITY: Nanite Swarm regenerated +20 enemy Hull!]"
+                    ability_cd = 2
+                elif combat.special_ability == "tachyon_lance":
+                    new_hull = max(0, new_hull - 15)
+                    ability_note = " [ABILITY: Tachyon Lance phase-pierced your shields for 15 direct hull damage!]"
+                    ability_cd = 2
+
+            # Standard counter-battery
+            inbound = enemy_rem_damage
+            if new_shield >= inbound:
+                new_shield -= inbound
             else:
-                return False, f"Unknown combat action '{action}'."
+                overflow = inbound - new_shield
+                new_shield = 0
+                new_hull = max(0, new_hull - overflow)
+                new_combo = 0
+                if new_hull < 50:
+                    new_streak = max(1, self.state.ship.streak - 1)
+
+            # Next move telegraphing
+            if ability_cd == 1 and combat.special_ability != "none":
+                next_telegraph = f"WARNING: Hostile {combat.special_ability.replace('_', ' ').title()} charging to 100%!"
+            elif enemy_rem_shield > 0:
+                next_telegraph = "Deflector shield matrix active; powering main plasma batteries"
+            else:
+                next_telegraph = "Hull exposed! Primary weapons locking on flagship"
+
+            msg = f"{strike_desc} Inbound counter-battery dealt {inbound} damage.{ability_note} (Enemy HP: {enemy_rem_hull}/{combat.enemy_max_hull}, Shield: {enemy_rem_shield}/{combat.enemy_max_shield})"
+
+            new_combat = CombatEncounter(
+                id=combat.id,
+                enemy_name=combat.enemy_name,
+                enemy_class=combat.enemy_class,
+                enemy_hull=enemy_rem_hull,
+                enemy_max_hull=combat.enemy_max_hull,
+                enemy_damage=enemy_rem_damage,
+                bounty_credits=combat.bounty_credits,
+                salvage_commodity=combat.salvage_commodity,
+                enemy_shield=enemy_rem_shield,
+                enemy_max_shield=combat.enemy_max_shield,
+                faction_id=combat.faction_id,
+                special_ability=combat.special_ability,
+                ability_cooldown=ability_cd,
+                telegraphed_action=next_telegraph,
+            )
 
             new_log = list(self.state.ship.flight_log[-19:]) + [msg]
             new_ship = self._clone_ship(
@@ -1211,7 +1385,6 @@ class SimulationEngine:
                 active_combat=new_combat,
                 stats=stats,
             )
-
             return True, msg
 
     def resolve_anomaly(self, choice_id: str) -> tuple[bool, str]:
@@ -1712,4 +1885,21 @@ class SimulationEngine:
                 "catalog_relics": [r.to_dict() for r in CATALOG_RELICS],
                 "story_chapters": [c.to_dict() for c in CAMPAIGN_CHAPTERS],
                 "story_chapters_map": {c.id: c.to_dict() for c in CAMPAIGN_CHAPTERS},
+                "factions": {
+                    fid: {
+                        **f.to_dict(),
+                        "standing": self.state.ship.faction_standings.get(fid, 0),
+                        "standing_tier": get_faction_standing_tier(self.state.ship.faction_standings.get(fid, 0))[0],
+                        "active_perk": get_faction_standing_tier(self.state.ship.faction_standings.get(fid, 0))[1],
+                    }
+                    for fid, f in CANONICAL_FACTIONS.items()
+                },
+                "corporations": {
+                    cid: {
+                        **c.to_dict(),
+                        "standing": self.state.ship.corp_standings.get(cid, 0),
+                    }
+                    for cid, c in CANONICAL_CORPORATIONS.items()
+                },
+                "enemy_archetypes": {aid: asdict(a) for aid, a in ENEMY_ARCHETYPES.items()},
             }

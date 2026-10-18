@@ -61,6 +61,7 @@ class StarSystem:
     faction: str
     bodies: tuple[CelestialBody, ...]
     connections: tuple[str, ...] = ()
+    dominant_corp: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -75,6 +76,7 @@ class StarSystem:
             "faction": self.faction,
             "bodies": [b.to_dict() for b in self.bodies],
             "connections": list(self.connections),
+            "dominant_corp": self.dominant_corp,
         }
 
     @classmethod
@@ -91,6 +93,7 @@ class StarSystem:
             faction=str(data.get("faction", "Independent")),
             bodies=tuple(CelestialBody.from_dict(b) for b in data.get("bodies", [])),
             connections=tuple(data.get("connections", ())),
+            dominant_corp=data.get("dominant_corp"),
         )
 
 
@@ -281,6 +284,12 @@ class CombatEncounter:
     enemy_damage: int
     bounty_credits: int
     salvage_commodity: str = "titanium"
+    enemy_shield: int = 0
+    enemy_max_shield: int = 0
+    faction_id: str = "outlaw_corsairs"
+    special_ability: str = "none"
+    ability_cooldown: int = 0
+    telegraphed_action: str = "Hostile weapons powering up"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -296,6 +305,12 @@ class CombatEncounter:
             enemy_damage=int(data["enemy_damage"]),
             bounty_credits=int(data["bounty_credits"]),
             salvage_commodity=str(data.get("salvage_commodity", "titanium")),
+            enemy_shield=int(data.get("enemy_shield", 0)),
+            enemy_max_shield=int(data.get("enemy_max_shield", 0)),
+            faction_id=str(data.get("faction_id", "outlaw_corsairs")),
+            special_ability=str(data.get("special_ability", "none")),
+            ability_cooldown=int(data.get("ability_cooldown", 0)),
+            telegraphed_action=str(data.get("telegraphed_action", "Hostile weapons powering up")),
         )
 
 
@@ -715,6 +730,8 @@ class ShipState:
     near_miss_scanner_bonus: float = 0.0
     tutorial: TutorialState = field(default_factory=TutorialState)
     story: StoryState = field(default_factory=StoryState)
+    faction_standings: dict[str, int] = field(default_factory=dict)
+    corp_standings: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -745,10 +762,32 @@ class ShipState:
             "near_miss_scanner_bonus": self.near_miss_scanner_bonus,
             "tutorial": self.tutorial.to_dict(),
             "story": self.story.to_dict(),
+            "faction_standings": dict(self.faction_standings),
+            "corp_standings": dict(self.corp_standings),
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ShipState:
+        story_data = data.get("story", {})
+        story_rep = story_data.get("reputation", {}) if isinstance(story_data, dict) else {}
+        default_factions = {
+            "sol_coalition": int(story_rep.get("coalition", 0)),
+            "vanguard_syndicate": int(story_rep.get("syndicate", 0)),
+            "precursor_watch": int(story_rep.get("precursor", 0)),
+            "nebula_collective": 0,
+            "outlaw_corsairs": -15,
+        }
+        faction_standings = dict(data.get("faction_standings") or default_factions)
+
+        default_corps = {
+            "hyperion_dynamics": 0,
+            "astraea_pharma": 0,
+            "omnicorp_mining": 0,
+            "nexus_cybernetics": 0,
+            "vortex_fuel": 0,
+        }
+        corp_standings = dict(data.get("corp_standings") or default_corps)
+
         return cls(
             commander_name=str(data.get("commander_name", "Valerius")),
             callsign=str(data.get("callsign", "Aegis-7")),
@@ -777,6 +816,8 @@ class ShipState:
             near_miss_scanner_bonus=float(data.get("near_miss_scanner_bonus", 0.0)),
             tutorial=TutorialState.from_dict(data.get("tutorial", {})),
             story=StoryState.from_dict(data.get("story", {})),
+            faction_standings=faction_standings,
+            corp_standings=corp_standings,
         )
 
 

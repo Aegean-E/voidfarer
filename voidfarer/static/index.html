@@ -243,17 +243,30 @@
                         <div class="combat-text">
                             <span class="combat-tag">HOSTILE INTERCEPT DETECTED</span>
                             <h3 class="combat-title" id="combatEnemyTitle">Pirate Raider</h3>
+                            <span class="badge-faction" id="combatEnemyFaction" style="font-family: var(--font-mono); font-size: 0.65rem; color: #ffcc00;">FACTION: OUTLAW</span>
                         </div>
+                    </div>
+                    <div class="combat-health-bar-container" id="combatShieldContainer" style="display: none;">
+                        <div class="combat-health-label" style="color: #00f3ff;">
+                            <span>ENEMY DEFLECTOR SHIELD</span>
+                            <strong id="combatEnemyShield">0 / 0</strong>
+                        </div>
+                        <div class="combat-meter"><div class="combat-meter-fill shield-fill" id="combatEnemyShieldBar" style="width: 0%;"></div></div>
                     </div>
                     <div class="combat-health-bar-container">
                         <div class="combat-health-label">
-                            <span>ENEMY HULL</span>
+                            <span>ENEMY HULL ARMOR</span>
                             <strong id="combatEnemyHp">80 / 80</strong>
                         </div>
                         <div class="combat-meter"><div class="combat-meter-fill" id="combatEnemyBar" style="width: 100%;"></div></div>
                     </div>
+                    <div class="combat-telegraph-banner" id="combatTelegraphBanner" style="display: none;">
+                        <span class="icon">⚠</span> <span id="combatTelegraphText">Hostile weapon telemetry incoming</span>
+                    </div>
                     <div class="combat-tactics-grid">
                         <button class="btn-combat btn-red" id="btnCombatFire">🎯 FIRE LASER ARRAY</button>
+                        <button class="btn-combat btn-cyan" id="btnCombatDrone" style="background: rgba(0, 240, 255, 0.2); color: #00f0ff; border-color: rgba(0, 240, 255, 0.5);">🛸 DRONE STRIKE</button>
+                        <button class="btn-combat btn-amber" id="btnCombatTarget" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border-color: rgba(255, 170, 0, 0.5);">⚡ TARGET SUBSYSTEM</button>
                         <button class="btn-combat btn-blue" id="btnCombatAbsorb">🛡️ SHIELD OVERCHARGE</button>
                         <button class="btn-combat btn-amber" id="btnCombatEvade">🚀 EVASIVE BURN</button>
                         <button class="btn-combat btn-purple" id="btnCombatFlee">⚡ FLEE SECTOR (-8 FUEL)</button>
@@ -284,6 +297,7 @@
                     <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnMastery">MASTERY & RELICS</button>
                     <button class="deck-tab-btn" id="tabBtnStory">COMMS LOG <span class="tab-badge" id="storyBadge" style="display: none;">!</span></button>
+                    <button class="deck-tab-btn" id="tabBtnFactions">FACTIONS & CORPS</button>
                 </div>
 
                 <!-- Tab 1: Station Market / Exchange -->
@@ -483,6 +497,26 @@
                     <div class="academy-settings-row" style="margin-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 4px;">
                         <span style="font-size: 0.68rem; color: var(--text-muted); font-family: var(--font-mono);">FLIGHT CADET ACADEMY:</span>
                         <button class="btn-hud" id="btnResetCadetAcademy" style="font-size: 0.65rem; padding: 4px 10px; border-color: rgba(0, 240, 255, 0.4); color: var(--neon-cyan);">RETAKE CADET ACADEMY</button>
+                    </div>
+                </div>
+
+                <!-- Tab 7: Factions & Megacorporations Deck -->
+                <div class="tab-content factions-panel" id="tabContentFactions" style="display: none;">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot dot-purple"></span> GEOPOLITICS</div>
+                        <h2 class="panel-title">GALACTIC FACTIONS & CORPORATIONS</h2>
+                    </div>
+                    <div class="factions-section">
+                        <h3 class="subpanel-title">SOVEREIGN FACTIONS</h3>
+                        <div class="factions-grid" id="factionsGrid">
+                            <!-- Populated dynamically by app.js -->
+                        </div>
+                    </div>
+                    <div class="corps-section" style="margin-top: 18px;">
+                        <h3 class="subpanel-title">INTERSTELLAR MEGACORPORATIONS</h3>
+                        <div class="corps-grid" id="corpsGrid">
+                            <!-- Populated dynamically by app.js -->
+                        </div>
                     </div>
                 </div>
 

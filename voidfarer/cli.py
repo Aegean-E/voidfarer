@@ -20,6 +20,11 @@ if sys.platform == "win32":
         pass
 
 from voidfarer.engine import SimulationEngine
+from voidfarer.factions import (
+    CANONICAL_CORPORATIONS,
+    CANONICAL_FACTIONS,
+    get_faction_standing_tier,
+)
 from voidfarer.galaxy import COMMODITY_MAP, GalaxyGenerator
 from voidfarer.retention import (
     PILOT_TALENTS,
@@ -39,6 +44,7 @@ YELLOW = "\033[93m"
 RED = "\033[91m"
 MAGENTA = "\033[95m"
 BLUE = "\033[94m"
+WHITE = "\033[97m"
 BOLD = "\033[1m"
 DIM = "\033[2m"
 RESET = "\033[0m"
@@ -135,19 +141,25 @@ def cmd_status(engine: SimulationEngine) -> int:
 
     print(f"╠════ NAVIGATION COORDINATES ═════════════════════════════════════════╣{RESET}")
     print(f"║ System:    {CYAN}{cur_sys.name:<22}{RESET} Faction:  {cur_sys.faction:<22} ║")
-    print(f"║ Security:  {GREEN if cur_sys.security > 0.5 else RED}{cur_sys.security * 100:>5.1f}% [{('HIGH' if cur_sys.security > 0.7 else ('MED' if cur_sys.security > 0.3 else 'ANARCHY'))}]{RESET}       Corridors: {', '.join(cur_sys.connections):<22} ║")
+    corp_str = f"Corp HQ:   {cur_sys.dominant_corp.replace('_', ' ').title():<22}" if cur_sys.dominant_corp else f"Corridors: {', '.join(cur_sys.connections)[:22]:<22}"
+    print(f"║ Security:  {GREEN if cur_sys.security > 0.5 else RED}{cur_sys.security * 100:>5.1f}% [{('HIGH' if cur_sys.security > 0.7 else ('MED' if cur_sys.security > 0.3 else 'ANARCHY'))}]{RESET}       {corp_str} ║")
     orb_name = f"{body.name} [{body.body_type}]" if body else "Deep Space Transit"
     print(f"║ Orbit:     {orb_name:<57} ║")
     print(f"╚═════════════════════════════════════════════════════════════════════╝{RESET}")
 
     if engine.state.active_combat:
         c = engine.state.active_combat
-        print(f"\n{RED}{BOLD}⚔️  COMBAT INTERCEPT: {c.enemy_name.upper()} [{c.enemy_class.upper()}]{RESET}")
-        print(f"   Enemy Hull: {_bar(c.enemy_hull, c.enemy_max_hull, 20, RED)}")
+        faction_badge = f" [{c.faction_id}]" if c.faction_id else ""
+        print(f"\n{RED}{BOLD}⚔️  COMBAT INTERCEPT: {c.enemy_name.upper()} [{c.enemy_class.upper()}]{faction_badge}{RESET}")
+        if c.enemy_max_shield > 0:
+            print(f"   Enemy Shield: {_bar(c.enemy_shield, c.enemy_max_shield, 20, CYAN)}")
+        print(f"   Enemy Hull:   {_bar(c.enemy_hull, c.enemy_max_hull, 20, RED)}")
+        if c.telegraphed_action:
+            print(f"   Telemetry:    {YELLOW}⚠ {c.telegraphed_action}{RESET}")
         if ship.tactical_combo > 0:
             crit_alert = f" {YELLOW}{BOLD}(CRITICAL OVERCHARGE READY!){RESET}" if ship.tactical_combo >= 2 else ""
             print(f"   Tactical Combo: {YELLOW}{BOLD}⚡ x{ship.tactical_combo}{crit_alert}{RESET}")
-        print(f"   Tactical Options: {BOLD}combat fire{RESET} | {BOLD}combat absorb{RESET} | {BOLD}combat evade{RESET} | {BOLD}combat flee{RESET}")
+        print(f"   Tactical Options: {BOLD}combat fire{RESET} | {BOLD}combat drone{RESET} | {BOLD}combat target{RESET} | {BOLD}combat absorb{RESET} | {BOLD}combat evade{RESET} | {BOLD}combat flee{RESET}")
 
     elif engine.state.active_anomaly:
         anom = engine.state.active_anomaly
@@ -295,10 +307,19 @@ def cmd_combat(engine: SimulationEngine, storage: StorageManager, parts: list[st
 
     if len(parts) < 2:
         c = engine.state.active_combat
-        print(f"\n{RED}{BOLD}⚔️  ACTIVE COMBAT: {c.enemy_name} ({c.enemy_class}){RESET}")
-        print(f"Enemy Hull: {_bar(c.enemy_hull, c.enemy_max_hull, 20, RED)}")
-        print(f"{BOLD}Tactical maneuvers:{RESET}")
+        faction_badge = f"{YELLOW}[Faction: {c.faction_id}]{RESET}" if c.faction_id else ""
+        print(f"\n{RED}{BOLD}⚔️  ACTIVE COMBAT: {c.enemy_name} ({c.enemy_class}) {faction_badge}{RESET}")
+        if c.enemy_max_shield > 0:
+            print(f"Enemy Shield:   {_bar(c.enemy_shield, c.enemy_max_shield, 20, CYAN)}")
+        print(f"Enemy Hull:     {_bar(c.enemy_hull, c.enemy_max_hull, 20, RED)}")
+        if c.special_ability and c.special_ability != "none":
+            print(f"Hostile Tech:   {MAGENTA}{c.special_ability.replace('_', ' ').title()}{RESET}")
+        if c.telegraphed_action:
+            print(f"Hostile Action: {YELLOW}⚠ {c.telegraphed_action}{RESET}")
+        print(f"\n{BOLD}Tactical maneuvers:{RESET}")
         print(f"  {BOLD}combat fire{RESET}    - Fire laser battery strike")
+        print(f"  {BOLD}combat drone{RESET}   - Launch kinetic drone strike / sensor burn")
+        print(f"  {BOLD}combat target{RESET}  - Target subsystem (e.g. combat target weapons)")
         print(f"  {BOLD}combat absorb{RESET}  - Overcharge shield capacitors")
         print(f"  {BOLD}combat evade{RESET}   - High-G thruster evasion")
         print(f"  {BOLD}combat flee{RESET}    - Emergency hyperspace jump (costs 8 fuel)")
@@ -309,6 +330,11 @@ def cmd_combat(engine: SimulationEngine, storage: StorageManager, parts: list[st
         "fire": "fire_lasers",
         "laser": "fire_lasers",
         "attack": "fire_lasers",
+        "drone": "drone_strike",
+        "dronestrike": "drone_strike",
+        "strike": "drone_strike",
+        "target": "target_weapons" if len(parts) <= 2 else ("target_shields" if "shield" in parts[2].lower() else "target_weapons"),
+        "subsystem": "target_weapons",
         "absorb": "shield_absorb",
         "shield": "shield_absorb",
         "defend": "shield_absorb",
@@ -322,6 +348,36 @@ def cmd_combat(engine: SimulationEngine, storage: StorageManager, parts: list[st
     print((GREEN if ok else RED) + msg + RESET)
     storage.save(engine.state)
     return 0 if ok else 1
+
+
+def cmd_factions(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Inspect galactic sovereign factions, standings, active territory, and diplomatic perks."""
+    print(f"\n{BOLD}{CYAN}╔════ GALACTIC FACTIONS & SOVEREIGN STANDINGS ═════════════════════════╗{RESET}")
+    for fid, faction in CANONICAL_FACTIONS.items():
+        standing = engine.state.ship.faction_standings.get(fid, 0)
+        tier, perk = get_faction_standing_tier(standing)
+        tier_color = RED if tier == "Hostile" else (YELLOW if tier == "Unfriendly" else (GREEN if tier in ("Friendly", "Allied") else WHITE))
+        stand_bar = _bar(standing + 100, 200, 16, tier_color)
+        print(f"║ {BOLD}{faction.name:<24}{RESET} Status: {tier_color}[{tier.upper()} ({standing:+d})]{RESET}  HQ: {faction.headquarters_system:<10} ║")
+        print(f"║   Ideology: {DIM}{faction.ideology}{RESET}")
+        print(f"║   Standing: {stand_bar}")
+        print(f"║   Active Benefit/Tariff: {CYAN}{perk}{RESET}\n")
+    print(f"{CYAN}╚══════════════════════════════════════════════════════════════════════╝{RESET}")
+    return 0
+
+
+def cmd_corporations(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Inspect interstellar megacorporations, commercial specialties, and corporate standing."""
+    print(f"\n{BOLD}{YELLOW}╔════ INTERSTELLAR MEGACORPORATIONS & TRADE CONSORTIUMS ═══════════════╗{RESET}")
+    for cid, corp in CANONICAL_CORPORATIONS.items():
+        standing = engine.state.ship.corp_standings.get(cid, 0)
+        stand_bar = _bar(standing + 100, 200, 16, YELLOW)
+        print(f"║ {BOLD}{corp.name:<26}{RESET} Standing: {YELLOW}[{standing:+d}]{RESET}  HQ: {corp.headquarters_system:<10} ║")
+        print(f"║   Specialty: {GREEN}{corp.specialty_commodity.replace('_', ' ').title()}{RESET} (+{int(corp.bonus_trade_margin*100)}% commercial sale profit)")
+        print(f"║   Standing:  {stand_bar}")
+        print(f"║   Perk:      {DIM}{corp.corporate_perk}{RESET}\n")
+    print(f"{YELLOW}╚══════════════════════════════════════════════════════════════════════╝{RESET}")
+    return 0
 
 
 def cmd_contracts(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
@@ -730,10 +786,16 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             ok, msg = engine.refuel(amt)
             print((GREEN if ok else RED) + msg + RESET)
             storage.save(engine.state)
+        elif cmd in ("factions", "faction"):
+            cmd_factions(engine, storage, parts)
+        elif cmd in ("corps", "corporations", "corp"):
+            cmd_corporations(engine, storage, parts)
         elif cmd == "help":
             print(f"{BOLD}Available subcommands:{RESET}")
             print("  status                         - Telemetry, fleet roster, and subsystem readouts")
             print("  chart / map                    - Hyperlane network & orbital bodies")
+            print("  factions                       - Galactic factions, sovereign standings & perks")
+            print("  corps / corporations           - Megacorporations, specialties & trade bonuses")
             print("  jump <system_id>               - Hyperspace jump to adjacent star")
             print("  orbit <body_id>                - Enter orbit around planet or station")
             print("  scan                           - Sensor sweep of orbiting body (relic discovery)")
@@ -748,7 +810,7 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             print("  sell <comm> <qty>              - Sell commodities to local exchange")
             print("  fleet [harvest|buy|deploy]     - Autonomous fleet assets and drone yields")
             print("  upgrades [buy <id>]            - Station hardware upgrades and module shop")
-            print("  combat <fire|absorb|evade|flee>- Tactical maneuvers during hostile intercepts")
+            print("  combat <fire|drone|target|flee>- Tactical maneuvers during hostile intercepts")
             print("  power <e> <s> <se> <w>         - Distribute 100% reactor power")
             print("  anomaly <choice_id>            - Resolve active spatial encounter")
             print("  repair [amt]                   - Repair hull integrity at station")
@@ -841,6 +903,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     serve_p.add_argument("--port", type=int, default=8080, help="HTTP server port")
     serve_p.add_argument("--host", default="127.0.0.1", help="HTTP server host")
 
+    subparsers.add_parser("factions", help="Inspect galactic sovereign factions and reputation")
+    subparsers.add_parser("corps", help="Inspect interstellar megacorporations and trade perks")
+
     args = parser.parse_args(argv)
     if not args.command:
         parser.print_help()
@@ -850,6 +915,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "status":
         return cmd_status(engine)
+    elif args.command == "factions":
+        return cmd_factions(engine, storage, ["factions"])
+    elif args.command == "corps":
+        return cmd_corporations(engine, storage, ["corps"])
     elif args.command == "chart":
         return cmd_chart(engine)
     elif args.command == "market":

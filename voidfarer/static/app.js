@@ -307,9 +307,17 @@ class CockpitApp {
         // Combat Card
         this.combatCard = document.getElementById("combatCard");
         this.combatEnemyTitle = document.getElementById("combatEnemyTitle");
+        this.combatEnemyFaction = document.getElementById("combatEnemyFaction");
         this.combatEnemyHp = document.getElementById("combatEnemyHp");
         this.combatEnemyBar = document.getElementById("combatEnemyBar");
+        this.combatShieldContainer = document.getElementById("combatShieldContainer");
+        this.combatEnemyShield = document.getElementById("combatEnemyShield");
+        this.combatEnemyShieldBar = document.getElementById("combatEnemyShieldBar");
+        this.combatTelegraphBanner = document.getElementById("combatTelegraphBanner");
+        this.combatTelegraphText = document.getElementById("combatTelegraphText");
         this.btnCombatFire = document.getElementById("btnCombatFire");
+        this.btnCombatDrone = document.getElementById("btnCombatDrone");
+        this.btnCombatTarget = document.getElementById("btnCombatTarget");
         this.btnCombatAbsorb = document.getElementById("btnCombatAbsorb");
         this.btnCombatEvade = document.getElementById("btnCombatEvade");
         this.btnCombatFlee = document.getElementById("btnCombatFlee");
@@ -349,6 +357,7 @@ class CockpitApp {
         this.tabBtnContracts = document.getElementById("tabBtnContracts");
         this.tabBtnMastery = document.getElementById("tabBtnMastery");
         this.tabBtnStory = document.getElementById("tabBtnStory");
+        this.tabBtnFactions = document.getElementById("tabBtnFactions");
         this.contractsBadge = document.getElementById("contractsBadge");
         this.storyBadge = document.getElementById("storyBadge");
 
@@ -358,6 +367,9 @@ class CockpitApp {
         this.tabContentContracts = document.getElementById("tabContentContracts");
         this.tabContentMastery = document.getElementById("tabContentMastery");
         this.tabContentStory = document.getElementById("tabContentStory");
+        this.tabContentFactions = document.getElementById("tabContentFactions");
+        this.factionsGrid = document.getElementById("factionsGrid");
+        this.corpsGrid = document.getElementById("corpsGrid");
 
         // Story Comms Elements
         this.storyChapterTitle = document.getElementById("storyChapterTitle");
@@ -484,6 +496,9 @@ class CockpitApp {
         this.tabBtnContracts.addEventListener("click", () => this.switchRightTab("contracts"));
         this.tabBtnMastery.addEventListener("click", () => this.switchRightTab("mastery"));
         this.tabBtnStory.addEventListener("click", () => this.switchRightTab("story"));
+        if (this.tabBtnFactions) {
+            this.tabBtnFactions.addEventListener("click", () => this.switchRightTab("factions"));
+        }
         this.btnSkipCadet.addEventListener("click", () => this.handleSkipCadet());
         if (this.btnResetCadetAcademy) {
             this.btnResetCadetAcademy.addEventListener("click", () => this.handleResetCadet());
@@ -491,6 +506,12 @@ class CockpitApp {
 
         // Combat Buttons
         this.btnCombatFire.addEventListener("click", () => this.handleCombat("fire_lasers"));
+        if (this.btnCombatDrone) {
+            this.btnCombatDrone.addEventListener("click", () => this.handleCombat("drone_strike"));
+        }
+        if (this.btnCombatTarget) {
+            this.btnCombatTarget.addEventListener("click", () => this.handleCombat("target_subsystem"));
+        }
         this.btnCombatAbsorb.addEventListener("click", () => this.handleCombat("shield_absorb"));
         this.btnCombatEvade.addEventListener("click", () => this.handleCombat("evasive_burn"));
         this.btnCombatFlee.addEventListener("click", () => this.handleCombat("flee"));
@@ -551,6 +572,7 @@ class CockpitApp {
         this.tabBtnContracts.classList.toggle("active", tabName === "contracts");
         this.tabBtnMastery.classList.toggle("active", tabName === "mastery");
         this.tabBtnStory.classList.toggle("active", tabName === "story");
+        if (this.tabBtnFactions) this.tabBtnFactions.classList.toggle("active", tabName === "factions");
 
         this.tabContentMarket.style.display = (tabName === "market") ? "flex" : "none";
         this.tabContentArsenal.style.display = (tabName === "arsenal") ? "flex" : "none";
@@ -558,12 +580,14 @@ class CockpitApp {
         this.tabContentContracts.style.display = (tabName === "contracts") ? "flex" : "none";
         this.tabContentMastery.style.display = (tabName === "mastery") ? "flex" : "none";
         this.tabContentStory.style.display = (tabName === "story") ? "flex" : "none";
+        if (this.tabContentFactions) this.tabContentFactions.style.display = (tabName === "factions") ? "flex" : "none";
 
         if (tabName === "arsenal") this.renderArsenal();
         if (tabName === "fleet") this.renderFleet();
         if (tabName === "contracts") this.renderContracts();
         if (tabName === "mastery") this.renderMastery();
         if (tabName === "story") this.renderStory();
+        if (tabName === "factions") this.renderFactions();
     }
 
     setPowerSliders(e, sh, se, w) {
@@ -695,9 +719,32 @@ class CockpitApp {
             this.sound.playAlarm();
             this.combatCard.style.display = "flex";
             this.combatEnemyTitle.textContent = `${c.enemy_name} [${c.enemy_class}]`;
+            if (this.combatEnemyFaction) {
+                this.combatEnemyFaction.textContent = c.faction_id ? `FACTION: ${c.faction_id.replace('_', ' ').toUpperCase()}` : "";
+            }
             this.combatEnemyHp.textContent = `${c.enemy_hull} / ${c.enemy_max_hull}`;
             const pct = Math.round((c.enemy_hull / c.enemy_max_hull) * 100);
             this.combatEnemyBar.style.width = `${pct}%`;
+
+            if (this.combatShieldContainer) {
+                if (c.enemy_max_shield > 0) {
+                    this.combatShieldContainer.style.display = "flex";
+                    this.combatEnemyShield.textContent = `${c.enemy_shield} / ${c.enemy_max_shield}`;
+                    const shdPct = Math.round((c.enemy_shield / c.enemy_max_shield) * 100);
+                    this.combatEnemyShieldBar.style.width = `${shdPct}%`;
+                } else {
+                    this.combatShieldContainer.style.display = "none";
+                }
+            }
+
+            if (this.combatTelegraphBanner) {
+                if (c.telegraphed_action) {
+                    this.combatTelegraphBanner.style.display = "flex";
+                    this.combatTelegraphText.textContent = c.telegraphed_action;
+                } else {
+                    this.combatTelegraphBanner.style.display = "none";
+                }
+            }
 
             // Tactical Combo Counter
             const combo = ship.tactical_combo || 0;
@@ -799,6 +846,8 @@ class CockpitApp {
             this.renderMastery();
         } else if (this.activeRightTab === "story") {
             this.renderStory();
+        } else if (this.activeRightTab === "factions") {
+            this.renderFactions();
         }
     }
 
@@ -1804,6 +1853,55 @@ class CockpitApp {
                 }
             }
         }
+    }
+    renderFactions() {
+        if (!this.state.factions || !this.factionsGrid) return;
+
+        this.factionsGrid.innerHTML = "";
+        Object.entries(this.state.factions).forEach(([fid, f]) => {
+            const card = document.createElement("div");
+            card.className = "faction-card";
+            card.style.borderColor = `${f.primary_color}44`;
+
+            const tierClass = `tier-${f.standing_tier.toLowerCase()}`;
+            const barPct = Math.max(0, Math.min(100, Math.round(((f.standing + 100) / 200) * 100)));
+
+            card.innerHTML = `
+                <div class="faction-top-row">
+                    <span class="faction-name" style="color: ${f.primary_color};">${f.name}</span>
+                    <span class="standing-badge ${tierClass}">${f.standing_tier.toUpperCase()} (${f.standing > 0 ? "+" : ""}${f.standing})</span>
+                </div>
+                <div class="faction-ideology">Ideology: ${f.ideology} // HQ: ${f.headquarters_system.toUpperCase()}</div>
+                <div class="standing-bar-wrap">
+                    <div class="standing-bar-fill" style="width: ${barPct}%; background: ${f.primary_color};"></div>
+                </div>
+                <div class="faction-perk">Diplomatic Status: <strong>${f.active_perk}</strong></div>
+            `;
+            this.factionsGrid.appendChild(card);
+        });
+
+        if (!this.state.corporations || !this.corpsGrid) return;
+
+        this.corpsGrid.innerHTML = "";
+        Object.entries(this.state.corporations).forEach(([cid, c]) => {
+            const card = document.createElement("div");
+            card.className = "corp-card";
+            const commTitle = c.specialty_commodity.replace('_', ' ').toUpperCase();
+            const barPct = Math.max(0, Math.min(100, Math.round(((c.standing + 100) / 200) * 100)));
+
+            card.innerHTML = `
+                <div class="corp-top-row">
+                    <span class="corp-name">${c.name}</span>
+                    <span class="standing-badge tier-friendly">STANDING: ${c.standing > 0 ? "+" : ""}${c.standing}</span>
+                </div>
+                <div class="corp-desc">HQ: ${c.headquarters_system.toUpperCase()} // Commercial Specialty: <strong style="color: var(--neon-cyan);">${commTitle}</strong> (+${Math.round(c.bonus_trade_margin * 100)}% Sale Profit)</div>
+                <div class="standing-bar-wrap">
+                    <div class="standing-bar-fill" style="width: ${barPct}%; background: #ffd700;"></div>
+                </div>
+                <div class="corp-perk">Sponsorship Benefit: <strong>${c.corporate_perk}</strong></div>
+            `;
+            this.corpsGrid.appendChild(card);
+        });
     }
 }
 

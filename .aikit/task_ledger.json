@@ -1,59 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-launcher-fix-v1",
+    "task_id": "task-voidfarer-cockpit-layout-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792355826.4517698,
-    "completed_at": 1792355860.3518562
+    "updated_at": 1792356859.295635,
+    "completed_at": 1792356955.9888418
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-v7-launcher",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] Design 1-click batch launcher, server auto-browser opening, and CLI integration",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792345498.3040226,
-      "timestamp_str": "2026-10-18 20:44:58",
-      "impact_assessment": {
-        "why": "Add single-click native Windows batch launcher scripts (play.bat, voidfarer.bat) and auto-browser opening to allow instant 1-click game startup as requested by the user",
-        "benefits": "Enables friction-free onboarding where users can double-click play.bat to immediately launch the Holographic Web Cockpit HUD and open their default browser, or use terminal REPL/status commands",
-        "risks": "contract: CLI and REST backward compatibility preserved; dependency: zero external packages; concurrency: thread-safe browser launch timer; state: no state alterations",
-        "mitigation": "Pure standard library implementation, safe exception catching, and full automated test suite gate verification"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-v7-launcher",
-      "phase": "implementation",
-      "phase_num": 3,
-      "description": "[2/3] Implementation of play.bat, voidfarer.bat, and server --open flag",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792345502.8499746,
-      "timestamp_str": "2026-10-18 20:45:02"
-    },
-    {
-      "task_id": "task-voidfarer-v7-launcher",
-      "phase": "testing",
-      "phase_num": 4,
-      "description": "[3/3] Verification, ADR-007, documentation update, and 1-click batch launcher testing",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792345522.7327461,
-      "timestamp_str": "2026-10-18 20:45:22"
-    },
-    {
-      "task_id": "task-voidfarer-v7-launcher",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-v7-launcher' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792345527.6070037,
-      "timestamp_str": "2026-10-18 20:45:27"
-    },
     {
       "task_id": "task-voidfarer-v8-time-and-ticks",
       "phase": "planning",
@@ -239,6 +194,51 @@
       "status": "completed",
       "timestamp": 1792355860.3518598,
       "timestamp_str": "2026-10-18 23:37:40"
+    },
+    {
+      "task_id": "task-voidfarer-cockpit-layout-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/5] Planning cockpit layout rules (G-001..G-003): telemetry log anchored lower-right with HIDE/SHOW button; chrono tick deck pinned to the far right of the top status bar; Commerce/Arsenal/Fleet terminal rebuilt as a vertical tab rail on the left with content beside it; radar+reactor center column; alerts center-top; failing-first DOM/CSS regression tests designed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792356326.0128198,
+      "timestamp_str": "2026-10-18 23:45:26",
+      "impact_assessment": {
+        "why": "The cockpit currently places the telemetry log in the center deck, the chrono deck mid-bar, and the Commerce/Arsenal/Fleet terminal as a horizontal tab strip on the right. The user's layout rules require the log at the lower-right with a hide button, the chrono settings in the right upper corner, and the terminal running vertically down the left side.",
+        "benefits": "The cockpit matches the user's ergonomics: terminal rail on the left, main view center, time controls and telemetry in their expected corners; the log can be collapsed to free screen space; the rules become pinned by structural regression tests (G-001..G-003).",
+        "risks": "contract: app.js-referenced DOM ids (tab buttons/contents, chrono controls, log stream, clear button) must not change; dependency: none, tests use the stdlib html.parser; concurrency: none, static assets only; state: the HIDE/SHOW toggle is view-only and adds no persisted state; grid column fractions change the visual balance of all three decks.",
+        "mitigation": "Failing-first: structural tests parse index.html and assert deck membership, document order, CSS pins, and JS wiring before the restructure; smoke-serve the static cockpit afterwards; full suite plus aikit check gates before commit."
+      }
+    },
+    {
+      "task_id": "task-voidfarer-cockpit-layout-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[4/5] Implemented: index.html restructured (left deck = vertical tab rail + content stack, center deck = alerts + radar sub-panel + reactor, right deck = telemetry log only, chrono deck last in the top bar); style.css layout rules (grid 1.5/1.15/0.9fr, rail column, bottom-anchored log, log-collapsed, margin-left auto) + mobile rail fallback; app.js HIDE/SHOW toggle wired to log-collapsed; 11 new layout tests green after failing-first red (11/11 before, 11/11 after)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792356859.0721102,
+      "timestamp_str": "2026-10-18 23:54:19"
+    },
+    {
+      "task_id": "task-voidfarer-cockpit-layout-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[5/5] Verified: full suite 135/135 in 2.3s; served-cockpit smoke 200 on /, /style.css, /app.js with layout markers present; aikit check 4/4; ADR-013 and README 135-count updated; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792356859.295635,
+      "timestamp_str": "2026-10-18 23:54:19"
+    },
+    {
+      "task_id": "task-voidfarer-cockpit-layout-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-cockpit-layout-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792356955.9888434,
+      "timestamp_str": "2026-10-18 23:55:55"
     }
   ]
 }

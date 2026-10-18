@@ -267,6 +267,7 @@ def calculate_passive_multipliers(ship: ShipState) -> dict[str, float]:
     multipliers: dict[str, float] = {
         "laser_dmg": 1.0,
         "shield_cap": 0.0,
+        "max_hull": 0.0,
         "fuel_efficiency": 1.0,
         "scan_bounty": 1.0 * streak_mult,
         "trade_margin": 1.0 * streak_mult,
@@ -296,12 +297,16 @@ def calculate_passive_multipliers(ship: ShipState) -> dict[str, float]:
             multipliers["laser_dmg"] += mult
         elif stat == "shield_cap":
             multipliers["shield_cap"] += mult
+        elif stat == "max_hull":
+            multipliers["max_hull"] += mult
         elif stat == "fuel_efficiency":
             multipliers["fuel_efficiency"] = max(0.40, multipliers["fuel_efficiency"] - mult)
-        elif stat == "scanner_bounty":
+        elif stat in ("scanner_bounty", "scan_bounty"):
             multipliers["scan_bounty"] += mult
         elif stat == "drone_yield":
             multipliers["drone_yield"] += mult
+        elif stat == "trade_margin":
+            multipliers["trade_margin"] += mult
         elif stat == "void_eye":
             multipliers["laser_dmg"] += mult
             multipliers["scan_bounty"] += mult

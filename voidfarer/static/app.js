@@ -339,6 +339,8 @@ class CockpitApp {
         this.cadetMilestoneHint = document.getElementById("cadetMilestoneHint");
         this.cadetMilestoneReward = document.getElementById("cadetMilestoneReward");
         this.btnSkipCadet = document.getElementById("btnSkipCadet");
+        this.btnResetCadetAcademy = document.getElementById("btnResetCadetAcademy");
+        this.cadetGraduationDismissed = false;
 
         // Right Deck Tabs
         this.tabBtnMarket = document.getElementById("tabBtnMarket");
@@ -483,6 +485,9 @@ class CockpitApp {
         this.tabBtnMastery.addEventListener("click", () => this.switchRightTab("mastery"));
         this.tabBtnStory.addEventListener("click", () => this.switchRightTab("story"));
         this.btnSkipCadet.addEventListener("click", () => this.handleSkipCadet());
+        if (this.btnResetCadetAcademy) {
+            this.btnResetCadetAcademy.addEventListener("click", () => this.handleResetCadet());
+        }
 
         // Combat Buttons
         this.btnCombatFire.addEventListener("click", () => this.handleCombat("fire_lasers"));
@@ -737,6 +742,16 @@ class CockpitApp {
             this.cadetMilestoneDesc.textContent = step.description;
             this.cadetMilestoneHint.textContent = step.hint;
             this.cadetMilestoneReward.textContent = `+${step.reward_credits} CR / +${step.reward_xp} XP`;
+            this.btnSkipCadet.textContent = "SKIP TUTORIAL";
+            this.btnSkipCadet.style.display = "inline-block";
+        } else if (tut && tut.completed && !this.cadetGraduationDismissed) {
+            this.cadetBanner.style.display = "flex";
+            this.cadetMilestoneTitle.textContent = "🎓 ACADEMY GRADUATION: Flight Wings Conferred!";
+            this.cadetMilestoneDesc.textContent = "Congratulations Commander Astraea! Full flight credentials unlocked. Cadet Honor Wings active.";
+            this.cadetMilestoneHint.textContent = "+1,500 CR, +400 XP, and Cadet Honor Wings Precursor Relic awarded.";
+            this.cadetMilestoneReward.textContent = "GRADUATED";
+            this.btnSkipCadet.textContent = "DISMISS";
+            this.btnSkipCadet.style.display = "inline-block";
         } else {
             this.cadetBanner.style.display = "none";
         }
@@ -744,7 +759,14 @@ class CockpitApp {
         // Story Comms Badge
         const story = ship.story;
         if (story) {
-            const curChap = this.state.story_chapters ? this.state.story_chapters[story.current_chapter_id] : null;
+            let curChap = null;
+            if (this.state.story_chapters_map && this.state.story_chapters_map[story.current_chapter_id]) {
+                curChap = this.state.story_chapters_map[story.current_chapter_id];
+            } else if (Array.isArray(this.state.story_chapters)) {
+                curChap = this.state.story_chapters.find(c => c.id === story.current_chapter_id);
+            } else if (story.chapters && story.chapters[story.current_chapter_index]) {
+                curChap = story.chapters[story.current_chapter_index];
+            }
             const hasPendingChoices = curChap && !curChap.completed && curChap.choices && curChap.choices.length > 0;
             if (hasPendingChoices) {
                 this.storyBadge.style.display = "inline-block";
@@ -783,41 +805,58 @@ class CockpitApp {
     renderStory() {
         if (!this.state || !this.state.ship || !this.state.ship.story) return;
         const story = this.state.ship.story;
-        const chapters = this.state.story_chapters || {};
-        const curChap = chapters[story.current_chapter_id];
-        if (!curChap) return;
 
-        this.storyChapterTitle.textContent = `ACT ${story.active_act}: ${curChap.title.toUpperCase()}`;
-        this.storyTargetBadge.textContent = curChap.completed ? "ACT OBJECTIVE COMPLETE" : `TARGET: ${curChap.target_system_id.toUpperCase()}`;
-        this.storySynopsisText.textContent = curChap.synopsis;
+        // Resolve active chapter reliably across map, array, or embedded state
+        let curChap = null;
+        if (this.state.story_chapters_map && this.state.story_chapters_map[story.current_chapter_id]) {
+            curChap = this.state.story_chapters_map[story.current_chapter_id];
+        } else if (Array.isArray(this.state.story_chapters)) {
+            curChap = this.state.story_chapters.find(c => c.id === story.current_chapter_id);
+        } else if (story.chapters && story.chapters[story.current_chapter_index]) {
+            curChap = story.chapters[story.current_chapter_index];
+        }
+
+        if (story.completed) {
+            this.storyChapterTitle.textContent = "CAMPAIGN CONCLUDED: THE PRECURSOR CIPHER";
+            this.storyTargetBadge.textContent = "⭐ ALL ACTS RESOLVED";
+            this.storySynopsisText.textContent = "The mysteries of the ancient Precursor network have been unveiled. Your legacy echoes across the hyperlane corridors as First VoidFarer of the New Age.";
+            this.storyChoiceContainer.style.display = "none";
+        } else if (curChap) {
+            this.storyChapterTitle.textContent = `ACT ${story.active_act}: ${curChap.title.toUpperCase()}`;
+            const targetText = curChap.completed 
+                ? "ACT OBJECTIVE COMPLETE" 
+                : (curChap.target_system_id ? `TARGET: ${curChap.target_system_id.toUpperCase()}` : "TARGET: DEEP SPACE");
+            this.storyTargetBadge.textContent = targetText;
+            this.storySynopsisText.textContent = curChap.synopsis || curChap.objective || "";
+
+            // Story Choices
+            if (!curChap.completed && curChap.choices && curChap.choices.length > 0) {
+                this.storyChoiceContainer.style.display = "flex";
+                this.storyChoicesList.innerHTML = "";
+                curChap.choices.forEach(c => {
+                    const card = document.createElement("button");
+                    card.className = "story-choice-card";
+                    const costBadge = c.cost_credits > 0 ? `<span class="choice-cost-badge">COST: ${c.cost_credits} CR</span>` : "";
+                    card.innerHTML = `
+                        <div class="choice-header-row">
+                            <span class="choice-label-text">${c.label || c.text}</span>
+                            ${costBadge}
+                        </div>
+                        <p class="choice-consequence-preview">${c.consequence_summary || c.outcome_text}</p>
+                    `;
+                    card.addEventListener("click", () => this.handleStoryChoice(c.id));
+                    this.storyChoicesList.appendChild(card);
+                });
+            } else {
+                this.storyChoiceContainer.style.display = "none";
+            }
+        }
 
         // Faction alignment meters
-        const rep = story.faction_reputation || { coalition: 0, syndicate: 0, precursor: 0 };
-        this.scoreCoalition.textContent = (rep.coalition >= 0 ? "+" : "") + rep.coalition;
-        this.scoreSyndicate.textContent = (rep.syndicate >= 0 ? "+" : "") + rep.syndicate;
-        this.scorePrecursor.textContent = (rep.precursor >= 0 ? "+" : "") + rep.precursor;
-
-        // Story Choices
-        if (!curChap.completed && curChap.choices && curChap.choices.length > 0) {
-            this.storyChoiceContainer.style.display = "flex";
-            this.storyChoicesList.innerHTML = "";
-            curChap.choices.forEach(c => {
-                const card = document.createElement("button");
-                card.className = "story-choice-card";
-                const costBadge = c.cost_credits > 0 ? `<span class="choice-cost-badge">COST: ${c.cost_credits} CR</span>` : "";
-                card.innerHTML = `
-                    <div class="choice-header-row">
-                        <span class="choice-label-text">${c.label}</span>
-                        ${costBadge}
-                    </div>
-                    <p class="choice-consequence-preview">${c.consequence_summary}</p>
-                `;
-                card.addEventListener("click", () => this.handleStoryChoice(c.id));
-                this.storyChoicesList.appendChild(card);
-            });
-        } else {
-            this.storyChoiceContainer.style.display = "none";
-        }
+        const rep = story.faction_reputation || story.reputation || { coalition: 0, syndicate: 0, precursor: 0 };
+        this.scoreCoalition.textContent = (rep.coalition >= 0 ? "+" : "") + (rep.coalition || 0);
+        this.scoreSyndicate.textContent = (rep.syndicate >= 0 ? "+" : "") + (rep.syndicate || 0);
+        this.scorePrecursor.textContent = (rep.precursor >= 0 ? "+" : "") + (rep.precursor || 0);
 
         // Subspace Transmissions Feed
         const logs = story.transmission_log || [];
@@ -830,13 +869,14 @@ class CockpitApp {
 
             let avatarClass = "avatar-generic";
             let initials = "TX";
-            if (tx.speaker.includes("Vance")) {
+            const spk = tx.speaker || "";
+            if (spk.includes("Vance")) {
                 avatarClass = "avatar-vance";
                 initials = "AV";
-            } else if (tx.speaker.includes("Cipher")) {
+            } else if (spk.includes("Cipher")) {
                 avatarClass = "avatar-cipher";
                 initials = "CP";
-            } else if (tx.speaker.includes("Archon")) {
+            } else if (spk.includes("Archon")) {
                 avatarClass = "avatar-archon";
                 initials = "AP";
             }
@@ -846,7 +886,7 @@ class CockpitApp {
                 <div class="transmission-body">
                     <div class="transmission-header-row">
                         <span class="speaker-title">${tx.speaker}</span>
-                        <span class="callsign-pill">${tx.callsign.toUpperCase()}</span>
+                        <span class="callsign-pill">${(tx.callsign || 'SECURE').toUpperCase()}</span>
                     </div>
                     <div class="transmission-bubble">"${tx.message}"</div>
                 </div>
@@ -883,6 +923,11 @@ class CockpitApp {
     async handleSkipCadet() {
         this.sound.init();
         this.sound.playBeep(700);
+        if (this.state && this.state.ship && this.state.ship.tutorial && this.state.ship.tutorial.completed) {
+            this.cadetGraduationDismissed = true;
+            this.cadetBanner.style.display = "none";
+            return;
+        }
         try {
             const res = await fetch("/api/tutorial/skip", { method: "POST" });
             const json = await res.json();
@@ -893,6 +938,26 @@ class CockpitApp {
             }
         } catch (e) {
             console.error("Error skipping tutorial:", e);
+        }
+    }
+
+    async handleResetCadet() {
+        this.sound.init();
+        this.sound.playBeep(850);
+        this.cadetGraduationDismissed = false;
+        try {
+            const res = await fetch("/api/tutorial/reset", { method: "POST" });
+            const json = await res.json();
+            if (json.ok) {
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+                if (this.activeRightTab === "story") {
+                    this.renderStory();
+                }
+            }
+        } catch (e) {
+            console.error("Error resetting tutorial:", e);
         }
     }
 

@@ -118,11 +118,18 @@ def cmd_status(engine: SimulationEngine) -> int:
         tut_msg = f"Milestone {tut.current_step_index + 1}/{len(tut.steps)}: {step.title} -> {step.hint}"
         print(f"╠════ CADET FLIGHT ACADEMY ═══════════════════════════════════════════╣{RESET}")
         print(f"║ {YELLOW}{tut_msg[:67]:<67}{RESET} ║")
+    elif tut.completed:
+        tut_msg = "🎓 Graduated: Cadet Honor Wings equipped (+1,500 cr, +400 XP)"
+        print(f"╠════ CADET FLIGHT ACADEMY ═══════════════════════════════════════════╣{RESET}")
+        print(f"║ {GREEN}{tut_msg[:67]:<67}{RESET} ║")
 
     story = ship.story
-    chap = story.current_chapter
-    chap_status = "COMPLETED" if chap.completed else f"TARGET: {chap.target_system_id}"
-    chap_msg = f"Act {story.active_act}: {chap.title} [{chap_status}]"
+    if story.completed:
+        chap_msg = "⭐ Campaign Concluded: The Precursor Cipher [ALL ACTS RESOLVED]"
+    else:
+        chap = story.current_chapter
+        chap_status = "COMPLETED" if chap.completed else f"TARGET: {chap.target_system_id}"
+        chap_msg = f"Act {story.active_act}: {chap.title} [{chap_status}]"
     print(f"╠════ THE PRECURSOR CIPHER (STORY) ════════════════════════════════════╣{RESET}")
     print(f"║ {MAGENTA}{chap_msg[:67]:<67}{RESET} ║")
 
@@ -514,6 +521,23 @@ def cmd_story(engine: SimulationEngine, storage: StorageManager, parts: list[str
         if ok:
             storage.save(engine.state)
         return 0 if ok else 1
+
+    if story.completed:
+        print(f"\n{BOLD}{MAGENTA}╔════ THE PRECURSOR CIPHER: NARRATIVE CAMPAIGN ════════════════════════╗{RESET}")
+        print(f"║ {BOLD}{YELLOW}⭐ CAMPAIGN CONCLUDED: ALL NARRATIVE ACTS RESOLVED ⭐{RESET}               ║")
+        print(f"║ Status: {GREEN}{'TRIUMPHANT VICTORY':<18}{RESET} Final Acts: {'3 / 3 COMPLETED':<26} ║")
+        print(f"╠════ FACTION ALIGNMENT & REPUTATION ══════════════════════════════════╣{RESET}")
+        rep = story.faction_reputation
+        print(f"║ Sol Coalition: {CYAN}{rep.get('coalition', 0):>+4}{RESET}  │  Free Spacers Syndicate: {YELLOW}{rep.get('syndicate', 0):>+4}{RESET}  │  Precursor Watch: {MAGENTA}{rep.get('precursor', 0):>+4}{RESET} ║")
+        print(f"╠════ EPILOGUE ════════════════════════════════════════════════════════╣{RESET}")
+        print("  The Precursor Gateway pulses with radiant energy across the galaxy.")
+        print("  Commander Astraea's name is etched into ancient cosmic starmaps.")
+        print(f"\n{BOLD}Archived Subspace Transmissions ({len(story.transmission_log)} total):{RESET}")
+        for tx in story.transmission_log[-3:]:
+            speaker_color = CYAN if "Vance" in tx.speaker else (YELLOW if "Cipher" in tx.speaker else MAGENTA)
+            print(f"\n  {speaker_color}[{tx.callsign.upper()} // {tx.speaker}]{RESET}")
+            print(f"  \"{tx.message}\"")
+        return 0
 
     chap = story.current_chapter
     print(f"\n{BOLD}{MAGENTA}╔════ THE PRECURSOR CIPHER: NARRATIVE CAMPAIGN ════════════════════════╗{RESET}")

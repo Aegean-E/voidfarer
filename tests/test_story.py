@@ -7,9 +7,10 @@ import threading
 import unittest
 from pathlib import Path
 
-from voidfarer.cli import cmd_story, cmd_tutorial, main
+from voidfarer.cli import cmd_status, cmd_story, cmd_tutorial, main
 from voidfarer.engine import SimulationEngine
 from voidfarer.models import ShipState, StoryState, TutorialState
+from voidfarer.retention import calculate_passive_multipliers
 from voidfarer.server import ThreadedHTTPServer, VoidFarerHandler
 from voidfarer.storage import StorageManager
 from voidfarer.story import (
@@ -109,9 +110,11 @@ class TestStoryAndTutorial(unittest.TestCase):
         self.assertFalse(tut.is_active)
         self.assertGreaterEqual(self.engine.state.ship.credits, pre_grad_credits + 1500)
 
-        # Check Cadet Wings relic
+        # Check Cadet Wings relic and max hull expansion
         relic_ids = [r.id for r in self.engine.state.ship.relics]
         self.assertIn("relic_cadet_wings", relic_ids)
+        self.assertEqual(self.engine.state.ship.max_hull, 115)
+        self.assertEqual(self.engine.state.ship.hull, 115)
 
     def test_tutorial_skip_and_reset(self):
         self.assertTrue(self.engine.state.ship.tutorial.is_active)
@@ -186,6 +189,79 @@ class TestStoryAndTutorial(unittest.TestCase):
         self.assertEqual(restored_ship.tutorial.current_step_index, ship.tutorial.current_step_index)
         self.assertEqual(restored_ship.story.active_act, ship.story.active_act)
         self.assertEqual(len(restored_ship.story.transmission_log), len(ship.story.transmission_log))
+
+    def test_story_target_system_enforcement_and_full_campaign(self):
+        # Act I in Sol
+        ok, msg = self.engine.make_story_choice("choice_vance_telemetry")
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.story.active_act, 2)
+
+        # Act II target is Sirius; attempting choice in Sol must be rejected
+        ok, msg = self.engine.make_story_choice("choice_salvage_core")
+        self.assertFalse(ok)
+        self.assertIn("Must be in Sirius System", msg)
+
+        # Jump to Sirius
+        ok, msg = self.engine.jump("sirius")
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.current_system_id, "sirius")
+
+        # Now choice_salvage_core succeeds in Sirius
+        ok, msg = self.engine.make_story_choice("choice_salvage_core")
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.story.active_act, 3)
+
+        # Act III target is Vega; attempting choice in Sirius must be rejected
+        ok, msg = self.engine.make_story_choice("choice_unleash_gateways")
+        self.assertFalse(ok)
+        self.assertIn("Must be in Vega System", msg)
+
+        # Ensure sufficient fuel for jump to Vega
+        with self.engine.lock:
+            self.engine.state = self.engine.state.__class__(
+                version=self.engine.state.version,
+                galaxy_seed=self.engine.state.galaxy_seed,
+                ship=self.engine._clone_ship(fuel=50),
+                systems=self.engine.state.systems,
+                visited_systems=self.engine.state.visited_systems,
+                active_anomaly=None,
+                active_combat=None,
+                stats=self.engine.state.stats,
+            )
+
+        # Jump to Vega
+        ok, msg = self.engine.jump("vega")
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.current_system_id, "vega")
+
+        # Resolve Act III choice
+        ok, msg = self.engine.make_story_choice("choice_unleash_gateways")
+        self.assertTrue(ok)
+        self.assertIn("CAMPAIGN FINALE", msg)
+        self.assertTrue(self.engine.state.ship.story.completed)
+
+        # Further choices after completion are cleanly rejected
+        ok, msg = self.engine.make_story_choice("choice_safeguard_lock")
+        self.assertFalse(ok)
+        self.assertIn("already complete", msg)
+
+        # Verify CLI displays completed campaign epilogue gracefully
+        res = cmd_story(self.engine, self.storage, ["story"])
+        self.assertEqual(res, 0)
+        res_status = cmd_status(self.engine)
+        self.assertEqual(res_status, 0)
+
+    def test_relic_passive_multipliers_integration(self):
+        cadet_wings = STORY_RELICS["relic_cadet_wings"]
+        cipher_key = STORY_RELICS["relic_cipher_key"]
+        humanitarian = STORY_RELICS["relic_humanitarian_medal"]
+
+        ship = self.engine._clone_ship(relics=(cadet_wings, cipher_key, humanitarian))
+        passives = calculate_passive_multipliers(ship)
+
+        self.assertGreaterEqual(passives["max_hull"], 15.0)
+        self.assertGreater(passives["trade_margin"], 1.0)
+        self.assertGreaterEqual(passives["shield_cap"], 35.0)
 
     def test_cli_tutorial_and_story_commands(self):
         # cmd_tutorial status

@@ -50,5 +50,17 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   5. Preserve strict architectural decoupling between data DTOs (`models.py`) and story content templates (`story.py`), maintaining zero circular dependencies, backward compatibility with legacy save states, and sub-second test execution.
 - **Consequences**: Radically flattens player onboarding friction, establishes compelling narrative stakes, maximizes player attention and retention through parasocial agency and narrative transportation, and maintains 100% standard library compliance across all platforms.
 
+### ADR-005: Deep Hardening of Narrative Engine, Web Cockpit State Resolution, and Relic Stat Integration
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: A comprehensive post-implementation audit of the Cadet Flight Academy and Precursor Cipher narrative campaign revealed several operational gaps: (1) In Web Cockpit JS, `story_chapters` was serialized as an array, but accessed as an object dictionary by chapter ID string, causing `curChap` to evaluate to `undefined` and preventing the story tab from rendering; (2) In `engine.py`, story choices lacked target system validation, allowing players to resolve remote acts (Sirius and Vega) without traveling to their target star systems; (3) Passive stat multipliers in `retention.py` omitted support for `max_hull` and `trade_margin`, leaving story relics like `relic_cipher_key` and `relic_cadet_wings` inert; (4) The Web HUD and CLI lacked distinct victorious visual states for completed campaigns and graduation ceremonies.
+- **Decision**:
+  1. Update `retention.py` `calculate_passive_multipliers` to fully calculate `max_hull`, `trade_margin`, and dual-syntax `scanner_bounty`/`scan_bounty`, and wire effective maximum hull and shield expansion directly into `engine.py` when story relics are awarded.
+  2. Implement strict geographical star-system validation in `SimulationEngine.make_story_choice()`, requiring the flagship to be physically present in `current_chapter.target_system_id` to resolve narrative decisions.
+  3. Harden Web Cockpit `app.js` and `server.py` with dual `story_chapters` array and `story_chapters_map` dictionary lookups, safe null-checking for chapter system coordinates, graduation celebration ribbons, and retake-academy controls.
+  4. Enrich CLI `cmd_story` and `cmd_status` with prominent celebratory campaign epilogue views once all acts are resolved.
+  5. Expand automated regression test coverage to 58 tests across all edge cases.
+- **Consequences**: Guarantees zero UI rendering failures, aligns narrative progression with spatial flight mechanics, activates all passive story relic mechanics, and provides celebratory feedback across both web and terminal interfaces.
+
 
 

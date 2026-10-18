@@ -450,7 +450,16 @@ class SimulationEngine:
                             completed=story.completed,
                         )
 
+            new_max_hull = self.state.ship.max_hull
+            new_hull = self.state.ship.hull
+            for r in tut_relics:
+                if r.passive_stat == "max_hull":
+                    new_max_hull += int(r.stat_multiplier)
+                    new_hull += int(r.stat_multiplier)
+
             new_ship = self._clone_ship(
+                hull=new_hull,
+                max_hull=new_max_hull,
                 fuel=new_fuel,
                 credits=self.state.ship.credits + tut_cr,
                 current_system_id=target_system_id,
@@ -1524,6 +1533,9 @@ class SimulationEngine:
             if current_chapter.completed:
                 return False, f"Chapter '{current_chapter.title}' is already resolved."
 
+            if current_chapter.target_system_id and self.state.ship.current_system_id != current_chapter.target_system_id:
+                return False, f"Must be in {current_chapter.target_system_id.title()} System to resolve '{current_chapter.title}' (currently in {self.state.ship.current_system_id.title()})."
+
             found_choice = None
             for ch in current_chapter.choices:
                 if ch.id == choice_id:
@@ -1540,10 +1552,23 @@ class SimulationEngine:
 
             new_credits = self.state.ship.credits + found_choice.reward_credits - cost
             new_relics = list(self.state.ship.relics)
+            new_max_hull = self.state.ship.max_hull
+            new_hull = self.state.ship.hull
+            new_max_shield = self.state.ship.max_shield
+            new_shield = self.state.ship.shield
             awarded_relic = None
+
             if found_choice.reward_relic_id and found_choice.reward_relic_id in STORY_RELICS:
                 awarded_relic = STORY_RELICS[found_choice.reward_relic_id]
-                new_relics.append(awarded_relic)
+                existing_relic_ids = {r.id for r in new_relics}
+                if awarded_relic.id not in existing_relic_ids:
+                    new_relics.append(awarded_relic)
+                    if awarded_relic.passive_stat == "max_hull":
+                        new_max_hull += int(awarded_relic.stat_multiplier)
+                        new_hull += int(awarded_relic.stat_multiplier)
+                    elif awarded_relic.passive_stat == "shield_cap":
+                        new_max_shield += int(awarded_relic.stat_multiplier)
+                        new_shield += int(awarded_relic.stat_multiplier)
 
             new_rep = dict(story.reputation)
             align = found_choice.faction_alignment
@@ -1583,6 +1608,10 @@ class SimulationEngine:
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
             new_ship = self._clone_ship(
+                hull=new_hull,
+                max_hull=new_max_hull,
+                shield=new_shield,
+                max_shield=new_max_shield,
                 credits=new_credits,
                 relics=tuple(new_relics),
                 story=new_story,
@@ -1682,4 +1711,5 @@ class SimulationEngine:
                 "catalog_talents": PILOT_TALENTS,
                 "catalog_relics": [r.to_dict() for r in CATALOG_RELICS],
                 "story_chapters": [c.to_dict() for c in CAMPAIGN_CHAPTERS],
+                "story_chapters_map": {c.id: c.to_dict() for c in CAMPAIGN_CHAPTERS},
             }

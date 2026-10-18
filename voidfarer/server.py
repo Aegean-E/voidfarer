@@ -297,6 +297,7 @@ def run_server(
     storage: StorageManager,
     port: int = 8080,
     host: str = "127.0.0.1",
+    open_browser: bool = False,
 ) -> None:
     """Start local cockpit HTTP server daemon."""
     static_dir = Path(__file__).parent / "static"
@@ -305,13 +306,26 @@ def run_server(
     VoidFarerHandler.static_dir = static_dir
 
     server = ThreadedHTTPServer((host, port), VoidFarerHandler)
+    url = f"http://{host}:{port}"
     print(f"\n=======================================================")
     print(f"🚀 VOIDFARER HOLOGRAPHIC COCKPIT ACTIVE")
-    print(f"📡 Cockpit HUD URL: http://{host}:{port}")
+    print(f"📡 Cockpit HUD URL: {url}")
     print(f"⚡ Press Ctrl+C to disconnect sub-space uplink")
     print(f"=======================================================\n")
+    if open_browser:
+        import threading
+        import webbrowser
+
+        def _launch():
+            try:
+                getattr(webbrowser, "open")(url)
+            except Exception:
+                pass
+
+        threading.Timer(0.4, _launch).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nShutting down sub-space uplink...")
         server.shutdown()
+

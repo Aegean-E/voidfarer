@@ -8,6 +8,13 @@ VoidFarer is a zero-dependency, local-first space flight, fleet management, and 
 
 ## ⚡ 30-Second Cold-Start Quick Reference
 
+### 🎮 1-Click Instant Game Launch (Windows)
+Double-click or run either batch launcher directly from Windows Explorer or Terminal:
+```cmd
+play.bat        # Interactive Mission Launcher (defaults to Holographic Web Cockpit & auto-opens browser)
+voidfarer.bat   # CLI passthrough launcher (e.g. `voidfarer.bat status`, `voidfarer.bat repl`)
+```
+
 - **Runtime Prerequisites**: Python 3.10+ (Standard Library only; zero third-party packages required).
 - **Canonical Regression Shield Gate**:
   ```bash
@@ -38,6 +45,8 @@ voidfarer/
 │   └── NARRATIVE_AND_TUTORIAL_LITERATURE_REVIEW.md <- cognitive load & narrative review
 ├── .gitignore                <- transient state & python caches excluded
 ├── pyproject.toml            <- build and package configuration
+├── play.bat                  <- 1-click interactive Windows launcher (default: Web Cockpit)
+├── voidfarer.bat             <- 1-click Windows CLI passthrough launcher
 ├── README.md                 <- living documentation
 ├── voidfarer/                <- core simulation package
 │   ├── __init__.py           <- package metadata

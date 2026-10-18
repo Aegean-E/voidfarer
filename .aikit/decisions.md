@@ -73,3 +73,13 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   5. Add kinetic armor-piercing Drone Strike attacks that bypass deflector shields to directly damage enemy hulls, granting deployed fleet drone assets high-value tactical combat utility.
   6. Deliver full CLI REPL and Web Cockpit parity, including interactive Factions & Corps tabs, dual Shield/Hull telemetry meters, pulsing telegraph warning banners, and victory reputation shifts.
 - **Consequences**: Deepens the galaxy with emergent geopolitical consequence, trade specialization, and high-stakes tactical space battles while preserving 100% Python standard library purity, backward compatibility for legacy save files, and sub-second test execution across 68 automated unit tests.
+
+### ADR-007: Zero-Friction 1-Click Game Launchers and Embedded Browser Auto-Launch
+- **Date**: 2026-10-18
+- **Status**: Accepted
+- **Context**: Voidfarer required players to execute terminal commands (`python -m voidfarer.cli serve` or `repl`) from command prompts, creating friction for users who expect a 1-click startup experience directly from Windows Explorer.
+- **Decision**:
+  1. Implement `play.bat` with automated multi-tier Python discovery (`py -3`, `python`, `python3`, and standard installation paths), an interactive ASCII mission menu defaulting to the Web Cockpit, and transparent CLI argument passthrough.
+  2. Implement `voidfarer.bat` as a fast passthrough batch launcher in both project root and workspace root.
+  3. Enhance `server.py` and `cli.py` with an `--open` flag that utilizes the standard `webbrowser` module via a non-blocking timer thread to automatically launch the default browser upon server readiness.
+- **Consequences**: Enables instantaneous 1-click game startup on Windows without any external pip packages, preserving 100% standard library compliance and sub-second automated test execution.

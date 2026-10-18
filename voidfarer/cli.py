@@ -902,6 +902,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     serve_p = subparsers.add_parser("serve", help="Launch Holographic Web Cockpit server")
     serve_p.add_argument("--port", type=int, default=8080, help="HTTP server port")
     serve_p.add_argument("--host", default="127.0.0.1", help="HTTP server host")
+    serve_p.add_argument("--open", action="store_true", help="Automatically launch web browser")
 
     subparsers.add_parser("factions", help="Inspect galactic sovereign factions and reputation")
     subparsers.add_parser("corps", help="Inspect interstellar megacorporations and trade perks")
@@ -1019,7 +1020,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.command == "repl":
         return cmd_repl(engine, storage)
     elif args.command == "serve":
-        run_server(engine, storage, port=args.port, host=args.host)
+        run_server(engine, storage, port=args.port, host=args.host, open_browser=args.open)
         return 0
 
     return 0

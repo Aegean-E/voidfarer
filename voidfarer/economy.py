@@ -149,6 +149,10 @@ def generate_initial_economy(systems: dict[str, StarSystem], rng: random.Random 
     )
 
 
+MIN_STOCK = 5
+MAX_STOCK = 300
+
+
 def tick_global_economy(
     state: GlobalEconomyState,
     num_ticks: int,
@@ -168,12 +172,12 @@ def tick_global_economy(
         for comm_id, p_rate in market.production_rates.items():
             # Production adds units over ticks
             growth = int((p_rate * num_ticks) / 4)
-            new_stocks[comm_id] = min(300, new_stocks.get(comm_id, 50) + growth)
+            new_stocks[comm_id] = min(MAX_STOCK, new_stocks.get(comm_id, 50) + growth)
 
         for comm_id, c_rate in market.consumption_rates.items():
             # Consumption consumes units over ticks
             consumption = int((c_rate * num_ticks) / 4)
-            new_stocks[comm_id] = max(5, new_stocks.get(comm_id, 50) - consumption)
+            new_stocks[comm_id] = max(MIN_STOCK, new_stocks.get(comm_id, 50) - consumption)
 
         updated_markets[sys_id] = SystemMarketState(
             system_id=sys_id,

@@ -36,6 +36,10 @@ class TestServer(unittest.TestCase):
         cls.server.server_close()
         cls.temp_dir.cleanup()
 
+    def setUp(self):
+        VoidFarerHandler.engine = SimulationEngine(seed=42)
+        VoidFarerHandler.storage = StorageManager(self.temp_dir.name)
+
     def _get(self, path: str):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=2)
         conn.request("GET", path)
@@ -45,9 +49,11 @@ class TestServer(unittest.TestCase):
         return res.status, data
 
     def _post(self, path: str, body: dict):
+        return self._post_raw(path, json.dumps(body))
+
+    def _post_raw(self, path: str, payload: str, content_type: str = "application/json"):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=2)
-        payload = json.dumps(body)
-        conn.request("POST", path, body=payload, headers={"Content-Type": "application/json"})
+        conn.request("POST", path, body=payload, headers={"Content-Type": content_type})
         res = conn.getresponse()
         data = res.read()
         conn.close()
@@ -121,12 +127,58 @@ class TestServer(unittest.TestCase):
         json_r = json.loads(data_r.decode("utf-8"))
         self.assertTrue(json_r["ok"])
 
-        # POST /api/mastery/unlock (should fail if 0 points, but return ok=False with error message)
+        # POST /api/mastery/unlock (should fail with zero talent points)
         st_m, data_m = self._post("/api/mastery/unlock", {"talent_id": "void_cartographer"})
         self.assertEqual(st_m, 200)
         json_m = json.loads(data_m.decode("utf-8"))
-        # Engine handles point validation cleanly
-        self.assertIn("ok", json_m)
+        self.assertFalse(json_m["ok"])
+
+    def test_malformed_json_is_rejected(self):
+        status, data = self._post_raw("/api/orbit", "{not json")
+        self.assertEqual(status, 400)
+        self.assertFalse(json.loads(data.decode("utf-8"))["ok"])
+
+    def test_non_object_json_is_rejected(self):
+        status, data = self._post_raw("/api/orbit", "[1, 2, 3]")
+        self.assertEqual(status, 400)
+        self.assertFalse(json.loads(data.decode("utf-8"))["ok"])
+
+    def test_wrong_field_type_is_rejected(self):
+        status, data = self._post("/api/power", {"engines": "many"})
+        self.assertEqual(status, 400)
+        self.assertFalse(json.loads(data.decode("utf-8"))["ok"])
+
+    def test_negative_repair_and_refuel_are_rejected(self):
+        for endpoint in ("/api/repair", "/api/refuel"):
+            status, _ = self._post(endpoint, {"amount": -25})
+            self.assertEqual(status, 400, endpoint)
+
+    def test_trade_rejects_non_boolean_is_buy(self):
+        status, _ = self._post("/api/trade", {"commodity_id": "fuel_cells", "quantity": 1, "is_buy": "yes"})
+        self.assertEqual(status, 400)
+
+    def test_step_rejects_negative_and_non_finite_delta(self):
+        for payload in ('{"delta_time": -1}', '{"delta_time": NaN}'):
+            status, _ = self._post_raw("/api/step", payload)
+            self.assertEqual(status, 400, payload)
+
+    def test_scan_response_exposes_relic_and_near_miss(self):
+        self._post("/api/orbit", {"target": "sol_body_1"})
+        status, data = self._post("/api/scan", {})
+        self.assertEqual(status, 200)
+        discovery = json.loads(data.decode("utf-8"))["discovery"]
+        self.assertIn("relic", discovery)
+        self.assertIn("near_miss", discovery)
+
+    def test_reset_is_deterministic_for_a_seed(self):
+        first = self._post("/api/reset", {"seed": 7})
+        second = self._post("/api/reset", {"seed": 7})
+        self.assertEqual(first[0], 200)
+        self.assertEqual(second[0], 200)
+        first_state = json.loads(first[1].decode("utf-8"))["state"]
+        second_state = json.loads(second[1].decode("utf-8"))["state"]
+        self.assertEqual(first_state["stats"], second_state["stats"])
+        self.assertEqual(first_state["ship"]["credits"], second_state["ship"]["credits"])
 
     def test_get_api_shipyard_excludes_current_chassis(self):
         status, data = self._get("/api/shipyard")

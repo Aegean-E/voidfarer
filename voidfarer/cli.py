@@ -1116,7 +1116,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     inv_p.add_argument("action", nargs="?", default="list", choices=["list", "buy", "use", "jettison"])
     inv_p.add_argument("arg1", nargs="?", help="Item ID")
     inv_p.add_argument("arg2", nargs="?", help="Quantity")
-    subparsers.add_parser("shipyard", help="Orbital shipyard chassis and module sales")
+    shipyard_p = subparsers.add_parser("shipyard", help="Orbital shipyard chassis and module sales")
+    shipyard_p.add_argument("action", nargs="?", default="list", choices=["list", "catalog", "status", "chassis", "buy_chassis", "sell", "uninstall"])
+    shipyard_p.add_argument("target", nargs="?", help="Chassis ID or module slot")
     subparsers.add_parser("scan", help="Execute sensor scan on orbiting body")
     subparsers.add_parser("repl", help="Launch interactive terminal cockpit")
 
@@ -1130,7 +1132,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     upg_p.add_argument("upgrade_id", nargs="?", help="Upgrade ID to purchase")
 
     combat_p = subparsers.add_parser("combat", help="Execute tactical combat maneuver")
-    combat_p.add_argument("action", choices=["fire", "absorb", "evade", "flee"], help="Tactical maneuver")
+    combat_p.add_argument(
+        "action",
+        choices=["fire", "laser", "attack", "drone", "strike", "target", "subsystem", "absorb", "shield", "defend", "evade", "dodge", "flee", "escape"],
+        help="Tactical maneuver",
+    )
+    combat_p.add_argument("target", nargs="?", help="Subsystem target for 'combat target' (weapons or shields)")
 
     contracts_p = subparsers.add_parser("contracts", help="Inspect and claim dynamic sector bounty contracts")
     contracts_p.add_argument("action", nargs="?", default="list", choices=["list", "claim"])
@@ -1174,10 +1181,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     anom_p.add_argument("choice_id", help="Selected choice ID")
 
     rep_p = subparsers.add_parser("repair", help="Repair hull integrity")
-    rep_p.add_argument("--amount", type=int, default=25, help="Hull points to restore")
+    rep_p.add_argument("amount_pos", nargs="?", type=int, help="Hull points to restore (default 25)")
+    rep_p.add_argument("--amount", type=int, default=None, help="Hull points to restore")
 
     ref_p = subparsers.add_parser("refuel", help="Replenish quantum fuel")
-    ref_p.add_argument("--amount", type=int, default=20, help="Fuel units to add")
+    ref_p.add_argument("amount_pos", nargs="?", type=int, help="Fuel units to add (default 20)")
+    ref_p.add_argument("--amount", type=int, default=None, help="Fuel units to add")
 
     serve_p = subparsers.add_parser("serve", help="Launch Holographic Web Cockpit server")
     serve_p.add_argument("--port", type=int, default=8080, help="HTTP server port")
@@ -1186,6 +1195,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     subparsers.add_parser("factions", help="Inspect galactic sovereign factions and reputation")
     subparsers.add_parser("corps", help="Inspect interstellar megacorporations and trade perks")
+    subparsers.add_parser("corporations", help="Alias for 'corps'")
 
     time_p = subparsers.add_parser("time", help="Inspect and control simulation time and ticks")
     time_p.add_argument("action", nargs="?", default="status", choices=["status", "pause", "resume", "play", "speed", "step", "wait", "tick"])
@@ -1209,6 +1219,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return cmd_factions(engine, storage, ["factions"])
     elif args.command == "corps":
         return cmd_corporations(engine, storage, ["corps"])
+    elif args.command == "corporations":
+        return cmd_corporations(engine, storage, ["corporations"])
     elif args.command == "chart":
         return cmd_chart(engine)
     elif args.command == "market":
@@ -1225,7 +1237,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 parts.append(args.arg2)
         return cmd_inventory(engine, storage, parts)
     elif args.command == "shipyard":
-        return cmd_shipyard(engine, storage, ["shipyard"])
+        parts = ["shipyard"]
+        if args.action != "list":
+            parts.append(args.action)
+            if args.target:
+                parts.append(args.target)
+        return cmd_shipyard(engine, storage, parts)
     elif args.command == "fleet":
         parts = ["fleet"]
         if args.action != "list":
@@ -1243,7 +1260,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 parts.append(args.upgrade_id)
         return cmd_upgrades(engine, storage, parts)
     elif args.command == "combat":
-        return cmd_combat(engine, storage, ["combat", args.action])
+        parts = ["combat", args.action]
+        if args.target:
+            parts.append(args.target)
+        return cmd_combat(engine, storage, parts)
     elif args.command == "contracts":
         parts = ["contracts"]
         if args.action != "list":
@@ -1310,20 +1330,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         storage.save(engine.state)
         return 0 if ok else 1
     elif args.command == "repair":
-        ok, msg = engine.repair_hull(args.amount)
+        amount = args.amount if args.amount is not None else (args.amount_pos if args.amount_pos is not None else 25)
+        ok, msg = engine.repair_hull(amount)
         print((GREEN if ok else RED) + msg + RESET)
         storage.save(engine.state)
         return 0 if ok else 1
     elif args.command == "refuel":
-        ok, msg = engine.refuel(args.amount)
+        amount = args.amount if args.amount is not None else (args.amount_pos if args.amount_pos is not None else 20)
+        ok, msg = engine.refuel(amount)
         print((GREEN if ok else RED) + msg + RESET)
         storage.save(engine.state)
         return 0 if ok else 1
     elif args.command == "repl":
         return cmd_repl(engine, storage)
     elif args.command == "serve":
-        run_server(engine, storage, port=args.port, host=args.host, open_browser=args.open)
-        return 0
+        return run_server(engine, storage, port=args.port, host=args.host, open_browser=args.open)
 
     return 0
 

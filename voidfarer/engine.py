@@ -6,7 +6,7 @@ from dataclasses import asdict, replace
 import math
 import random
 import threading
-from typing import Any
+from typing import Any, Sequence
 
 from voidfarer.enemies import (
     ENEMY_ARCHETYPES,
@@ -22,6 +22,8 @@ from voidfarer.factions import (
     get_faction_standing_tier,
 )
 from voidfarer.economy import (
+    MAX_STOCK,
+    MIN_STOCK,
     calculate_dynamic_market_quote,
     generate_initial_economy,
     get_galactic_trade_routes,
@@ -169,6 +171,29 @@ class SimulationEngine:
             economy=kwargs.get("economy", cur.economy),
         )
 
+    def _apply_relic_stat_bonuses(
+        self,
+        hull: int,
+        max_hull: int,
+        shield: int,
+        max_shield: int,
+        relics: Sequence[PrecursorRelic],
+    ) -> tuple[int, int, int, int]:
+        """Raise current and maximum hull/shield for newly acquired permanent relics."""
+        for relic in relics:
+            if relic.passive_stat == "max_hull":
+                bonus = int(relic.stat_multiplier)
+                max_hull += bonus
+                hull += bonus
+            elif relic.passive_stat == "shield_cap":
+                bonus = int(relic.stat_multiplier)
+                max_shield += bonus
+                shield += bonus
+            elif relic.passive_stat == "stellar_forge":
+                max_shield += 40
+                shield += 40
+        return hull, max_hull, shield, max_shield
+
     def _progress_tutorial(self, action_type: str) -> tuple[TutorialState, int, int, list[PrecursorRelic], list[str]]:
         """Advance the Cadet Flight Academy if current step requirement is satisfied."""
         cur = self.state.ship.tutorial
@@ -233,7 +258,7 @@ class SimulationEngine:
         """Award experience points and compute level promotions and talent points."""
         new_xp = current_mastery.xp + amount
         level = current_mastery.level
-        next_xp = current_mastery.next_level_xp
+        next_xp = max(1, current_mastery.next_level_xp)
         points = current_mastery.talent_points
         logs: list[str] = []
 
@@ -279,6 +304,14 @@ class SimulationEngine:
             else:
                 updated.append(c)
         return tuple(updated), logs
+
+    def reset(self, seed: int = 42) -> tuple[bool, str]:
+        """Reset the simulation to a fresh galaxy with an isolated deterministic RNG stream."""
+        with self.lock:
+            self.seed = int(seed)
+            self.rng = random.Random(self.seed)
+            self.state = self._create_initial_state(self.seed)
+            return True, "Simulation reset to factory state."
 
     def _create_initial_state(self, seed: int) -> GameState:
         """Construct a fresh universe state rooted at Sol System."""
@@ -520,16 +553,19 @@ class SimulationEngine:
                             completed=story.completed,
                         )
 
-            new_max_hull = self.state.ship.max_hull
-            new_hull = self.state.ship.hull
-            for r in tut_relics:
-                if r.passive_stat == "max_hull":
-                    new_max_hull += int(r.stat_multiplier)
-                    new_hull += int(r.stat_multiplier)
+            new_hull, new_max_hull, new_shield, new_max_shield = self._apply_relic_stat_bonuses(
+                self.state.ship.hull,
+                self.state.ship.max_hull,
+                self.state.ship.shield,
+                self.state.ship.max_shield,
+                tut_relics,
+            )
 
             new_ship = self._clone_ship(
                 hull=new_hull,
                 max_hull=new_max_hull,
+                shield=new_shield,
+                max_shield=new_max_shield,
                 fuel=new_fuel,
                 credits=self.state.ship.credits + tut_cr,
                 current_system_id=target_system_id,
@@ -690,6 +726,9 @@ class SimulationEngine:
             if not body:
                 return False, "Cannot scan: ship must establish orbit around a celestial body first.", {}
 
+            if body.scan_completed:
+                return False, f"{body.name} has already been surveyed; no further research bounty is available.", {}
+
             passives = calculate_passive_multipliers(self.state.ship)
             equipment = calculate_equipment_bonuses(self.state.ship)
             pwr = self.state.ship.power.sensors
@@ -732,6 +771,7 @@ class SimulationEngine:
                 faction=cur_sys.faction,
                 bodies=tuple(updated_bodies),
                 connections=cur_sys.connections,
+                dominant_corp=cur_sys.dominant_corp,
             )
 
             systems = dict(self.state.systems)
@@ -768,7 +808,20 @@ class SimulationEngine:
                 new_mastery, tut_xp_logs = self._award_pilot_xp(tut_xp, new_mastery)
                 new_log.extend(tut_xp_logs)
 
+            added_relics = ([found_relic] if found_relic else []) + list(tut_relics)
+            new_hull, new_max_hull, new_shield, new_max_shield = self._apply_relic_stat_bonuses(
+                self.state.ship.hull,
+                self.state.ship.max_hull,
+                self.state.ship.shield,
+                self.state.ship.max_shield,
+                added_relics,
+            )
+
             new_ship = self._clone_ship(
+                hull=new_hull,
+                max_hull=new_max_hull,
+                shield=new_shield,
+                max_shield=new_max_shield,
                 credits=new_credits + tut_cr,
                 relics=tuple(new_relics + tut_relics),
                 near_miss_scanner_bonus=new_near_miss,
@@ -791,6 +844,8 @@ class SimulationEngine:
                 "bounty": credit_bounty,
                 "market_archetype": body.market_archetype,
                 "hazards": list(body.hazards),
+                "relic": found_relic.to_dict() if found_relic else None,
+                "near_miss": is_near_miss,
             }
 
             return True, f"Scan analysis complete: {body.scan_discovery}", discovery_info
@@ -935,9 +990,9 @@ class SimulationEngine:
                 sm = econ_markets[sys_id]
                 new_stocks = dict(sm.stockpiles)
                 if is_buy:
-                    new_stocks[commodity_id] = max(5, new_stocks.get(commodity_id, 50) - quantity)
+                    new_stocks[commodity_id] = max(MIN_STOCK, new_stocks.get(commodity_id, 50) - quantity)
                 else:
-                    new_stocks[commodity_id] = min(400, new_stocks.get(commodity_id, 50) + quantity)
+                    new_stocks[commodity_id] = min(MAX_STOCK, new_stocks.get(commodity_id, 50) + quantity)
                 econ_markets[sys_id] = SystemMarketState(
                     system_id=sys_id,
                     stockpiles=new_stocks,
@@ -966,8 +1021,15 @@ class SimulationEngine:
                 return False, f"Unknown hardware upgrade '{upgrade_id}'."
 
             if upgrade.slot in self.state.ship.equipped_upgrades:
-                if self.state.ship.equipped_upgrades[upgrade.slot] == upgrade_id:
+                existing_id = self.state.ship.equipped_upgrades[upgrade.slot]
+                if existing_id == upgrade_id:
                     return False, f"Module '{upgrade.name}' is already installed."
+                existing = get_upgrade(existing_id)
+                existing_name = existing.name if existing else existing_id
+                return False, (
+                    f"Slot '{upgrade.slot}' already houses {existing_name}. "
+                    f"Sell the installed module before installing {upgrade.name}."
+                )
 
             if self.state.ship.credits < upgrade.cost:
                 return False, f"Insufficient credits: costs {upgrade.cost} cr, you have {self.state.ship.credits} cr."
@@ -991,9 +1053,10 @@ class SimulationEngine:
                     base_capacity = c.cargo_capacity
                     break
 
-            # Recompute stats based on all currently equipped modules
-            total_hull = base_hull
-            total_shield = base_shield
+            # Recompute stats based on chassis, equipped modules, and permanent relic/talent passives.
+            passives = calculate_passive_multipliers(self.state.ship)
+            total_hull = base_hull + int(passives["max_hull"])
+            total_shield = base_shield + int(passives["shield_cap"])
             total_capacity = base_capacity
             for u_id in equipped.values():
                 u = get_upgrade(u_id)
@@ -1059,8 +1122,9 @@ class SimulationEngine:
                     base_capacity = c.cargo_capacity
                     break
 
-            total_hull = base_hull
-            total_shield = base_shield
+            passives = calculate_passive_multipliers(self.state.ship)
+            total_hull = base_hull + int(passives["max_hull"])
+            total_shield = base_shield + int(passives["shield_cap"])
             total_capacity = base_capacity
             for u_id in equipped.values():
                 u = get_upgrade(u_id)
@@ -1130,8 +1194,9 @@ class SimulationEngine:
                     if "max_hull" in u.stat_bonus:
                         bonus_hull += int(u.stat_bonus["max_hull"])
 
-            total_max_hull = chassis.max_hull + bonus_hull
-            total_max_shield = chassis.max_shield + bonus_shield
+            passives = calculate_passive_multipliers(self.state.ship)
+            total_max_hull = chassis.max_hull + bonus_hull + int(passives["max_hull"])
+            total_max_shield = chassis.max_shield + bonus_shield + int(passives["shield_cap"])
             total_cargo_capacity = chassis.cargo_capacity + bonus_capacity
 
             msg = f"Commissioned {chassis.name} ({chassis.ship_class}) at shipyard for {chassis.cost} cr! Perk: {chassis.specialty_perk}"
@@ -1277,6 +1342,8 @@ class SimulationEngine:
                 return False, f"Insufficient credits: {template['name']} costs {cost} cr."
 
             target_sys = assigned_system_id or self.state.ship.current_system_id
+            if target_sys not in self.state.systems:
+                return False, f"Unknown star system '{target_sys}' for drone deployment."
             drone_id = f"drone_{drone_type}_{len(self.state.ship.fleet_drones) + 1}"
             new_drone = FleetDrone(
                 id=drone_id,
@@ -1379,6 +1446,13 @@ class SimulationEngine:
             total_credits = int(total_credits * passives.get("drone_yield", 1.0))
 
             cargo = dict(self.state.ship.cargo)
+            incoming_volume = calculate_cargo_volume({"titanium": total_cargo})
+            free_volume = self.state.ship.cargo_capacity - calculate_cargo_volume(cargo)
+            if incoming_volume > free_volume:
+                return False, (
+                    f"Cargo hold has {max(0, free_volume)} volume free but the harvest needs "
+                    f"{incoming_volume}. Jettison cargo or expand the hold first."
+                ), {"credits": 0, "cargo": 0}
             cargo["titanium"] = cargo.get("titanium", 0) + total_cargo
             new_credits = self.state.ship.credits + total_credits
 
@@ -1565,9 +1639,18 @@ class SimulationEngine:
                 salvage_relic, _ = roll_relic_drop(self.rng, bonus_prob=0.20, current_system=self.current_system.name)
                 new_relics = list(self.state.ship.relics)
                 relic_note = ""
+                new_max_hull = self.state.ship.max_hull
+                new_max_shield = self.state.ship.max_shield
                 if salvage_relic:
                     new_relics.append(salvage_relic)
                     relic_note = f" Salvaged Precursor relic: [{salvage_relic.name}] ({salvage_relic.rarity.upper()})!"
+                    new_hull, new_max_hull, new_shield, new_max_shield = self._apply_relic_stat_bonuses(
+                        new_hull,
+                        new_max_hull,
+                        new_shield,
+                        new_max_shield,
+                        [salvage_relic],
+                    )
 
                 updated_contracts, contract_logs = self._progress_contracts("combat", 1)
                 new_mastery, xp_logs = self._award_pilot_xp(200, self.state.ship.mastery)
@@ -1603,7 +1686,9 @@ class SimulationEngine:
 
                 new_ship = self._clone_ship(
                     hull=new_hull,
+                    max_hull=new_max_hull,
                     shield=new_shield,
+                    max_shield=new_max_shield,
                     credits=new_credits,
                     cargo=cargo,
                     relics=tuple(new_relics),
@@ -1611,6 +1696,7 @@ class SimulationEngine:
                     active_contracts=updated_contracts,
                     faction_standings=new_faction_standings,
                     tactical_combo=0,
+                    streak=new_streak,
                     flight_log=tuple(new_log[-20:]),
                 )
 
@@ -1775,6 +1861,8 @@ class SimulationEngine:
     def repair_hull(self, amount: int = 25) -> tuple[bool, str]:
         """Repair ship hull integrity at orbital station."""
         with self.lock:
+            if not isinstance(amount, int) or isinstance(amount, bool) or amount <= 0:
+                return False, "Repair amount must be a positive integer."
             body = self.orbiting_body
             if not body or not body.station_dockable:
                 return False, "Repair drydocks available at orbital stations or colonies only."
@@ -1800,6 +1888,8 @@ class SimulationEngine:
     def refuel(self, amount: int = 20) -> tuple[bool, str]:
         """Refuel quantum drive at orbital station."""
         with self.lock:
+            if not isinstance(amount, int) or isinstance(amount, bool) or amount <= 0:
+                return False, "Refuel amount must be a positive integer."
             body = self.orbiting_body
             if not body or not body.station_dockable:
                 return False, "Fuel refinery available at orbital stations or colonies only."
@@ -1860,6 +1950,7 @@ class SimulationEngine:
                     faction=sys_obj.faction,
                     bodies=tuple(updated_bodies),
                     connections=sys_obj.connections,
+                    dominant_corp=sys_obj.dominant_corp,
                 )
 
             self.state = self._clone_state(systems=updated_systems)
@@ -1902,7 +1993,19 @@ class SimulationEngine:
             stats["credits_earned"] += found.reward_credits
             stats["contracts_completed"] = stats.get("contracts_completed", 0) + 1
 
+            new_hull, new_max_hull, new_shield, new_max_shield = self._apply_relic_stat_bonuses(
+                self.state.ship.hull,
+                self.state.ship.max_hull,
+                self.state.ship.shield,
+                self.state.ship.max_shield,
+                [relic] if relic else [],
+            )
+
             new_ship = self._clone_ship(
+                hull=new_hull,
+                max_hull=new_max_hull,
+                shield=new_shield,
+                max_shield=new_max_shield,
                 credits=new_credits,
                 mastery=new_mastery,
                 relics=tuple(new_relics),
@@ -1994,16 +2097,28 @@ class SimulationEngine:
                 existing_relic_ids = {r.id for r in new_relics}
                 if awarded_relic.id not in existing_relic_ids:
                     new_relics.append(awarded_relic)
-                    if awarded_relic.passive_stat == "max_hull":
-                        new_max_hull += int(awarded_relic.stat_multiplier)
-                        new_hull += int(awarded_relic.stat_multiplier)
-                    elif awarded_relic.passive_stat == "shield_cap":
-                        new_max_shield += int(awarded_relic.stat_multiplier)
-                        new_shield += int(awarded_relic.stat_multiplier)
+                    new_hull, new_max_hull, new_shield, new_max_shield = self._apply_relic_stat_bonuses(
+                        new_hull,
+                        new_max_hull,
+                        new_shield,
+                        new_max_shield,
+                        [awarded_relic],
+                    )
 
             new_rep = dict(story.reputation)
             align = found_choice.faction_alignment
             new_rep[align] = new_rep.get(align, 0) + 25
+
+            standing_key = {
+                "coalition": "sol_coalition",
+                "syndicate": "vanguard_syndicate",
+                "precursor": "precursor_watch",
+            }.get(align)
+            new_faction_standings = dict(self.state.ship.faction_standings)
+            if standing_key:
+                new_faction_standings[standing_key] = max(
+                    -100, min(100, new_faction_standings.get(standing_key, 0) + 25)
+                )
 
             updated_chapters = list(story.chapters)
             updated_chapters[story.current_chapter_index] = StoryChapter(
@@ -2046,6 +2161,7 @@ class SimulationEngine:
                 credits=new_credits,
                 relics=tuple(new_relics),
                 story=new_story,
+                faction_standings=new_faction_standings,
                 flight_log=tuple(new_log[-20:]),
             )
 

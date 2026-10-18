@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import mimetypes
 import os
 import sys
@@ -24,6 +25,48 @@ from voidfarer.upgrades import (
     get_available_chassis,
     get_available_upgrades,
 )
+
+MAX_BODY_BYTES = 1024 * 1024
+
+
+def _int_field(body: dict[str, Any], key: str, default: int, minimum: int | None = None) -> int:
+    value = body.get(key, default)
+    if isinstance(value, bool):
+        raise ValueError(f"'{key}' must be an integer")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"'{key}' must be an integer") from None
+    if isinstance(value, float) and value != parsed:
+        raise ValueError(f"'{key}' must be an integer")
+    if minimum is not None and parsed < minimum:
+        raise ValueError(f"'{key}' must be at least {minimum}")
+    return parsed
+
+
+def _float_field(body: dict[str, Any], key: str, default: float, minimum: float | None = None) -> float:
+    value = body.get(key, default)
+    if isinstance(value, bool):
+        raise ValueError(f"'{key}' must be a number")
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"'{key}' must be a number") from None
+    if not math.isfinite(parsed):
+        raise ValueError(f"'{key}' must be finite")
+    if minimum is not None and parsed < minimum:
+        raise ValueError(f"'{key}' must be at least {minimum}")
+    return parsed
+
+
+def _bool_field(body: dict[str, Any], key: str, default: bool) -> bool:
+    value = body.get(key, default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.lower() in ("true", "false"):
+        return value.lower() == "true"
+    raise ValueError(f"'{key}' must be a boolean")
+
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -55,14 +98,27 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         self._send_json({"ok": False, "error": message}, status=status)
 
     def _read_body_json(self) -> dict[str, Any]:
-        length = int(self.headers.get("Content-Length", 0))
-        if length <= 0:
-            return {}
-        raw = self.rfile.read(length).decode("utf-8")
+        raw_length = self.headers.get("Content-Length", "0")
         try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
+            length = int(raw_length)
+        except (TypeError, ValueError):
+            raise ValueError("Invalid Content-Length header") from None
+        if length < 0 or length > MAX_BODY_BYTES:
+            raise ValueError("Request body is too large or malformed")
+        if length == 0:
             return {}
+        raw = self.rfile.read(length)
+        try:
+            decoded = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise ValueError("Request body must be valid UTF-8") from None
+        try:
+            parsed = json.loads(decoded)
+        except json.JSONDecodeError:
+            raise ValueError("Request body must be valid JSON") from None
+        if not isinstance(parsed, dict):
+            raise ValueError("Request body must be a JSON object")
+        return parsed
 
     def do_OPTIONS(self) -> None:
         self.send_response(HTTPStatus.NO_CONTENT)
@@ -186,6 +242,14 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Error reading file")
 
     def do_POST(self) -> None:
+        try:
+            self._do_post()
+        except OSError as exc:
+            self._send_error_json(f"State persistence failed: {exc}", status=HTTPStatus.INTERNAL_SERVER_ERROR)
+        except (ValueError, TypeError) as exc:
+            self._send_error_json(str(exc), status=HTTPStatus.BAD_REQUEST)
+
+    def _do_post(self) -> None:
         path = self.path.split("?")[0]
         body = self._read_body_json()
 
@@ -216,10 +280,10 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/power":
-            eng = int(body.get("engines", 25))
-            shd = int(body.get("shields", 25))
-            sen = int(body.get("sensors", 25))
-            wep = int(body.get("weapons", 25))
+            eng = _int_field(body, "engines", 25, minimum=0)
+            shd = _int_field(body, "shields", 25, minimum=0)
+            sen = _int_field(body, "sensors", 25, minimum=0)
+            wep = _int_field(body, "weapons", 25, minimum=0)
             ok, msg = self.engine.route_power(eng, shd, sen, wep)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
@@ -227,8 +291,8 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
 
         if path == "/api/trade":
             comm_id = str(body.get("commodity_id", ""))
-            qty = int(body.get("quantity", 0))
-            is_buy = bool(body.get("is_buy", True))
+            qty = _int_field(body, "quantity", 0, minimum=0)
+            is_buy = _bool_field(body, "is_buy", True)
             ok, msg = self.engine.trade(comm_id, qty, is_buy)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
@@ -242,14 +306,14 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/repair":
-            amount = int(body.get("amount", 25))
+            amount = _int_field(body, "amount", 25, minimum=1)
             ok, msg = self.engine.repair_hull(amount)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
         if path == "/api/refuel":
-            amount = int(body.get("amount", 20))
+            amount = _int_field(body, "amount", 20, minimum=1)
             ok, msg = self.engine.refuel(amount)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
@@ -265,6 +329,7 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         if path == "/api/drone/buy":
             drone_type = str(body.get("drone_type", "mining"))
             sys_id = body.get("system_id")
+            sys_id = str(sys_id) if sys_id is not None else None
             ok, msg = self.engine.buy_drone(drone_type, sys_id)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
@@ -280,6 +345,7 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
 
         if path == "/api/drone/collect":
             drone_id = body.get("drone_id")
+            drone_id = str(drone_id) if drone_id is not None else None
             ok, msg, info = self.engine.collect_drone_yield(drone_id)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "yield": info, "state": self.engine.get_status_snapshot()})
@@ -307,8 +373,9 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/step":
-            dt = float(body.get("delta_time", 1.0))
+            dt = _float_field(body, "delta_time", 1.0, minimum=0.0)
             self.engine.step_orbits(dt)
+            self.storage.save(self.engine.state)
             self._send_json({"ok": True, "state": self.engine.get_status_snapshot()})
             return
 
@@ -332,14 +399,14 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/time/step":
-            ticks = int(body.get("ticks", 1))
+            ticks = _int_field(body, "ticks", 1, minimum=1)
             ok, msg, summary = self.engine.step_time(ticks)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "summary": summary, "state": self.engine.get_status_snapshot()})
             return
 
         if path == "/api/time/speed":
-            speed = float(body.get("speed", 1.0))
+            speed = _float_field(body, "speed", 1.0, minimum=0.0)
             ok, msg = self.engine.set_time_speed(speed)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
@@ -366,11 +433,7 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
 
         if path == "/api/inventory/buy":
             item_id = str(body.get("item_id", ""))
-            try:
-                quantity = int(body.get("quantity", 1))
-            except (TypeError, ValueError):
-                self._send_error_json("Quantity must be an integer")
-                return
+            quantity = _int_field(body, "quantity", 1, minimum=1)
             ok, msg = self.engine.buy_item(item_id, quantity)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
@@ -378,11 +441,7 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
 
         if path == "/api/inventory/jettison":
             item_id = str(body.get("item_id", ""))
-            try:
-                quantity = int(body.get("quantity", 1))
-            except (TypeError, ValueError):
-                self._send_error_json("Quantity must be an integer")
-                return
+            quantity = _int_field(body, "quantity", 1, minimum=1)
             ok, msg = self.engine.jettison_cargo(item_id, quantity)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
@@ -403,10 +462,10 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/reset":
-            seed = int(body.get("seed", 42))
-            self.engine.state = self.engine._create_initial_state(seed)
+            seed = _int_field(body, "seed", 42, minimum=0)
+            ok, msg = self.engine.reset(seed)
             self.storage.save(self.engine.state)
-            self._send_json({"ok": True, "message": "Simulation reset to factory state.", "state": self.engine.get_status_snapshot()})
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
         self._send_error_json("Invalid API endpoint", status=HTTPStatus.NOT_FOUND)
@@ -420,14 +479,23 @@ def run_server(
     host: str = "127.0.0.1",
     open_browser: bool = False,
     enable_ticker: bool = True,
-) -> None:
+) -> int:
     """Start local cockpit HTTP server daemon with background temporal ticker."""
     static_dir = Path(__file__).parent / "static"
+    if not 0 <= port <= 65535:
+        print(f"Why: port {port} is outside the valid TCP range (0-65535).")
+        print("Fix: choose a port such as 8080 or 8000.")
+        return 1
     VoidFarerHandler.engine = engine
     VoidFarerHandler.storage = storage
     VoidFarerHandler.static_dir = static_dir
 
-    server = ThreadedHTTPServer((host, port), VoidFarerHandler)
+    try:
+        server = ThreadedHTTPServer((host, port), VoidFarerHandler)
+    except (OSError, OverflowError) as exc:
+        print(f"Why: could not bind {host}:{port} ({exc}).")
+        print("Fix: choose another port or stop the process already using it.")
+        return 1
     url = f"http://{host}:{port}"
     print(f"\n=======================================================")
     print(f"🚀 VOIDFARER HOLOGRAPHIC COCKPIT ACTIVE")
@@ -449,12 +517,16 @@ def run_server(
                 engine.tick(1)
                 save_counter += 1
                 if save_counter >= 10:
-                    storage.save(engine.state)
+                    try:
+                        storage.save(engine.state)
+                    except OSError as exc:
+                        print(f"[WARN] Autosave failed: {exc}")
                     save_counter = 0
             else:
                 if ticker_stop.wait(0.2):
                     break
 
+    ticker: threading.Thread | None = None
     if enable_ticker:
         ticker = threading.Thread(target=_ticker_loop, daemon=True)
         ticker.start()
@@ -476,6 +548,12 @@ def run_server(
         print("\nShutting down sub-space uplink...")
     finally:
         ticker_stop.set()
+        if ticker is not None:
+            ticker.join(timeout=2.0)
+        try:
+            storage.save(engine.state)
+        except OSError as exc:
+            print(f"[WARN] Final save failed: {exc}")
         try:
             server.shutdown()
         except (OSError, RuntimeError):
@@ -484,4 +562,5 @@ def run_server(
             server.server_close()
         except OSError:
             pass
+    return 0
 

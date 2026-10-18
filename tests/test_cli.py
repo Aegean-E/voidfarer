@@ -55,6 +55,33 @@ class TestCLI(_IsolatedCliTestCase):
             code = main(["power", "25", "25", "25", "25"])
             self.assertEqual(code, 0)
 
+    def test_cli_combat_accepts_documented_actions(self):
+        for argv in (["combat", "drone"], ["combat", "target", "weapons"], ["combat", "target", "shields"]):
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                code = main(argv)
+                self.assertEqual(code, 0)
+                self.assertIn("No active combat", mock_out.getvalue())
+
+    def test_cli_shipyard_subcommands_parse(self):
+        for argv in (["shipyard", "chassis", "orion_hauler"], ["shipyard", "sell", "shields"]):
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                code = main(argv)
+                self.assertNotEqual(code, 2, argv)
+                self.assertNotIn("invalid choice", mock_out.getvalue().lower())
+
+    def test_cli_corporations_alias(self):
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+            code = main(["corporations"])
+            self.assertEqual(code, 0)
+            self.assertIn("MEGACORPORATIONS", mock_out.getvalue())
+
+    def test_cli_repair_and_refuel_accept_positional_amounts(self):
+        for argv in (["repair", "10"], ["refuel", "10"]):
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                code = main(argv)
+                self.assertNotEqual(code, 2, argv)
+                self.assertNotIn("unrecognized arguments", mock_out.getvalue().lower())
+
     def test_cli_fleet_list(self):
         with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
             code = main(["fleet", "list"])

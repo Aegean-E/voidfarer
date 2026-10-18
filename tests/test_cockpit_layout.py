@@ -234,3 +234,46 @@ class TestCockpitLayout(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestCockpitRuntimeContracts(unittest.TestCase):
+    """Static regression checks for runtime wiring that the DOM structure cannot exercise."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.js = APP_JS.read_text(encoding="utf-8")
+
+    def test_pointer_coordinates_are_scaled_to_canvas_space(self):
+        self.assertIn("pointerToCanvas(e)", self.js)
+        self.assertIn("this.pointerToCanvas(e)", self.js)
+        self.assertIn("this.canvas.width / Math.max(1, rect.width)", self.js)
+
+    def test_drag_suppresses_the_following_click(self):
+        self.assertIn("this.suppressClick", self.js)
+        self.assertIn("this.dragMoved", self.js)
+
+    def test_preload_renderers_guard_against_missing_state(self):
+        for method in ("renderMarketTable", "renderArsenal", "renderFleet", "renderContracts", "renderMastery", "renderFactions", "drawGalaxyView", "updateTargetCard"):
+            self.assertRegex(
+                self.js,
+                rf"{method}\([^)]*\) \{{\s*if \(!this\.state\) return;",
+                f"{method} must return before dereferencing state",
+            )
+
+    def test_power_sliders_sync_from_authoritative_state(self):
+        self.assertIn("syncPowerSlidersFromState()", self.js)
+        self.assertIn("this.powerDirty", self.js)
+        self.assertIn("this.syncPowerSlidersFromState();", self.js)
+
+    def test_cargo_meter_uses_manifest_volume(self):
+        self.assertIn("this.state.inventory_manifest", self.js)
+        self.assertIn("item.total_volume", self.js)
+
+    def test_scan_sound_reads_discovery_contract(self):
+        self.assertIn("const discovery = json.discovery || {};", self.js)
+        self.assertIn("discovery.relic", self.js)
+        self.assertIn("discovery.near_miss", self.js)
+
+    def test_canvas_uses_literal_colors_not_css_variables(self):
+        self.assertNotRegex(self.js, r"ctx\.(?:strokeStyle|fillStyle) = \"var\(--neon")
+        self.assertIn('ctx.strokeStyle = "#00f0ff"', self.js)
+        self.assertIn('ctx.fillStyle = "#00ffaa"', self.js)

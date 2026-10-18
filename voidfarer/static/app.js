@@ -312,6 +312,7 @@ class CockpitApp {
         this.pwrWepVal = document.getElementById("pwrWepVal");
         this.powerTotal = document.getElementById("powerTotal");
         this.applyPowerBtn = document.getElementById("applyPowerBtn");
+        this.powerDirty = false;
 
         // Log
         this.flightLogStream = document.getElementById("flightLogStream");
@@ -482,7 +483,10 @@ class CockpitApp {
 
         // Power Sliders
         const sliders = [this.sliderEng, this.sliderShd, this.sliderSen, this.sliderWep];
-        sliders.forEach(s => s.addEventListener("input", () => this.updatePowerAllocationDisplay()));
+        sliders.forEach(s => s.addEventListener("input", () => {
+            this.powerDirty = true;
+            this.updatePowerAllocationDisplay();
+        }));
         this.applyPowerBtn.addEventListener("click", () => this.handleApplyPower());
 
         // Presets
@@ -544,19 +548,29 @@ class CockpitApp {
 
         // Canvas interactions & Drag Pan
         this.canvas.addEventListener("mousedown", (e) => {
+            const point = this.pointerToCanvas(e);
             this.isDragging = true;
-            this.dragStartX = e.clientX - this.panX;
-            this.dragStartY = e.clientY - this.panY;
+            this.dragMoved = false;
+            this.suppressClick = false;
+            this.dragStartX = point.x - this.panX;
+            this.dragStartY = point.y - this.panY;
         });
 
         window.addEventListener("mouseup", () => {
+            if (this.dragMoved) this.suppressClick = true;
             this.isDragging = false;
         });
 
         this.canvas.addEventListener("mousemove", (e) => {
+            const point = this.pointerToCanvas(e);
             if (this.isDragging) {
-                this.panX = e.clientX - this.dragStartX;
-                this.panY = e.clientY - this.dragStartY;
+                const nextX = point.x - this.dragStartX;
+                const nextY = point.y - this.dragStartY;
+                if (Math.hypot(nextX - this.panX, nextY - this.panY) > 3) {
+                    this.dragMoved = true;
+                }
+                this.panX = nextX;
+                this.panY = nextY;
             } else {
                 this.handleCanvasMouseMove(e);
             }
@@ -643,6 +657,7 @@ class CockpitApp {
         this.tabContentStory.style.display = (tabName === "story") ? "flex" : "none";
         if (this.tabContentFactions) this.tabContentFactions.style.display = (tabName === "factions") ? "flex" : "none";
 
+        if (tabName === "market") this.renderMarketTable();
         if (tabName === "arsenal") this.renderArsenal();
         if (tabName === "fleet") this.renderFleet();
         if (tabName === "contracts") this.renderContracts();
@@ -656,6 +671,17 @@ class CockpitApp {
         this.sliderShd.value = sh;
         this.sliderSen.value = se;
         this.sliderWep.value = w;
+        this.powerDirty = true;
+        this.updatePowerAllocationDisplay();
+    }
+
+    syncPowerSlidersFromState() {
+        if (!this.state || this.powerDirty) return;
+        const power = this.state.ship.power || { engines: 25, shields: 25, sensors: 25, weapons: 25 };
+        this.sliderEng.value = power.engines;
+        this.sliderShd.value = power.shields;
+        this.sliderSen.value = power.sensors;
+        this.sliderWep.value = power.weapons;
         this.updatePowerAllocationDisplay();
     }
 
@@ -730,10 +756,15 @@ class CockpitApp {
 
         this.creditsVal.textContent = `${ship.credits.toLocaleString()} CR`;
 
-        const totalCargo = Object.values(ship.cargo).reduce((a, b) => a + b, 0);
+        const manifest = this.state.inventory_manifest || [];
+        const totalCargo = manifest.length
+            ? manifest.reduce((sum, item) => sum + (item.total_volume || 0), 0)
+            : Object.values(ship.cargo).reduce((a, b) => a + b, 0);
         this.cargoSummary.textContent = `HOLD: ${totalCargo}/${ship.cargo_capacity}`;
-        this.cargoDetailed.textContent = `${totalCargo} / ${ship.cargo_capacity} UNITS`;
+        this.cargoDetailed.textContent = `${totalCargo} / ${ship.cargo_capacity} VOLUME`;
         this.cargoMeterFill.style.width = `${Math.min(100, Math.round((totalCargo / ship.cargo_capacity) * 100))}%`;
+
+        this.syncPowerSlidersFromState();
 
         // Streak render
         const streak = ship.streak || 1;
@@ -944,6 +975,8 @@ class CockpitApp {
         } else if (this.activeRightTab === "factions") {
             this.renderFactions();
         }
+
+        this.updateTargetCard();
     }
 
     renderStory() {
@@ -1005,7 +1038,10 @@ class CockpitApp {
         // Subspace Transmissions Feed
         const logs = story.transmission_log || [];
         this.commsLogCount.textContent = `${logs.length} TRANSMISSION${logs.length !== 1 ? 'S' : ''}`;
-        this.transmissionsStream.innerHTML = "";
+        const stream = this.transmissionsStream;
+        const previousCount = this.storyTransmissionCount || 0;
+        const wasAtBottom = stream.scrollHeight - stream.scrollTop - stream.clientHeight < 40;
+        stream.innerHTML = "";
 
         logs.forEach(tx => {
             const item = document.createElement("div");
@@ -1035,9 +1071,12 @@ class CockpitApp {
                     <div class="transmission-bubble">"${tx.message}"</div>
                 </div>
             `;
-            this.transmissionsStream.appendChild(item);
+            stream.appendChild(item);
         });
-        this.transmissionsStream.scrollTop = this.transmissionsStream.scrollHeight;
+        if (logs.length > previousCount || wasAtBottom) {
+            stream.scrollTop = stream.scrollHeight;
+        }
+        this.storyTransmissionCount = logs.length;
     }
 
     async handleStoryChoice(choiceId) {
@@ -1093,7 +1132,7 @@ class CockpitApp {
             const res = await fetch("/api/tutorial/reset", { method: "POST" });
             const json = await res.json();
             if (json.ok) {
-                this.appendLog(json.message, "reward");
+                this.appendLog(json.message, "system");
                 this.state = json.state;
                 this.renderHUD();
                 if (this.activeRightTab === "story") {
@@ -1106,6 +1145,7 @@ class CockpitApp {
     }
 
     renderMarketTable() {
+        if (!this.state) return;
         this.marketTableBody.innerHTML = "";
         const quotes = this.state.market_quotes || [];
         const cargo = this.state.ship.cargo || {};
@@ -1140,6 +1180,7 @@ class CockpitApp {
     }
 
     renderArsenal() {
+        if (!this.state) return;
         this.arsenalList.innerHTML = "";
         const upgrades = this.state.catalog_upgrades || [];
         const equipped = this.state.ship.equipped_upgrades || {};
@@ -1172,6 +1213,7 @@ class CockpitApp {
     }
 
     renderFleet() {
+        if (!this.state) return;
         this.fleetRoster.innerHTML = "";
         const drones = this.state.ship.fleet_drones || [];
 
@@ -1198,6 +1240,7 @@ class CockpitApp {
     }
 
     renderContracts() {
+        if (!this.state) return;
         this.contractsList.innerHTML = "";
         const contracts = this.state.ship.active_contracts || [];
 
@@ -1247,6 +1290,7 @@ class CockpitApp {
     }
 
     renderMastery() {
+        if (!this.state) return;
         const mastery = this.state.ship.mastery || { level: 1, xp: 0, next_level_xp: 500, talent_points: 0, specializations: [] };
         this.availableTalentPoints.textContent = mastery.talent_points;
 
@@ -1540,7 +1584,8 @@ class CockpitApp {
             const res = await fetch("/api/scan", { method: "POST" });
             const json = await res.json();
             if (json.ok) {
-                if (json.relic || json.near_miss) {
+                const discovery = json.discovery || {};
+                if (discovery.relic || discovery.near_miss) {
                     this.sound.playNearMiss();
                 } else {
                     this.sound.playChime();
@@ -1622,6 +1667,7 @@ class CockpitApp {
             if (json.ok) {
                 this.appendLog(json.message, "system");
                 this.state = json.state;
+                this.powerDirty = false;
                 this.renderHUD();
             } else {
                 this.appendLog(`[ERROR] ${json.message}`, "hazard");
@@ -1722,6 +1768,7 @@ class CockpitApp {
     }
 
     updateTargetCard() {
+        if (!this.state) return;
         if (!this.selectedTarget) {
             this.targetType.textContent = "TARGET: NONE SELECTED";
             this.targetName.textContent = "Select a celestial body on radar";
@@ -1734,6 +1781,12 @@ class CockpitApp {
         }
 
         if (this.selectedType === "body") {
+            const fresh = this.state.current_system.bodies.find(b => b.id === this.selectedTarget.id);
+            if (!fresh) {
+                this.selectedTarget = null;
+                return this.updateTargetCard();
+            }
+            this.selectedTarget = fresh;
             const b = this.selectedTarget;
             this.targetType.textContent = `TARGET: ${b.body_type.toUpperCase()}`;
             this.targetName.textContent = b.name;
@@ -1744,6 +1797,12 @@ class CockpitApp {
             this.btnOrbitTarget.disabled = (this.state.ship.orbiting_body_id === b.id);
             this.btnOrbitTarget.textContent = (this.state.ship.orbiting_body_id === b.id) ? "ALREADY IN ORBIT" : "ENTER ORBIT";
         } else if (this.selectedType === "system") {
+            const fresh = this.galaxySystems[this.selectedTarget.id];
+            if (!fresh) {
+                this.selectedTarget = null;
+                return this.updateTargetCard();
+            }
+            this.selectedTarget = fresh;
             const s = this.selectedTarget;
             const curSys = this.state.current_system;
             const isConn = curSys.connections.includes(s.id);
@@ -1760,6 +1819,16 @@ class CockpitApp {
     }
 
     // --- Canvas Radar Rendering ---
+
+    pointerToCanvas(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / Math.max(1, rect.width);
+        const scaleY = this.canvas.height / Math.max(1, rect.height);
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY,
+        };
+    }
 
     startAnimationLoop() {
         const render = () => {
@@ -1854,7 +1923,7 @@ class CockpitApp {
             ctx.shadowBlur = 0;
 
             if (this.selectedTarget && this.selectedTarget.id === b.id) {
-                ctx.strokeStyle = "var(--neon-cyan)";
+                ctx.strokeStyle = "#00f0ff";
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(bx - bodyRadius - 5, by - bodyRadius - 5, (bodyRadius + 5) * 2, (bodyRadius + 5) * 2);
             }
@@ -1862,10 +1931,10 @@ class CockpitApp {
             if (ship.orbiting_body_id === b.id) {
                 ctx.beginPath();
                 ctx.arc(bx + bodyRadius + 8, by - bodyRadius - 8, 3.5, 0, Math.PI * 2);
-                ctx.fillStyle = "var(--neon-green)";
+                ctx.fillStyle = "#00ffaa";
                 ctx.fill();
                 ctx.font = "9px 'Share Tech Mono'";
-                ctx.fillStyle = "var(--neon-green)";
+                ctx.fillStyle = "#00ffaa";
                 ctx.fillText("VF-FLAGSHIP", bx + bodyRadius + 14, by - bodyRadius - 4);
             }
 
@@ -1876,6 +1945,7 @@ class CockpitApp {
     }
 
     drawGalaxyView(cx, cy) {
+        if (!this.state) return;
         const ctx = this.ctx;
         const curSys = this.state.current_system;
         const systems = Object.values(this.galaxySystems);
@@ -1925,27 +1995,27 @@ class CockpitApp {
             if (isCurrent) {
                 ctx.beginPath();
                 ctx.arc(sx, sy, 12, 0, Math.PI * 2);
-                ctx.strokeStyle = "var(--neon-green)";
+                ctx.strokeStyle = "#00ffaa";
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
             }
 
             if (isSelected) {
-                ctx.strokeStyle = "var(--neon-cyan)";
+                ctx.strokeStyle = "#00f0ff";
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(sx - 10, sy - 10, 20, 20);
             }
 
             ctx.font = "11px 'Rajdhani'";
-            ctx.fillStyle = isCurrent ? "var(--neon-green)" : "#e6f1ff";
+            ctx.fillStyle = isCurrent ? "#00ffaa" : "#e6f1ff";
             ctx.fillText(s.name, sx + 10, sy + 3);
         });
     }
 
     handleCanvasMouseMove(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        const point = this.pointerToCanvas(e);
+        const mx = point.x;
+        const my = point.y;
         const cx = this.canvas.width / 2 + this.panX;
         const cy = this.canvas.height / 2 + this.panY;
 
@@ -1982,10 +2052,14 @@ class CockpitApp {
     }
 
     handleCanvasClick(e) {
+        if (this.suppressClick) {
+            this.suppressClick = false;
+            return;
+        }
         if (this.isDragging) return;
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
+        const point = this.pointerToCanvas(e);
+        const mx = point.x;
+        const my = point.y;
         const cx = this.canvas.width / 2 + this.panX;
         const cy = this.canvas.height / 2 + this.panY;
 
@@ -2021,6 +2095,7 @@ class CockpitApp {
         }
     }
     renderFactions() {
+        if (!this.state) return;
         if (!this.state.factions || !this.factionsGrid) return;
 
         this.factionsGrid.innerHTML = "";

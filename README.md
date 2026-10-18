@@ -67,12 +67,13 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- 146-test unit & integration suite (about 2s)
+└── tests/                    <- 179-test unit & integration suite (about 2s)
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
     ├── test_economy.py       <- galactic market simulation & trade route tests
     ├── test_engine.py        <- state transitions, fleet & combat mechanics
+    ├── test_engine_hardening.py <- audit regressions: service guards, relic stats & cargo invariants
     ├── test_inventory.py     <- item catalog, manifest & consumable tests
     ├── test_factions_and_enemies.py <- faction geopolitics & tactical combat tests
     ├── test_storage.py       <- power-loss safety & corruption quarantine
@@ -283,7 +284,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 146-test suite runs in about 2 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 179-test suite runs in about 2.5 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

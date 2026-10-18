@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from voidfarer.engine import SimulationEngine
 from voidfarer.storage import StorageManager
@@ -72,6 +73,33 @@ class TestStorage(unittest.TestCase):
         # Check quarantine file was generated
         corrupt_files = list(Path(self.temp_dir.name).glob("*.corrupt_*"))
         self.assertEqual(len(corrupt_files), 1)
+
+
+    def test_failed_atomic_replace_raises_and_preserves_previous_save(self):
+        self.storage.save(self.engine.state)
+        original = self.storage.save_file.read_bytes()
+
+        with patch("voidfarer.storage.os.replace", side_effect=OSError("file locked")):
+            with self.assertRaises(OSError):
+                self.storage.save(self.engine.state)
+
+        self.assertEqual(self.storage.save_file.read_bytes(), original)
+
+    def test_schema_invalid_primary_falls_back_to_backup(self):
+        self.storage.save(self.engine.state)
+        self.storage.save(self.engine.state)
+        self.assertTrue(self.storage.save_file.with_suffix(".bak").exists())
+
+        self.storage.save_file.write_text('{"version": 1}', encoding="utf-8")
+        recovered = self.storage.load()
+
+        self.assertIsNotNone(recovered)
+        self.assertEqual(recovered.ship.commander_name, self.engine.state.ship.commander_name)
+        self.assertEqual(len(list(Path(self.temp_dir.name).glob("*.corrupt_*"))), 1)
+
+    def test_invalid_utf8_does_not_crash_loading(self):
+        self.storage.save_file.write_bytes(b"\xff\xfe\x00broken")
+        self.assertIsNone(self.storage.load())
 
 
 if __name__ == "__main__":

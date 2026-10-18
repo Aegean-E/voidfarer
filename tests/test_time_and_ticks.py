@@ -214,7 +214,7 @@ class TestSimulationEngineTimeAndTicks(unittest.TestCase):
         saved_days = self.engine.state.time.elapsed_days
 
         # Perform orbit
-        first_body_id = self.engine.current_system.bodies[0].id
+        first_body_id = "sol_body_1"
         ok, _ = self.engine.orbit(first_body_id)
         self.assertTrue(ok)
         self.assertEqual(self.engine.state.time.tick, 7)

@@ -650,15 +650,15 @@ class BackgroundServer:
             self.ticker.join(timeout=2.0)
         try:
             self.storage.save(self.engine.state)
-        except OSError:
-            pass
+        except OSError as exc:
+            sys.stderr.write(f"[WARN] Final save failed: {exc}\n")
         try:
             self.server.shutdown()
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError):  # hygiene: allow best-effort socket teardown during stop
             pass
         try:
             self.server.server_close()
-        except OSError:
+        except OSError:  # hygiene: allow best-effort server_close during stop
             pass
         self.server_thread.join(timeout=2.0)
 
@@ -696,8 +696,8 @@ def start_background_server(
                 if save_counter >= 10:
                     try:
                         storage.save(engine.state)
-                    except OSError:
-                        pass
+                    except OSError as exc:
+                        sys.stderr.write(f"[WARN] Autosave failed: {exc}\n")
                     save_counter = 0
             else:
                 if stop_event.wait(0.2):
@@ -737,7 +737,7 @@ def run_server(
     print(f"\n=======================================================")
     print(f"ğŸš€ VOIDFARER HOLOGRAPHIC COCKPIT ACTIVE")
     print(f"ğŸ“¡ Cockpit HUD URL: {url}")
-    print(f"â±ï¸ Cosmic Time: {engine.state.time.current_date} (Tick #{engine.state.time.tick})")
+    print(f"â ±ï¸  Cosmic Time: {engine.state.time.current_date} (Tick #{engine.state.time.tick})")
     print(f"âš¡ Press Ctrl+C to disconnect sub-space uplink")
     print(f"=======================================================\n")
 
@@ -793,10 +793,10 @@ def run_server(
             print(f"[WARN] Final save failed: {exc}")
         try:
             server.shutdown()
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError):  # hygiene: allow best-effort socket teardown during shutdown
             pass
         try:
             server.server_close()
-        except OSError:
+        except OSError:  # hygiene: allow best-effort server_close during shutdown
             pass
     return 0

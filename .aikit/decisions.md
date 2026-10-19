@@ -1,4 +1,4 @@
-﻿# Decisions
+# Decisions
 
 Why this project is built the way it is, oldest first. One entry per decision that changes a
 contract, a dependency, a data format or the architecture; IDs are consecutive and never reused.
@@ -246,3 +246,15 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   4. Escape all dynamic market/arsenal/contract/story/talent/relic/faction/corporation strings before `innerHTML` and whitelist faction colors through `safeColor`.
   5. Add `BackgroundServer` and `start_background_server()` with a concurrent simulation ticker and guarded `stop()` (final save, ticker join, shutdown, close); wire REPL `serve`, `serve stop`, actual port reporting, and shutdown on exit.
 - **Consequences**: Advertised perks and relic descriptions now match simulation behavior, reputation rewards are data-driven, tampered save/API strings cannot inject markup, and the REPL-hosted cockpit advances time and saves like the standalone server. Trade-offs: faction perks are simple tier thresholds rather than per-faction bespoke rules; `void_eye` retains its existing special-case scan bonus instead of double-counting a bonuses map; naval escort is modeled as encounter evasion rather than a visible escort unit. These are intentional simplifications with regression coverage.
+
+### ADR-020: In-System Sublight/Quantum Transit, Planetary Civilization Metadata, and Dismissible Cockpit Popup Events
+- **Date**: 2026-10-19
+- **Status**: Accepted
+- **Context**: Players and automated clients needed tick-based in-system transit (`sublight` and `quantum` modes) alongside immediate orbital capture (`orbit`), planetary civilization telemetry (`faction`, `population`, `government`) on inhabited bodies, and structured dismissible cockpit popup alerts (`GameEvent`) for arrivals and simulation events without breaking legacy save compatibility or the existing 238 unit tests.
+- **Decision**:
+  1. Add frozen `TravelState` and `GameEvent` DTOs in `voidfarer/models.py`, extend `CelestialBody` with `faction`, `population`, and `government`, add `travel: TravelState | None = None` to `ShipState`, and serialize `events: tuple[GameEvent, ...] = ()` in `GameState.to_dict()` / `from_dict()`.
+  2. Populate deterministic civilization metadata (`faction`, `population`, `government`) on inhabited planets and stations in `GalaxyGenerator._generate_bodies` without consuming RNG calls, and backfill legacy saves in `SimulationEngine._bootstrap_frontier`.
+  3. Add `start_travel(body_id, mode="sublight")`, `emit_event(kind, title, message)`, and `dismiss_event(event_id)` in `SimulationEngine`, advance and complete active `TravelState` on `tick()`, and include `undismissed_events` in `get_status_snapshot()` while preserving immediate `orbit(body_id)`.
+  4. Expose `/api/travel` and `/api/events/dismiss` in `voidfarer/server.py`, add CLI `travel` and `events` subcommands in `voidfarer/cli.py`, and render planetary civilization fields, sublight/quantum transit buttons, and escaped popup event cards in `voidfarer/static/index.html` and `voidfarer/static/app.js`.
+- **Consequences**: In-system navigation supports both instant orbital capture (`orbit`) and timed sublight/quantum transit (`start_travel`), inhabited worlds expose rich civilization telemetry, and cockpit alerts can be inspected and dismissed from both the web HUD and CLI with full save round-trip compatibility.
+

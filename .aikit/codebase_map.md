@@ -6,10 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `34`
-- **Total Classes**: `86`
-- **Total Functions / Methods**: `67`
-- **Total Source Lines**: `13168`
+- **Total Python Modules**: `35`
+- **Total Classes**: `89`
+- **Total Top-Level Functions**: `67`
+- **Total Class Methods**: `470`
+- **Total Source Lines**: `13368`
 
 ---
 
@@ -532,6 +533,19 @@
 
 ---
 
+### [`tests/test_transit_civ_events.py`](tests/test_transit_civ_events.py)
+> *Tests for in-system transit (TravelState), planetary civilization metadata, and cockpit GameEvents.*
+
+**Size**: `68` lines (`2515` bytes)
+
+**Classes:**
+- `class TestTransitCivEvents` - *Verify TravelState, planetary faction/population/government, and GameEvent lifecycles.*
+  - Method `.setUp()`
+  - Method `.test_gamestate_roundtrip_preserves_events_travel_and_civ_metadata()`
+  - Method `.test_galaxy_generates_planetary_civilization_metadata()`
+
+---
+
 ### [`voidfarer/__init__.py`](voidfarer/__init__.py)
 > *VoidFarer: Autonomous deep-space fleet, procedural galaxy, and holographic cockpit simulation engine.*
 
@@ -542,7 +556,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `1562` lines (`80097` bytes)
+**Size**: `1562` lines (`80231` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -607,7 +621,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `2895` lines (`140510` bytes)
+**Size**: `2933` lines (`142356` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -623,8 +637,8 @@
   - Method `.reset(seed)` - *Reset the simulation to a fresh galaxy with an isolated deterministic RNG stream.*
   - Method `.load_state(state)` - *Replace the live universe with a loaded save and reseed its RNG stream.*
   - Method `._create_initial_state(seed)` - *Construct a fresh universe state rooted at Sol System.*
-  - Method `.current_system()`
-  - Method `.orbiting_body()`
+  - Property `.current_system`
+  - Property `.orbiting_body`
   - Method `._process_drone_cycle(ship)` - *Advance autonomous drone harvest cycle across star systems.*
   - Method `.jump(target_system_id)` - *Execute a hyperspace jump to an adjacent star system.*
   - Method `.orbit(body_id)` - *Establish orbital trajectory around a celestial body in the current system.*
@@ -650,7 +664,7 @@
   - Method `.make_story_choice(choice_id)` - *Resolve a branching story dilemma in the active campaign chapter.*
   - Method `.skip_tutorial()` - *Skip Cadet Flight Academy and unlock unrestricted operational status.*
   - Method `.reset_tutorial()` - *Reset Cadet Flight Academy to step 1 for revision or retraining.*
-  - Method `.current_chassis_id()` - *Id of the chassis matching the ship's commissioned class (falls back to the class name).*
+  - Property `.current_chassis_id` - *Id of the chassis matching the ship's commissioned class (falls back to the class name).*
   - Method `.get_status_snapshot()` - *Produce a comprehensive JSON serializable telemetry snapshot for the HUD.*
   - Method `.get_quests()` - *Return a unified quest panel view of the story chapter and active contracts.*
   - Method `._find_ai_captain(captain_id)`
@@ -716,13 +730,13 @@
 ### [`voidfarer/galaxy.py`](voidfarer/galaxy.py)
 > *Procedural galaxy generator, celestial orbital mechanics, and market economy.*
 
-**Size**: `517` lines (`23949` bytes)
+**Size**: `545` lines (`25177` bytes)
 
 **Classes:**
 - `class GalaxyGenerator` - *Generates deterministic star systems, celestial bodies, and hyperlane corridors.*
   - Method `.__init__(seed)`
   - Method `.generate_galaxy()` - *Generate connected star systems across the sector.*
-  - Method `._generate_bodies(sys_id, sys_name, spectral)` - *Generate central star and orbiting planetary bodies.*
+  - Method `._generate_bodies(sys_id, sys_name, spectral, faction)` - *Generate central star and orbiting planetary bodies.*
   - Method `._build_hyperlanes(systems)` - *Calculate hyperlane network ensuring a fully connected graph.*
   - Method `.get_market_quotes(system, body)` - *Compute localized commodity market pricing based on archetype and security.*
   - Method `.get_random_anomaly(seed)` - *Select and instantiate a deep-space anomaly event.*
@@ -748,7 +762,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1196` lines (`42597` bytes)
+**Size**: `1267` lines (`45031` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*
@@ -804,35 +818,42 @@
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class TutorialState` - *State of the Cadet Flight Academy onboarding progression.*
-  - Method `.is_active()`
-  - Method `.current_step()`
+  - Property `.is_active`
+  - Property `.current_step`
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class StoryChoice` - *Branching story decision impacting faction alignment, rewards, and narrative path.*
-  - Method `.label()`
-  - Method `.consequence_summary()`
+  - Property `.label`
+  - Property `.consequence_summary`
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class StoryTransmission` - *Character audio dispatch received across the subspace radio array.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class StoryChapter` - *An episodic narrative chapter in the Precursor Cipher campaign.*
-  - Method `.id()`
-  - Method `.synopsis()`
+  - Property `.id`
+  - Property `.synopsis`
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class StoryState` - *Master progression tracker for narrative campaign and faction standings.*
-  - Method `.active_act()`
-  - Method `.current_chapter_id()`
-  - Method `.current_chapter()`
-  - Method `.faction_reputation()`
+  - Property `.active_act`
+  - Property `.current_chapter_id`
+  - Property `.current_chapter`
+  - Property `.faction_reputation`
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class TravelState` - *In-system transit between two celestial bodies.*
+  - Method `.progress(current_tick)`
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class GameEvent` - *Realtime popup event delivered to the cockpit.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class ShipState` - *Complete telemetry, resource inventory, and status of the player's flagship.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class TimeState` - *Universal cosmic stardate, simulation ticks, and time control state.*
-  - Method `.current_date()` - *In-game calendar date (DD.MM.YYYY), starting 01.01.3042 at tick zero.*
+  - Property `.current_date` - *In-game calendar date (DD.MM.YYYY), starting 01.01.3042 at tick zero.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class EconomicEvent` - *Cosmic economic shock, boom, crisis, or embargo shifting commodity supply and prices.*
@@ -866,7 +887,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `804` lines (`32157` bytes)
+**Size**: `802` lines (`32499` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*
@@ -881,7 +902,7 @@
   - Method `._do_post()`
 - `class BackgroundServer` - *Handle for a concurrent server + simulation ticker launched from the REPL.*
   - Method `.__init__(server, server_thread, ticker, stop_event, engine, storage)`
-  - Method `.port()`
+  - Property `.port`
   - Method `.stop()`
 
 **Functions:**
@@ -896,7 +917,7 @@
 ### [`voidfarer/storage.py`](voidfarer/storage.py)
 > *Crash-resilient storage engine and atomic persistence for VoidFarer.*
 
-**Size**: `116` lines (`4251` bytes)
+**Size**: `114` lines (`4255` bytes)
 
 **Classes:**
 - `class StorageManager` - *Manages power-loss safe atomic persistence and shadow backups.*
@@ -913,7 +934,7 @@
 ### [`voidfarer/story.py`](voidfarer/story.py)
 > *Interactive Cadet Flight Academy tutorial and branching narrative campaign systems.*
 
-**Size**: `255` lines (`10406` bytes)
+**Size**: `254` lines (`10405` bytes)
 
 **Functions:**
 - `def generate_initial_tutorial()` - *Construct a fresh Cadet Flight Academy tutorial state.*

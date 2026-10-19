@@ -36,6 +36,7 @@ voidfarer.bat   # CLI passthrough launcher (e.g. `voidfarer.bat status`, `voidfa
 ```text
 voidfarer/
 ├── .aikit/                   <- project memory: record, ledger, decisions
+│   ├── codebase_map.md       <- AST-generated symbol map
 │   ├── decisions.md          <- monotonic ADR register
 │   ├── guidelines.md         <- project-specific guidelines
 │   ├── project.json          <- stack and gate configuration
@@ -68,7 +69,7 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- 238-test unit & integration suite (about 3.8s)
+└── tests/                    <- unit & integration test suite
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
@@ -79,6 +80,7 @@ voidfarer/
     ├── test_frontier_systems.py <- AI trade, depots, messages, landing, fleets & moons
     ├── test_inventory.py     <- item catalog, manifest & consumable tests
     ├── test_factions_and_enemies.py <- faction geopolitics & tactical combat tests
+    ├── test_perks_relics_rep.py <- faction service perks, multi-stat relics & reputation rewards
     ├── test_storage.py       <- power-loss safety & corruption quarantine
     ├── test_server.py        <- REST API request/response contracts
     ├── test_cli.py           <- command dispatch & argument parsing
@@ -86,7 +88,8 @@ voidfarer/
     ├── test_batch_launchers.py <- Windows batch launcher menu & CRLF regression tests
     ├── test_cockpit_layout.py <- cockpit layout-rule DOM/CSS regression tests
     ├── test_equipment_bonuses.py <- module stat_bonus & chassis perk regression tests
-    └── test_time_and_ticks.py <- cosmic calendar, tick simulation & time controls
+    ├── test_time_and_ticks.py <- cosmic calendar, tick simulation & time controls
+    └── test_transit_civ_events.py <- in-system transit, planetary civilization & cockpit popup events
 ```
 
 ---

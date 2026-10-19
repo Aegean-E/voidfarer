@@ -50,6 +50,7 @@ from voidfarer.models import (
     Depot,
     EconomicEvent,
     FleetDrone,
+    GameEvent,
     GameState,
     GlobalEconomyState,
     MarketQuote,
@@ -66,6 +67,7 @@ from voidfarer.models import (
     StoryTransmission,
     SystemMarketState,
     TimeState,
+    TravelState,
     TutorialState,
     TutorialStep,
 )
@@ -142,6 +144,40 @@ class SimulationEngine:
             updates["depots"] = generate_depots(self.state.systems)
         if not self.state.messages:
             updates["messages"] = generate_welcome_messages(self.state.time.tick)
+        gov_map = {
+            "Sol Coalition": "Federal Democracy",
+            "Free Spacers Syndicate": "Trade Directorate",
+            "Nebula Collective": "Technocratic Council",
+            "Void Corsairs": "Pirate Warlordship",
+            "Precursor Watch": "Monastic Curate",
+        }
+        updated_systems: dict[str, StarSystem] = {}
+        systems_changed = False
+        for sys_id, sys_obj in self.state.systems.items():
+            new_bodies = []
+            body_changed = False
+            for idx, body in enumerate(sys_obj.bodies):
+                if (body.station_dockable or body.landable) and body.population == 0:
+                    pop = 120_000_000 + idx * 45_000_000 if body.landable else 250_000 + idx * 85_000
+                    gov = "Science Directorate" if body.body_type == "research_outpost" else gov_map.get(sys_obj.faction, "Colonial Republic")
+                    new_bodies.append(
+                        replace(
+                            body,
+                            faction=sys_obj.faction if body.faction == "Unclaimed" else body.faction,
+                            population=pop,
+                            government=gov if body.government == "None" else body.government,
+                        )
+                    )
+                    body_changed = True
+                else:
+                    new_bodies.append(body)
+            if body_changed:
+                updated_systems[sys_id] = replace(sys_obj, bodies=tuple(new_bodies))
+                systems_changed = True
+            else:
+                updated_systems[sys_id] = sys_obj
+        if systems_changed:
+            updates["systems"] = updated_systems
         if updates:
             self.state = self._clone_state(**updates)
 
@@ -180,6 +216,7 @@ class SimulationEngine:
             corp_standings=kwargs.get("corp_standings", cur.corp_standings),
             allies=kwargs.get("allies", cur.allies),
             landed_body_id=kwargs["landed_body_id"] if "landed_body_id" in kwargs else cur.landed_body_id,
+            travel=kwargs["travel"] if "travel" in kwargs else cur.travel,
         )
 
     def _clone_state(self, **kwargs: Any) -> GameState:
@@ -199,6 +236,7 @@ class SimulationEngine:
             ai_captains=kwargs.get("ai_captains", cur.ai_captains),
             depots=kwargs.get("depots", cur.depots),
             messages=kwargs.get("messages", cur.messages),
+            events=kwargs.get("events", cur.events),
         )
 
     def _grant_cargo(self, cargo: dict[str, int], commodity_id: str, quantity: int) -> tuple[int, int]:

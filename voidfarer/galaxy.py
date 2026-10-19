@@ -196,7 +196,7 @@ class GalaxyGenerator:
             faction,
             dominant_corp,
         ) in SYSTEM_ARCHETYPES:
-            bodies = self._generate_bodies(sys_id, name, spectral)
+            bodies = self._generate_bodies(sys_id, name, spectral, faction)
             systems[sys_id] = StarSystem(
                 id=sys_id,
                 name=name,
@@ -233,7 +233,7 @@ class GalaxyGenerator:
         return final_systems
 
     def _generate_bodies(
-        self, sys_id: str, sys_name: str, spectral: str
+        self, sys_id: str, sys_name: str, spectral: str, faction: str = "Sol Coalition"
     ) -> list[CelestialBody]:
         """Generate central star and orbiting planetary bodies."""
         bodies: list[CelestialBody] = []
@@ -322,6 +322,14 @@ class GalaxyGenerator:
             "volcanic": ("xenoliths",),
         }
         moon_colors = ("#c0c0c0", "#9a8c98", "#e0e1dd", "#8ecae6")
+        gov_map = {
+            "Sol Coalition": "Federal Democracy",
+            "Free Spacers Syndicate": "Trade Directorate",
+            "Nebula Collective": "Technocratic Council",
+            "Void Corsairs": "Pirate Warlordship",
+            "Precursor Watch": "Monastic Curate",
+        }
+        default_gov = gov_map.get(faction, "Colonial Republic")
 
         num_bodies = 6 if sys_id in ("sol", "betelgeuse") else 5
         for i in range(num_bodies):
@@ -352,6 +360,17 @@ class GalaxyGenerator:
                 for j in range(moon_count)
             )
 
+            is_inhabited = is_station or body_type in habitable_types
+            if body_type in habitable_types:
+                body_pop = 120_000_000 + (i + 1) * 45_000_000
+                body_gov = default_gov
+            elif is_station:
+                body_pop = 250_000 + (i + 1) * 85_000
+                body_gov = "Science Directorate" if body_type == "research_outpost" else default_gov
+            else:
+                body_pop = 0
+                body_gov = "None"
+
             bodies.append(
                 CelestialBody(
                     id=body_id,
@@ -363,7 +382,7 @@ class GalaxyGenerator:
                     radius_km=3000.0 + i * 2500.0,
                     color=color,
                     hazards=("pirate_activity",) if market_arch == "black_market" else (),
-                    station_dockable=is_station or body_type in habitable_types,
+                    station_dockable=is_inhabited,
                     market_archetype=market_arch,
                     scan_completed=False,
                     scan_discovery=discovery,
@@ -373,6 +392,9 @@ class GalaxyGenerator:
                     resources=resource_map.get(body_type, ()),
                     moons=moons,
                     landable=body_type in habitable_types,
+                    faction=faction if is_inhabited else "Unclaimed",
+                    population=body_pop,
+                    government=body_gov,
                 )
             )
 
@@ -389,6 +411,9 @@ class GalaxyGenerator:
                 landable=True,
                 station_dockable=True,
                 scan_discovery="Temperate savanna world with a breathable atmosphere and fertile colony belts.",
+                faction=faction,
+                population=185_000_000,
+                government=default_gov,
             )
 
         if not any(b.station_dockable for b in bodies[1:]):
@@ -400,6 +425,9 @@ class GalaxyGenerator:
                 station_dockable=True,
                 market_archetype="high_tech",
                 scan_discovery="Orbital trade citadel servicing deep-space convoys.",
+                faction=faction,
+                population=420_000,
+                government=default_gov,
             )
 
         return bodies

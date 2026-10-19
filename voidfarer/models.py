@@ -58,6 +58,9 @@ class CelestialBody:
     resources: tuple[str, ...] = ()
     moons: tuple[Moon, ...] = ()
     landable: bool = False
+    faction: str = "Unclaimed"
+    population: int = 0
+    government: str = "None"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -84,6 +87,9 @@ class CelestialBody:
             resources=tuple(data.get("resources", ())),
             moons=tuple(Moon.from_dict(m) for m in data.get("moons", ())),
             landable=bool(data.get("landable", str(data.get("body_type", "")) in {"terrestrial", "oceanic", "savanna", "tundra"})),
+            faction=str(data.get("faction", "Unclaimed")),
+            population=int(data.get("population", 0)),
+            government=str(data.get("government", "None")),
         )
 
 
@@ -853,6 +859,65 @@ class StoryState:
 
 
 @dataclass(frozen=True)
+class TravelState:
+    """In-system transit between two celestial bodies."""
+
+    origin_body_id: str | None
+    destination_body_id: str
+    mode: str = "sublight"  # 'sublight' or 'quantum'
+    started_tick: int = 0
+    arrival_tick: int = 0
+    distance_au: float = 0.0
+    duration_ticks: int = 1
+
+    def progress(self, current_tick: int) -> float:
+        total = max(1, self.arrival_tick - self.started_tick)
+        elapsed = max(0, min(total, current_tick - self.started_tick))
+        return elapsed / total
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TravelState:
+        return cls(
+            origin_body_id=data.get("origin_body_id"),
+            destination_body_id=str(data["destination_body_id"]),
+            mode=str(data.get("mode", "sublight")),
+            started_tick=int(data.get("started_tick", 0)),
+            arrival_tick=int(data.get("arrival_tick", 0)),
+            distance_au=float(data.get("distance_au", 0.0)),
+            duration_ticks=int(data.get("duration_ticks", 1)),
+        )
+
+
+@dataclass(frozen=True)
+class GameEvent:
+    """Realtime popup event delivered to the cockpit."""
+
+    id: str
+    kind: str
+    title: str
+    message: str
+    tick: int = 0
+    dismissed: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GameEvent:
+        return cls(
+            id=str(data["id"]),
+            kind=str(data.get("kind", "system")),
+            title=str(data.get("title", "")),
+            message=str(data.get("message", "")),
+            tick=int(data.get("tick", 0)),
+            dismissed=bool(data.get("dismissed", False)),
+        )
+
+
+@dataclass(frozen=True)
 class ShipState:
     """Complete telemetry, resource inventory, and status of the player's flagship."""
 
@@ -887,6 +952,7 @@ class ShipState:
     corp_standings: dict[str, int] = field(default_factory=dict)
     allies: tuple[str, ...] = ()
     landed_body_id: str | None = None
+    travel: TravelState | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -921,6 +987,7 @@ class ShipState:
             "corp_standings": dict(self.corp_standings),
             "allies": list(self.allies),
             "landed_body_id": self.landed_body_id,
+            "travel": self.travel.to_dict() if self.travel else None,
         }
 
     @classmethod
@@ -977,6 +1044,7 @@ class ShipState:
             corp_standings=corp_standings,
             allies=tuple(data.get("allies", ())),
             landed_body_id=data.get("landed_body_id"),
+            travel=TravelState.from_dict(data["travel"]) if data.get("travel") else None,
         )
 
 
@@ -1137,6 +1205,7 @@ class GameState:
     ai_captains: tuple[AICaptain, ...] = ()
     depots: tuple[Depot, ...] = ()
     messages: tuple[QuantumMessage, ...] = ()
+    events: tuple[GameEvent, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1153,6 +1222,7 @@ class GameState:
             "ai_captains": [c.to_dict() for c in self.ai_captains],
             "depots": [d.to_dict() for d in self.depots],
             "messages": [m.to_dict() for m in self.messages],
+            "events": [e.to_dict() for e in self.events],
         }
 
     @classmethod
@@ -1192,5 +1262,6 @@ class GameState:
             ai_captains=tuple(AICaptain.from_dict(c) for c in data.get("ai_captains", ())),
             depots=tuple(Depot.from_dict(d) for d in data.get("depots", ())),
             messages=tuple(QuantumMessage.from_dict(m) for m in data.get("messages", ())),
+            events=tuple(GameEvent.from_dict(e) for e in data.get("events", ())),
         )
 

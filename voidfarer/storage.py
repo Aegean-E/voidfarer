@@ -27,12 +27,10 @@ class StorageManager:
         """Write JSON payload atomically using a unique temporary file, fsync, and shadow backup."""
         with self._write_lock:
             # Check free disk space (> 10MB)
-            try:
+            if hasattr(shutil, "disk_usage"):
                 stat = shutil.disk_usage(self.data_dir)
                 if stat.free < 10 * 1024 * 1024:
                     raise OSError("Insufficient disk space (< 10MB free)")
-            except AttributeError:
-                pass
 
             token = uuid.uuid4().hex
             temp_path = self.data_dir / f".tmp_{target_path.name}_{token}"
@@ -83,7 +81,7 @@ class StorageManager:
         try:
             shutil.move(target_path, corrupt_path)
         except OSError:
-            pass
+            target_path.unlink(missing_ok=True)
 
     def save(self, state: GameState) -> Path:
         """Atomically persist universe and ship state."""

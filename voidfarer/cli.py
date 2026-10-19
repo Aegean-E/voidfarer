@@ -16,7 +16,7 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except (ValueError, OSError):
+    except (ValueError, OSError):  # hygiene: allow non-reconfigurable stdio streams in test harnesses
         pass
 
 from voidfarer.engine import SimulationEngine
@@ -1091,7 +1091,7 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
                     try:
                         port = int(parts[i + 1])
                     except ValueError:
-                        pass
+                        print(f"{YELLOW}Invalid port '{parts[i + 1]}'; using {port}.{RESET}")
                 elif p.isdigit():
                     port = int(p)
 

@@ -202,6 +202,7 @@ STORY_RELICS: dict[str, PrecursorRelic] = {
         description="Awarded for graduating from the Cadet Flight Academy (+15 HP and +15% scan research bounty).",
         passive_stat="max_hull",
         stat_multiplier=15.0,
+        bonuses={"scan_bounty": 0.15},
     ),
     "relic_cipher_key": PrecursorRelic(
         id="relic_cipher_key",
@@ -218,6 +219,7 @@ STORY_RELICS: dict[str, PrecursorRelic] = {
         description="Alien energy matrix increasing hyperlane jump fuel efficiency by +35% and laser power by +25%.",
         passive_stat="fuel_efficiency",
         stat_multiplier=0.35,
+        bonuses={"laser_dmg": 0.25},
     ),
     "relic_humanitarian_medal": PrecursorRelic(
         id="relic_humanitarian_medal",
@@ -234,6 +236,7 @@ STORY_RELICS: dict[str, PrecursorRelic] = {
         description="The ultimate mark of the Precursor Architects (+40% laser strike power and +50% research bounty).",
         passive_stat="laser_dmg",
         stat_multiplier=0.40,
+        bonuses={"scan_bounty": 0.50},
     ),
     "relic_sentinel_matrix": PrecursorRelic(
         id="relic_sentinel_matrix",
@@ -242,6 +245,7 @@ STORY_RELICS: dict[str, PrecursorRelic] = {
         description="Galactic defense seal reinforcing flagship structural integrity (+50 HP and +40 MW shields).",
         passive_stat="max_hull",
         stat_multiplier=50.0,
+        bonuses={"shield_cap": 40.0},
     ),
 }
 

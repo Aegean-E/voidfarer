@@ -1,39 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-capacity-cli-v1",
+    "task_id": "task-voidfarer-gap-closure-v1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792386451.4027972,
-    "completed_at": 1792386473.1003978
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792391485.308321
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-launcher-fix-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-launcher-fix-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792355860.3518598,
-      "timestamp_str": "2026-10-18 23:37:40"
-    },
-    {
-      "task_id": "task-voidfarer-cockpit-layout-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/5] Planning cockpit layout rules (G-001..G-003): telemetry log anchored lower-right with HIDE/SHOW button; chrono tick deck pinned to the far right of the top status bar; Commerce/Arsenal/Fleet terminal rebuilt as a vertical tab rail on the left with content beside it; radar+reactor center column; alerts center-top; failing-first DOM/CSS regression tests designed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792356326.0128198,
-      "timestamp_str": "2026-10-18 23:45:26",
-      "impact_assessment": {
-        "why": "The cockpit currently places the telemetry log in the center deck, the chrono deck mid-bar, and the Commerce/Arsenal/Fleet terminal as a horizontal tab strip on the right. The user's layout rules require the log at the lower-right with a hide button, the chrono settings in the right upper corner, and the terminal running vertically down the left side.",
-        "benefits": "The cockpit matches the user's ergonomics: terminal rail on the left, main view center, time controls and telemetry in their expected corners; the log can be collapsed to free screen space; the rules become pinned by structural regression tests (G-001..G-003).",
-        "risks": "contract: app.js-referenced DOM ids (tab buttons/contents, chrono controls, log stream, clear button) must not change; dependency: none, tests use the stdlib html.parser; concurrency: none, static assets only; state: the HIDE/SHOW toggle is view-only and adds no persisted state; grid column fractions change the visual balance of all three decks.",
-        "mitigation": "Failing-first: structural tests parse index.html and assert deck membership, document order, CSS pins, and JS wiring before the restructure; smoke-serve the static cockpit afterwards; full suite plus aikit check gates before commit."
-      }
-    },
     {
       "task_id": "task-voidfarer-cockpit-layout-v1",
       "phase": "phase 3",
@@ -237,6 +211,32 @@
       "status": "completed",
       "timestamp": 1792386473.100399,
       "timestamp_str": "2026-10-19 08:07:53"
+    },
+    {
+      "task_id": "task-voidfarer-gap-closure-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] Close documented gaps: concrete faction perks, archetype rep rewards, multi-stat relics, cockpit escaping/color whitelisting, and REPL background server lifecycle",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792391479.094283,
+      "timestamp_str": "2026-10-19 09:31:19",
+      "impact_assessment": {
+        "why": "ADR-015/017 listed these as residual gaps, so advertised behavior and actual simulation diverged",
+        "benefits": "Aligns perks/relic text with mechanics, applies data-driven faction/corp standings, blocks injection in cockpit HTML, and makes the REPL-hosted server complete",
+        "risks": "contract: additive save fields (archetype_id, relic bonuses); dependency: stdlib; concurrency: BackgroundServer stop joins ticker and saves; state: legacy saves default new fields",
+        "mitigation": "Targeted regression tests for each gap, escape/color structural tests, full suite and aikit gates"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-gap-closure-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] Verified: 238/238 tests green (3.5s); node --check app.js OK; compileall OK; aikit check voidfarer 4/4 after regenerating codebase_map; ADR-019 and README updated; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792391485.308321,
+      "timestamp_str": "2026-10-19 09:31:25"
     }
   ]
 }

@@ -246,4 +246,5 @@ def generate_system_enemy(
         telegraphed_action=initial_telegraph,
         ai_profile=arch.ai_profile,
         enemy_intent="fire",
+        archetype_id=arch.id,
     )

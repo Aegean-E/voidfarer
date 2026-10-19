@@ -621,6 +621,94 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
 
 
 
+class BackgroundServer:
+    """Handle for a concurrent server + simulation ticker launched from the REPL."""
+
+    def __init__(
+        self,
+        server: ThreadedHTTPServer,
+        server_thread: threading.Thread,
+        ticker: threading.Thread | None,
+        stop_event: threading.Event,
+        engine: SimulationEngine,
+        storage: StorageManager,
+    ) -> None:
+        self.server = server
+        self.server_thread = server_thread
+        self.ticker = ticker
+        self.stop_event = stop_event
+        self.engine = engine
+        self.storage = storage
+
+    @property
+    def port(self) -> int:
+        return int(self.server.server_port)
+
+    def stop(self) -> None:
+        self.stop_event.set()
+        if self.ticker is not None:
+            self.ticker.join(timeout=2.0)
+        try:
+            self.storage.save(self.engine.state)
+        except OSError:
+            pass
+        try:
+            self.server.shutdown()
+        except (OSError, RuntimeError):
+            pass
+        try:
+            self.server.server_close()
+        except OSError:
+            pass
+        self.server_thread.join(timeout=2.0)
+
+
+def start_background_server(
+    engine: SimulationEngine,
+    storage: StorageManager,
+    port: int = 8080,
+    host: str = "127.0.0.1",
+) -> BackgroundServer | None:
+    """Launch the cockpit server and simulation ticker without blocking the REPL."""
+    if not 0 <= port <= 65535:
+        return None
+    static_dir = Path(__file__).parent / "static"
+    VoidFarerHandler.engine = engine
+    VoidFarerHandler.storage = storage
+    VoidFarerHandler.static_dir = static_dir
+
+    try:
+        server = ThreadedHTTPServer((host, port), VoidFarerHandler)
+    except (OSError, OverflowError):
+        return None
+
+    stop_event = threading.Event()
+
+    def _ticker_loop() -> None:
+        save_counter = 0
+        while not stop_event.is_set():
+            time_obj = engine.state.time
+            if not time_obj.is_paused and time_obj.speed > 0:
+                if stop_event.wait(max(0.1, 1.0 / time_obj.speed)):
+                    break
+                engine.tick(1)
+                save_counter += 1
+                if save_counter >= 10:
+                    try:
+                        storage.save(engine.state)
+                    except OSError:
+                        pass
+                    save_counter = 0
+            else:
+                if stop_event.wait(0.2):
+                    break
+
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    ticker = threading.Thread(target=_ticker_loop, daemon=True)
+    ticker.start()
+    return BackgroundServer(server, server_thread, ticker, stop_event, engine, storage)
+
 def run_server(
     engine: SimulationEngine,
     storage: StorageManager,
@@ -647,10 +735,10 @@ def run_server(
         return 1
     url = f"http://{host}:{port}"
     print(f"\n=======================================================")
-    print(f"🚀 VOIDFARER HOLOGRAPHIC COCKPIT ACTIVE")
-    print(f"📡 Cockpit HUD URL: {url}")
-    print(f"⏱️ Cosmic Time: {engine.state.time.current_date} (Tick #{engine.state.time.tick})")
-    print(f"⚡ Press Ctrl+C to disconnect sub-space uplink")
+    print(f"ğŸš€ VOIDFARER HOLOGRAPHIC COCKPIT ACTIVE")
+    print(f"ğŸ“¡ Cockpit HUD URL: {url}")
+    print(f"â±ï¸ Cosmic Time: {engine.state.time.current_date} (Tick #{engine.state.time.tick})")
+    print(f"âš¡ Press Ctrl+C to disconnect sub-space uplink")
     print(f"=======================================================\n")
 
     ticker_stop = threading.Event()
@@ -712,4 +800,3 @@ def run_server(
         except OSError:
             pass
     return 0
-

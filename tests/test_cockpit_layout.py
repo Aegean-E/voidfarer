@@ -303,3 +303,25 @@ class TestFrontierCockpitUI(unittest.TestCase):
 
     def test_radar_background_is_black(self):
         self.assertIn(".canvas-radar-container { background: #000; }", self.css)
+
+class TestCockpitEscaping(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.js = APP_JS.read_text(encoding="utf-8")
+
+    def test_dynamic_server_data_is_escaped(self):
+        for marker in (
+            "this.escapeHtml(q.name)",
+            "this.escapeHtml(u.name)",
+            "this.escapeHtml(c.title)",
+            "this.escapeHtml(t.name)",
+            "this.escapeHtml(r.name)",
+            "this.escapeHtml(tx.message)",
+            "this.escapeHtml(f.name)",
+            "this.escapeHtml(c.name)",
+        ):
+            self.assertIn(marker, self.js)
+
+    def test_faction_colors_are_whitelisted(self):
+        self.assertIn("safeColor(value", self.js)
+        self.assertIn("this.safeColor(f.primary_color)", self.js)

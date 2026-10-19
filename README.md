@@ -68,7 +68,7 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- 225-test unit & integration suite (about 3.1s)
+└── tests/                    <- 238-test unit & integration suite (about 3.8s)
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
@@ -295,6 +295,9 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Mercenary & Fleet Command**: Per-unit level, efficiency, integrity, sorties, refit/dismiss controls, and hireable mercenary specialists (assault, evasion, repair).
 - **Expanded Procedural Galaxy**: 15 star systems, 5-6 planets each, additional star types (B/O/red giant/binary), savanna/tundra/toxic/barren/super-Earth/ice-giant worlds, moons, and asteroid belts.
 - **Dynamic AI Economy**: Autonomous trader captains move between systems and buy/sell commodities each tick, changing stockpiles and prices alongside the player's trades.
+- **Concrete Faction Perks & Reputation Rewards**: Friendly repair discounts, allied free refuel and naval escort evasion, Syndicate sale margins, Precursor scan XP, and Nebula drone yields are applied in the simulation; enemy archetypes now use their catalog `rep_rewards` for faction and corporate standings.
+- **Multi-Stat Relics & Hardened Cockpit Rendering**: Relics support secondary bonus maps (hull + shields, fuel + lasers, laser + research) and all dynamic cockpit text/colors are escaped or whitelisted before interpolation.
+- **REPL Web Server Lifecycle**: `serve` starts a concurrent HTTP server plus simulation ticker, reports the actual bound port, and `serve stop` or REPL exit shuts it down with a final save.
 - **Cadet Flight Academy Ribbon**: Persistent top-of-HUD progressive instruction banner with milestone progress, step hints, rewards, and one-click dismiss.
 - **COMMS LOG Subspace Radio Tab**: Subspace transmissions stream with animated character avatars (Admiral Vance, Cipher, Archon Prime), faction alignment chips, and interactive moral choice cards.
 - **Factions & Megacorporations Tab**: Live diplomatic standings (-100 to +100), territorial headquarters, tariff discounts, and corporate specialty trade margins.
@@ -314,7 +317,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 225-test suite runs in about 3.1 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 238-test suite runs in about 3.8 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

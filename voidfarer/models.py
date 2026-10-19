@@ -437,6 +437,7 @@ class CombatEncounter:
     telegraphed_action: str = "Hostile weapons powering up"
     ai_profile: str = "aggressive"
     enemy_intent: str = "fire"
+    archetype_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -460,6 +461,7 @@ class CombatEncounter:
             telegraphed_action=str(data.get("telegraphed_action", "Hostile weapons powering up")),
             ai_profile=str(data.get("ai_profile", "aggressive")),
             enemy_intent=str(data.get("enemy_intent", "fire")),
+            archetype_id=str(data.get("archetype_id", "")),
         )
 
 
@@ -508,6 +510,7 @@ class PrecursorRelic:
     passive_stat: str  # 'laser_dmg', 'shield_cap', 'fuel_efficiency', 'trade_margin', 'scanner_bounty'
     stat_multiplier: float  # e.g. 0.15 for +15%
     discovered_at_system: str = "sol"
+    bonuses: dict[str, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -522,6 +525,7 @@ class PrecursorRelic:
             passive_stat=str(data.get("passive_stat", "laser_dmg")),
             stat_multiplier=float(data.get("stat_multiplier", 0.05)),
             discovered_at_system=str(data.get("discovered_at_system", "sol")),
+            bonuses=dict(data.get("bonuses", {})),
         )
 
 

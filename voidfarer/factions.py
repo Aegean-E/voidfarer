@@ -220,3 +220,31 @@ def get_faction_id_from_name(name: str) -> str:
     clean = name.strip().lower()
     return FACTION_NAME_TO_ID.get(clean, "outlaw_corsairs" if "outlaw" in clean or "anarchy" in clean else "sol_coalition")
 
+
+
+def get_faction_service_perks(faction_id: str, standing: int) -> dict[str, float | bool]:
+    """Return concrete service modifiers for the current standing tier and faction."""
+    perks: dict[str, float | bool] = {
+        "trade_margin": 0.0,
+        "repair_discount": 0.0,
+        "free_refuel": False,
+        "scan_xp_bonus": 0.0,
+        "drone_yield_bonus": 0.0,
+    }
+    if standing >= 70:
+        perks["trade_margin"] = float(perks["trade_margin"]) + 0.20
+        perks["free_refuel"] = True
+    elif standing >= 25:
+        perks["trade_margin"] = float(perks["trade_margin"]) + 0.10
+        perks["repair_discount"] = max(float(perks["repair_discount"]), 0.15)
+
+    if standing >= 25:
+        if faction_id == "sol_coalition":
+            perks["repair_discount"] = max(float(perks["repair_discount"]), 0.15)
+        elif faction_id == "vanguard_syndicate":
+            perks["trade_margin"] = float(perks["trade_margin"]) + 0.15
+        elif faction_id == "precursor_watch":
+            perks["scan_xp_bonus"] = 0.25
+        elif faction_id == "nebula_collective":
+            perks["drone_yield_bonus"] = 0.30
+    return perks

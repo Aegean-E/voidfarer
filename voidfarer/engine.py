@@ -20,6 +20,7 @@ from voidfarer.factions import (
     get_corporation,
     get_faction,
     get_faction_id_from_name,
+    get_faction_service_perks,
     get_faction_standing_tier,
 )
 from voidfarer.economy import (
@@ -219,17 +220,18 @@ class SimulationEngine:
     ) -> tuple[int, int, int, int]:
         """Raise current and maximum hull/shield for newly acquired permanent relics."""
         for relic in relics:
-            if relic.passive_stat == "max_hull":
-                bonus = int(relic.stat_multiplier)
+            stats = dict(relic.bonuses)
+            stats[relic.passive_stat] = stats.get(relic.passive_stat, 0.0) + relic.stat_multiplier
+            if relic.passive_stat == "stellar_forge":
+                stats.setdefault("shield_cap", 40.0)
+            if "max_hull" in stats:
+                bonus = int(stats["max_hull"])
                 max_hull += bonus
                 hull += bonus
-            elif relic.passive_stat == "shield_cap":
-                bonus = int(relic.stat_multiplier)
+            if "shield_cap" in stats:
+                bonus = int(stats["shield_cap"])
                 max_shield += bonus
                 shield += bonus
-            elif relic.passive_stat == "stellar_forge":
-                max_shield += 40
-                shield += 40
         return hull, max_hull, shield, max_shield
 
     def _progress_tutorial(self, action_type: str) -> tuple[TutorialState, int, int, list[PrecursorRelic], list[str]]:
@@ -460,8 +462,12 @@ class SimulationEngine:
         """Advance autonomous drone harvest cycle across star systems."""
         updated_drones = []
         for d in ship.fleet_drones:
+            assigned_system = self.state.systems.get(d.assigned_system_id)
+            faction_id = get_faction_id_from_name(assigned_system.faction) if assigned_system else "sol_coalition"
+            perks = get_faction_service_perks(faction_id, self.state.ship.faction_standings.get(faction_id, 0))
+            yield_bonus = 1.0 + float(perks["drone_yield_bonus"])
             if d.drone_type == "mining":
-                yield_amount = max(1, int(2 * d.efficiency * (0.5 + d.integrity / 200.0)))
+                yield_amount = max(1, int(2 * d.efficiency * (0.5 + d.integrity / 200.0) * yield_bonus))
                 updated_drones.append(
                     replace(
                         d,
@@ -473,7 +479,7 @@ class SimulationEngine:
                     )
                 )
             elif d.drone_type == "scout":
-                yield_amount = max(10, int(75 * d.efficiency * (0.5 + d.integrity / 200.0)))
+                yield_amount = max(10, int(75 * d.efficiency * (0.5 + d.integrity / 200.0) * yield_bonus))
                 updated_drones.append(
                     replace(
                         d,
@@ -551,8 +557,12 @@ class SimulationEngine:
             sys_faction_id = get_faction_id_from_name(target_sys.faction)
             standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
             is_hostile_territory = standing <= -50
+            home_faction_id = get_faction_id_from_name(cur_sys.faction)
+            home_standing = self.state.ship.faction_standings.get(home_faction_id, 0)
+            escort_evasion = 0.25 if home_standing >= 70 else 0.0
+            encounter_evasion = min(0.90, equipment["pirate_evasion"] + escort_evasion)
 
-            if is_hostile_territory and self.rng.random() < 0.65 * (1.0 - equipment["pirate_evasion"]):
+            if is_hostile_territory and self.rng.random() < 0.65 * (1.0 - encounter_evasion):
                 combat = generate_system_enemy(
                     system_id=target_system_id,
                     security=target_sys.security,
@@ -563,7 +573,7 @@ class SimulationEngine:
             elif target_sys.security < 0.35:
                 if has_escort:
                     new_log.append("TACTICAL: Combat escort frigate dispersed hostile ambush.")
-                elif self.rng.random() < 0.40 * (1.0 - equipment["pirate_evasion"]):
+                elif self.rng.random() < 0.40 * (1.0 - encounter_evasion):
                     combat = generate_system_enemy(
                         system_id=target_system_id,
                         security=target_sys.security,
@@ -821,7 +831,10 @@ class SimulationEngine:
             # Progress exploration contracts and award survey pilot XP
             updated_contracts, contract_logs = self._progress_contracts("exploration", 1)
             new_log.extend(contract_logs)
-            new_mastery, xp_logs = self._award_pilot_xp(50, self.state.ship.mastery)
+            scan_faction_id = get_faction_id_from_name(cur_sys.faction)
+            scan_perks = get_faction_service_perks(scan_faction_id, self.state.ship.faction_standings.get(scan_faction_id, 0))
+            scan_xp = int(50 * (1.0 + float(scan_perks["scan_xp_bonus"])))
+            new_mastery, xp_logs = self._award_pilot_xp(scan_xp, self.state.ship.mastery)
             new_log.extend(xp_logs)
 
             new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("scan")
@@ -928,6 +941,7 @@ class SimulationEngine:
             sys_faction_id = get_faction_id_from_name(self.current_system.faction)
             standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
             faction_mod = calculate_faction_market_modifier(sys_faction_id, standing)
+            faction_perks = get_faction_service_perks(sys_faction_id, standing)
             new_faction_standings = dict(self.state.ship.faction_standings)
             new_corp_standings = dict(self.state.ship.corp_standings)
 
@@ -955,7 +969,7 @@ class SimulationEngine:
                 if owned < quantity:
                     return False, f"Insufficient inventory: you have {owned} units, tried to sell {quantity}."
 
-                margin_mult = passives.get("trade_margin", 1.0) * (1.0 + equipment["trade_margin"] + len(self.state.ship.allies) * 0.05)
+                margin_mult = passives.get("trade_margin", 1.0) * (1.0 + equipment["trade_margin"] + len(self.state.ship.allies) * 0.05 + float(faction_perks["trade_margin"]))
                 corp_mult = 1.0
                 corp_note = ""
                 dom_corp_id = self.current_system.dominant_corp
@@ -1632,6 +1646,7 @@ class SimulationEngine:
                     telegraphed_action=next_telegraph,
                     ai_profile=combat.ai_profile,
                     enemy_intent=next_intent,
+                    archetype_id=combat.archetype_id,
                 )
                 new_log = list(self.state.ship.flight_log[-19:]) + [msg]
                 new_ship = self._clone_ship(hull=new_hull, shield=new_shield, tactical_combo=new_combo, streak=new_streak, flight_log=tuple(new_log[-20:]))
@@ -1703,25 +1718,39 @@ class SimulationEngine:
                 updated_contracts, contract_logs = self._progress_contracts("combat", 1)
                 new_mastery, xp_logs = self._award_pilot_xp(200, self.state.ship.mastery)
 
-                # Faction reputation shift upon victory
+                # Faction and corporate reputation shift upon victory
                 new_faction_standings = dict(self.state.ship.faction_standings)
-                f_id = combat.faction_id
+                new_corp_standings = dict(self.state.ship.corp_standings)
                 rep_note = ""
-                if f_id == "outlaw_corsairs":
+                archetype = ENEMY_ARCHETYPES.get(combat.archetype_id)
+                if archetype and archetype.rep_rewards:
+                    shifts: list[str] = []
+                    for entity_id, delta in archetype.rep_rewards.items():
+                        if entity_id in CANONICAL_FACTIONS:
+                            current = new_faction_standings.get(entity_id, 0)
+                            new_faction_standings[entity_id] = max(-100, min(100, current + delta))
+                            shifts.append(f"{CANONICAL_FACTIONS[entity_id].name} ({delta:+d})")
+                        elif entity_id in CANONICAL_CORPORATIONS:
+                            current = new_corp_standings.get(entity_id, 0)
+                            new_corp_standings[entity_id] = max(-100, min(100, current + delta))
+                            shifts.append(f"{CANONICAL_CORPORATIONS[entity_id].name} ({delta:+d})")
+                    if shifts:
+                        rep_note = " [Standing: " + ", ".join(shifts) + "]"
+                elif combat.faction_id == "outlaw_corsairs":
                     new_faction_standings["sol_coalition"] = min(100, new_faction_standings.get("sol_coalition", 0) + 5)
                     new_faction_standings["nebula_collective"] = min(100, new_faction_standings.get("nebula_collective", 0) + 4)
                     new_faction_standings["vanguard_syndicate"] = min(100, new_faction_standings.get("vanguard_syndicate", 0) + 2)
                     new_faction_standings["outlaw_corsairs"] = max(-100, new_faction_standings.get("outlaw_corsairs", 0) - 10)
                     rep_note = " [Faction Standing: Sol Coalition (+5), Nebula Collective (+4), Void Corsairs (-10)]"
-                elif f_id == "vanguard_syndicate":
+                elif combat.faction_id == "vanguard_syndicate":
                     new_faction_standings["sol_coalition"] = min(100, new_faction_standings.get("sol_coalition", 0) + 6)
                     new_faction_standings["vanguard_syndicate"] = max(-100, new_faction_standings.get("vanguard_syndicate", 0) - 8)
                     rep_note = " [Faction Standing: Sol Coalition (+6), Free Spacers Syndicate (-8)]"
-                elif f_id == "hyperion_dynamics":
+                elif combat.faction_id == "hyperion_dynamics":
                     new_faction_standings["outlaw_corsairs"] = min(100, new_faction_standings.get("outlaw_corsairs", 0) + 6)
                     new_faction_standings["sol_coalition"] = max(-100, new_faction_standings.get("sol_coalition", 0) - 6)
                     rep_note = " [Faction Standing: Void Corsairs (+6), Sol Coalition (-6)]"
-                elif f_id == "precursor_watch":
+                elif combat.faction_id == "precursor_watch":
                     new_faction_standings["precursor_watch"] = min(100, new_faction_standings.get("precursor_watch", 0) + 8)
                     rep_note = " [Faction Standing: Precursor Watch (+8)]"
 
@@ -1744,6 +1773,7 @@ class SimulationEngine:
                     mastery=new_mastery,
                     active_contracts=updated_contracts,
                     faction_standings=new_faction_standings,
+                    corp_standings=new_corp_standings,
                     tactical_combo=0,
                     streak=new_streak,
                     flight_log=tuple(new_log[-20:]),
@@ -1830,6 +1860,7 @@ class SimulationEngine:
                 telegraphed_action=next_telegraph,
                 ai_profile=combat.ai_profile,
                 enemy_intent=next_intent,
+                archetype_id=combat.archetype_id,
             )
 
             new_log = list(self.state.ship.flight_log[-19:]) + [msg]
@@ -1936,7 +1967,9 @@ class SimulationEngine:
                 return False, "Hull integrity already at 100% capacity."
 
             actual = min(amount, needed)
-            cost = actual * 4
+            faction_id = get_faction_id_from_name(self.current_system.faction)
+            perks = get_faction_service_perks(faction_id, self.state.ship.faction_standings.get(faction_id, 0))
+            cost = max(0, int(actual * 4 * (1.0 - float(perks["repair_discount"]))))
             if self.state.ship.credits < cost:
                 return False, f"Insufficient credits: repair costs {cost} cr ({actual} HP)."
 
@@ -1963,7 +1996,9 @@ class SimulationEngine:
                 return False, "Fuel reserves already at maximum capacity."
 
             actual = min(amount, needed)
-            cost = actual * 6
+            faction_id = get_faction_id_from_name(self.current_system.faction)
+            perks = get_faction_service_perks(faction_id, self.state.ship.faction_standings.get(faction_id, 0))
+            cost = 0 if perks["free_refuel"] else actual * 6
             if self.state.ship.credits < cost:
                 return False, f"Insufficient credits: refueling costs {cost} cr ({actual} fuel)."
 

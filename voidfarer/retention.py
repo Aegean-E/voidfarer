@@ -271,6 +271,7 @@ def roll_relic_drop(
                 passive_stat=chosen.passive_stat,
                 stat_multiplier=chosen.stat_multiplier,
                 discovered_at_system=current_system,
+                bonuses=dict(chosen.bonuses),
             ),
             False,
         )
@@ -301,6 +302,7 @@ def roll_relic_drop(
                 passive_stat=chosen.passive_stat,
                 stat_multiplier=chosen.stat_multiplier,
                 discovered_at_system=current_system,
+                bonuses=dict(chosen.bonuses),
             ),
             False,
         )
@@ -345,6 +347,18 @@ def calculate_passive_multipliers(ship: ShipState) -> dict[str, float]:
 
     # Apply precursor relics
     for r in ship.relics:
+        for bonus_stat, bonus_value in r.bonuses.items():
+            if bonus_stat in ("scanner_bounty", "scan_bounty"):
+                multipliers["scan_bounty"] += bonus_value
+            elif bonus_stat == "fuel_efficiency":
+                multipliers["fuel_efficiency"] = max(0.40, multipliers["fuel_efficiency"] - bonus_value)
+            elif bonus_stat == "void_eye":
+                multipliers["laser_dmg"] += bonus_value
+            elif bonus_stat == "stellar_forge":
+                multipliers["trade_margin"] += bonus_value
+                multipliers["shield_cap"] += 40.0 * (bonus_value / 0.30 if bonus_value else 0.0)
+            elif bonus_stat in multipliers:
+                multipliers[bonus_stat] += bonus_value
         stat = r.passive_stat
         mult = r.stat_multiplier
         if stat == "laser_dmg":

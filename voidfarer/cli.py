@@ -33,7 +33,7 @@ from voidfarer.retention import (
     PILOT_TALENTS,
     calculate_passive_multipliers,
 )
-from voidfarer.server import ThreadedHTTPServer, VoidFarerHandler, run_server
+from voidfarer.server import BackgroundServer, run_server, start_background_server
 from voidfarer.storage import StorageManager
 from voidfarer.economy import (
     calculate_dynamic_market_quote,
@@ -1019,8 +1019,7 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
     cmd_status(engine)
     print(f"\n{GREEN}Sub-space quantum link active. Type 'help' for command matrix, 'serve' for Web HUD.{RESET}\n")
 
-    server_thread: threading.Thread | None = None
-    server_running = False
+    server_handle: BackgroundServer | None = None
 
     while True:
         try:
@@ -1077,6 +1076,15 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
         elif cmd in ("story", "campaign", "act", "lore", "comms"):
             cmd_story(engine, storage, parts)
         elif cmd in ("serve", "web", "gui", "hud"):
+            if len(parts) > 1 and parts[1] in ("stop", "shutdown"):
+                if server_handle is not None:
+                    server_handle.stop()
+                    server_handle = None
+                    print(f"{GREEN}Holographic Web Cockpit stopped.{RESET}")
+                else:
+                    print(f"{YELLOW}Cockpit server is not running.{RESET}")
+                continue
+
             port = 8080
             for i, p in enumerate(parts):
                 if p in ("--port", "-p") and i + 1 < len(parts):
@@ -1087,24 +1095,16 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
                 elif p.isdigit():
                     port = int(p)
 
-            if not server_running:
-                static_dir = Path(__file__).parent / "static"
-                VoidFarerHandler.engine = engine
-                VoidFarerHandler.storage = storage
-                VoidFarerHandler.static_dir = static_dir
-
-                try:
-                    server = ThreadedHTTPServer(("127.0.0.1", port), VoidFarerHandler)
-                    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-                    server_thread.start()
-                    server_running = True
-                    print(f"\n{GREEN}🚀 Holographic Web Cockpit HUD launched successfully!{RESET}")
-                    print(f"{CYAN}📡 Uplink URL: http://127.0.0.1:{port}{RESET}")
-                    print(f"{DIM}(Web HUD is running concurrently in the background; you can continue typing REPL commands!){RESET}\n")
-                except OSError as err:
-                    print(f"{YELLOW}Cockpit server notice:{RESET} Port {port} already bound or accessible at http://127.0.0.1:{port}")
+            if server_handle is None:
+                server_handle = start_background_server(engine, storage, port=port)
+                if server_handle is not None:
+                    print(f"\n{GREEN}Holographic Web Cockpit HUD launched successfully!{RESET}")
+                    print(f"{CYAN}Uplink URL: http://127.0.0.1:{server_handle.port}{RESET}")
+                    print(f"{DIM}(Web HUD and simulation ticker are running concurrently; type 'serve stop' to stop.){RESET}\n")
+                else:
+                    print(f"{YELLOW}Cockpit server notice:{RESET} Could not bind port {port}. Choose another port with 'serve <port>'.")
             else:
-                print(f"{CYAN}Holographic Web Cockpit is currently running at http://127.0.0.1:{port}{RESET}")
+                print(f"{CYAN}Holographic Web Cockpit is currently running at http://127.0.0.1:{server_handle.port}{RESET}")
 
         elif cmd == "jump":
             if len(parts) < 2:
@@ -1227,11 +1227,21 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             print("  anomaly <choice_id>            - Resolve active spatial encounter")
             print("  repair [amt]                   - Repair hull integrity at station")
             print("  refuel [amt]                   - Replenish quantum fuel at station")
-            print("  serve [--port 8080]            - Launch concurrent Web Cockpit HUD")
+            print("  serve [--port 8080|stop]       - Launch/stop concurrent Web Cockpit HUD")
+            print("  quests                         - Unified story and contract quest panel")
+            print("  ai [list|hail|buy|sell|hire|ally] - AI captain diplomacy and trade")
+            print("  messages [list|send|read]      - Intergalactic quantum messaging")
+            print("  depot [status|deposit|withdraw|sell] - System cargo depot operations")
+            print("  land <body_id>                 - Land on a habitable body")
+            print("  mercs [list|hire|dismiss|refit] - Mercenary contracts and fleet refits")
+            print("  allies [list|form]             - Alliance roster and formation")
             print("  exit / quit                    - Close interactive link")
         else:
             print(f"{RED}Unknown command '{cmd}'. Type 'help' for command matrix.{RESET}")
 
+    if server_handle is not None:
+        server_handle.stop()
+        server_handle = None
     return 0
 
 

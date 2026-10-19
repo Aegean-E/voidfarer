@@ -966,7 +966,7 @@ class CockpitApp {
                 const checkInfo = ch.required_power !== "none" 
                     ? `[CHECK: ${ch.required_power.toUpperCase()} >= ${ch.min_power_threshold}%]`
                     : `[SAFE HARVEST]`;
-                btn.innerHTML = `${ch.text} <span class="choice-check">${checkInfo}</span>`;
+                btn.innerHTML = `${this.escapeHtml(ch.text)} <span class="choice-check">${checkInfo}</span>`;
                 btn.addEventListener("click", () => this.handleResolveAnomaly(ch.choice_id));
                 this.anomalyChoices.appendChild(btn);
             });
@@ -1098,10 +1098,10 @@ class CockpitApp {
                     const costBadge = c.cost_credits > 0 ? `<span class="choice-cost-badge">COST: ${c.cost_credits} CR</span>` : "";
                     card.innerHTML = `
                         <div class="choice-header-row">
-                            <span class="choice-label-text">${c.label || c.text}</span>
+                            <span class="choice-label-text">${this.escapeHtml(c.label || c.text)}</span>
                             ${costBadge}
                         </div>
-                        <p class="choice-consequence-preview">${c.consequence_summary || c.outcome_text}</p>
+                        <p class="choice-consequence-preview">${this.escapeHtml(c.consequence_summary || c.outcome_text)}</p>
                     `;
                     card.addEventListener("click", () => this.handleStoryChoice(c.id));
                     this.storyChoicesList.appendChild(card);
@@ -1147,10 +1147,10 @@ class CockpitApp {
                 <div class="speaker-avatar ${avatarClass}">${initials}</div>
                 <div class="transmission-body">
                     <div class="transmission-header-row">
-                        <span class="speaker-title">${tx.speaker}</span>
-                        <span class="callsign-pill">${(tx.callsign || 'SECURE').toUpperCase()}</span>
+                        <span class="speaker-title">${this.escapeHtml(tx.speaker)}</span>
+                        <span class="callsign-pill">${this.escapeHtml((tx.callsign || 'SECURE').toUpperCase())}</span>
                     </div>
-                    <div class="transmission-bubble">"${tx.message}"</div>
+                    <div class="transmission-bubble">"${this.escapeHtml(tx.message)}"</div>
                 </div>
             `;
             stream.appendChild(item);
@@ -1237,14 +1237,14 @@ class CockpitApp {
             const holdCount = cargo[q.commodity_id] || 0;
 
             tr.innerHTML = `
-                <td><strong>${q.name}</strong><br><small style="color:var(--text-muted);">${q.category}</small></td>
+                <td><strong>${this.escapeHtml(q.name)}</strong><br><small style="color:var(--text-muted);">${this.escapeHtml(q.category)}</small></td>
                 <td class="td-buy">${q.buy_price} cr</td>
                 <td class="td-sell">${q.sell_price} cr</td>
                 <td class="td-hold">${holdCount}</td>
                 <td>
                     <div class="trade-btn-group">
-                        <button class="btn-trade" data-comm="${q.commodity_id}" data-action="buy">BUY +1</button>
-                        <button class="btn-trade btn-sell-trade" data-comm="${q.commodity_id}" data-action="sell" ${holdCount <= 0 ? 'disabled' : ''}>SELL 1</button>
+                        <button class="btn-trade" data-comm="${this.escapeHtml(q.commodity_id)}" data-action="buy">BUY +1</button>
+                        <button class="btn-trade btn-sell-trade" data-comm="${this.escapeHtml(q.commodity_id)}" data-action="sell" ${holdCount <= 0 ? 'disabled' : ''}>SELL 1</button>
                     </div>
                 </td>
             `;
@@ -1276,12 +1276,12 @@ class CockpitApp {
             card.innerHTML = `
                 <div class="arsenal-info">
                     <div class="arsenal-title-row">
-                        <span class="slot-tag">${u.slot.toUpperCase()}</span>
-                        <strong class="arsenal-name">${u.name}</strong>
+                        <span class="slot-tag">${this.escapeHtml(u.slot.toUpperCase())}</span>
+                        <strong class="arsenal-name">${this.escapeHtml(u.name)}</strong>
                     </div>
-                    <p class="arsenal-desc">${u.description}</p>
+                    <p class="arsenal-desc">${this.escapeHtml(u.description)}</p>
                 </div>
-                <button class="btn-upgrade-buy" ${isEquipped || credits < u.cost ? 'disabled' : ''} data-id="${u.id}">
+                <button class="btn-upgrade-buy" ${isEquipped || credits < u.cost ? 'disabled' : ''} data-id="${this.escapeHtml(u.id)}">
                     ${isEquipped ? 'EQUIPPED' : `${u.cost} CR`}
                 </button>
             `;
@@ -1366,10 +1366,10 @@ class CockpitApp {
 
             card.innerHTML = `
                 <div class="contract-header">
-                    <span class="contract-cat-badge cat-${c.category}">${c.category}</span>
-                    <strong class="contract-title">${c.title}</strong>
+                    <span class="contract-cat-badge cat-${this.escapeHtml(c.category)}">${this.escapeHtml(c.category)}</span>
+                    <strong class="contract-title">${this.escapeHtml(c.title)}</strong>
                 </div>
-                <p class="contract-desc">${c.description}</p>
+                <p class="contract-desc">${this.escapeHtml(c.description)}</p>
                 <div class="contract-progress-box">
                     <div class="contract-progress-label">
                         <span>PROGRESS</span>
@@ -1385,7 +1385,7 @@ class CockpitApp {
                         <span class="reward-pill xp">+${c.reward_xp} XP</span>
                         ${relicBadge}
                     </div>
-                    ${c.completed ? `<button class="btn-claim-contract" data-id="${c.id}">CLAIM REWARD</button>` : `<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">IN PROGRESS</span>`}
+                    ${c.completed ? `<button class="btn-claim-contract" data-id="${this.escapeHtml(c.id)}">CLAIM REWARD</button>` : `<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">IN PROGRESS</span>`}
                 </div>
             `;
 
@@ -1421,12 +1421,12 @@ class CockpitApp {
             card.innerHTML = `
                 <div class="talent-top">
                     <div class="talent-header-row">
-                        <strong class="talent-name">${t.name}</strong>
-                        <span class="contract-cat-badge cat-${t.category}">${t.category}</span>
+                        <strong class="talent-name">${this.escapeHtml(t.name)}</strong>
+                        <span class="contract-cat-badge cat-${this.escapeHtml(t.category)}">${this.escapeHtml(t.category)}</span>
                     </div>
-                    <p class="talent-desc">${t.description}</p>
+                    <p class="talent-desc">${this.escapeHtml(t.description)}</p>
                 </div>
-                <button class="btn-talent-unlock" ${isUnlocked || mastery.talent_points <= 0 ? 'disabled' : ''} data-id="${t.id}">
+                <button class="btn-talent-unlock" ${isUnlocked || mastery.talent_points <= 0 ? 'disabled' : ''} data-id="${this.escapeHtml(t.id)}">
                     ${isUnlocked ? 'ACQUIRED' : (mastery.talent_points > 0 ? 'UNLOCK PERK (1 PT)' : 'LOCKED (1 PT)')}
                 </button>
             `;
@@ -1453,10 +1453,10 @@ class CockpitApp {
 
             card.innerHTML = `
                 <div class="relic-header-row">
-                    <strong class="relic-name">${r.name}</strong>
-                    <span class="relic-rarity-pill rarity-${r.rarity}">${r.rarity}</span>
+                    <strong class="relic-name">${this.escapeHtml(r.name)}</strong>
+                    <span class="relic-rarity-pill rarity-${this.escapeHtml(r.rarity)}">${this.escapeHtml(r.rarity)}</span>
                 </div>
-                <p class="relic-desc">${r.description}</p>
+                <p class="relic-desc">${this.escapeHtml(r.description)}</p>
             `;
             this.relicsGrid.appendChild(card);
         });
@@ -2257,21 +2257,21 @@ class CockpitApp {
         Object.entries(this.state.factions).forEach(([fid, f]) => {
             const card = document.createElement("div");
             card.className = "faction-card";
-            card.style.borderColor = `${f.primary_color}44`;
-
-            const tierClass = `tier-${f.standing_tier.toLowerCase()}`;
+            const factionColor = this.safeColor(f.primary_color);
+            card.style.borderColor = `${factionColor}44`;
+            const tierClass = `tier-${this.escapeHtml(f.standing_tier.toLowerCase())}`;
             const barPct = Math.max(0, Math.min(100, Math.round(((f.standing + 100) / 200) * 100)));
 
             card.innerHTML = `
                 <div class="faction-top-row">
-                    <span class="faction-name" style="color: ${f.primary_color};">${f.name}</span>
-                    <span class="standing-badge ${tierClass}">${f.standing_tier.toUpperCase()} (${f.standing > 0 ? "+" : ""}${f.standing})</span>
+                    <span class="faction-name" style="color: ${factionColor};">${this.escapeHtml(f.name)}</span>
+                    <span class="standing-badge ${tierClass}">${this.escapeHtml(f.standing_tier.toUpperCase())} (${f.standing > 0 ? "+" : ""}${f.standing})</span>
                 </div>
-                <div class="faction-ideology">Ideology: ${f.ideology} // HQ: ${f.headquarters_system.toUpperCase()}</div>
+                <div class="faction-ideology">Ideology: ${this.escapeHtml(f.ideology)} // HQ: ${this.escapeHtml(f.headquarters_system.toUpperCase())}</div>
                 <div class="standing-bar-wrap">
-                    <div class="standing-bar-fill" style="width: ${barPct}%; background: ${f.primary_color};"></div>
+                    <div class="standing-bar-fill" style="width: ${barPct}%; background: ${factionColor};"></div>
                 </div>
-                <div class="faction-perk">Diplomatic Status: <strong>${f.active_perk}</strong></div>
+                <div class="faction-perk">Diplomatic Status: <strong>${this.escapeHtml(f.active_perk)}</strong></div>
             `;
             this.factionsGrid.appendChild(card);
         });
@@ -2282,19 +2282,19 @@ class CockpitApp {
         Object.entries(this.state.corporations).forEach(([cid, c]) => {
             const card = document.createElement("div");
             card.className = "corp-card";
-            const commTitle = c.specialty_commodity.replace('_', ' ').toUpperCase();
+            const commTitle = this.escapeHtml(c.specialty_commodity.replace('_', ' ').toUpperCase());
             const barPct = Math.max(0, Math.min(100, Math.round(((c.standing + 100) / 200) * 100)));
 
             card.innerHTML = `
                 <div class="corp-top-row">
-                    <span class="corp-name">${c.name}</span>
+                    <span class="corp-name">${this.escapeHtml(c.name)}</span>
                     <span class="standing-badge tier-friendly">STANDING: ${c.standing > 0 ? "+" : ""}${c.standing}</span>
                 </div>
-                <div class="corp-desc">HQ: ${c.headquarters_system.toUpperCase()} // Commercial Specialty: <strong style="color: var(--neon-cyan);">${commTitle}</strong> (+${Math.round(c.bonus_trade_margin * 100)}% Sale Profit)</div>
+                <div class="corp-desc">HQ: ${this.escapeHtml(c.headquarters_system.toUpperCase())} // Commercial Specialty: <strong style="color: var(--neon-cyan);">${commTitle}</strong> (+${Math.round(c.bonus_trade_margin * 100)}% Sale Profit)</div>
                 <div class="standing-bar-wrap">
                     <div class="standing-bar-fill" style="width: ${barPct}%; background: #ffd700;"></div>
                 </div>
-                <div class="corp-perk">Sponsorship Benefit: <strong>${c.corporate_perk}</strong></div>
+                <div class="corp-perk">Sponsorship Benefit: <strong>${this.escapeHtml(c.corporate_perk)}</strong></div>
             `;
             this.corpsGrid.appendChild(card);
         });
@@ -2303,6 +2303,10 @@ class CockpitApp {
         return String(value ?? "").replace(/[&<>"']/g, ch => ({
             "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
         }[ch]));
+    }
+
+    safeColor(value, fallback = "#00f0ff") {
+        return /^#[0-9a-fA-F]{6}$/.test(String(value || "")) ? value : fallback;
     }
 
     loadSettings() {

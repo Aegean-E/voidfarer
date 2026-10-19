@@ -847,8 +847,14 @@ class SimulationEngine:
 
             origin = self.orbiting_body
             origin_id = origin.id if origin else None
-            origin_r = origin.orbit_radius if origin else 0.0
-            distance_au = round(max(0.5, abs(matched.orbit_radius - origin_r)), 2)
+            if origin is not None:
+                ox = origin.orbit_radius * math.cos(origin.current_angle)
+                oy = origin.orbit_radius * math.sin(origin.current_angle)
+            else:
+                ox, oy = 0.0, 0.0
+            tx = matched.orbit_radius * math.cos(matched.current_angle)
+            ty = matched.orbit_radius * math.sin(matched.current_angle)
+            distance_au = round(max(0.25, math.hypot(tx - ox, ty - oy)), 2)
 
             new_fuel = self.state.ship.fuel
             if norm_mode == "quantum":
@@ -858,8 +864,9 @@ class SimulationEngine:
                 new_fuel -= fuel_cost
                 duration_ticks = 1
             else:
-                engine_factor = max(0.5, self.state.ship.power.engines / 25.0)
-                duration_ticks = max(1, min(8, int(math.ceil(distance_au / (1.2 * engine_factor)))))
+                engine_factor = max(0.4, self.state.ship.power.engines / 25.0)
+                sublight_speed_au = max(0.35, 1.15 * engine_factor)
+                duration_ticks = max(1, int(math.ceil(distance_au / sublight_speed_au)))
 
             cur_tick = self.state.time.tick
             travel = TravelState(
@@ -881,7 +888,8 @@ class SimulationEngine:
                 travel=travel,
                 flight_log=tuple(new_log[-20:]),
             )
-            self.state = self._clone_state(ship=new_ship)
+            new_time = replace(self.state.time, is_paused=False) if self.state.time.is_paused else self.state.time
+            self.state = self._clone_state(ship=new_ship, time=new_time)
             return True, log_entry
 
     def scan(self) -> tuple[bool, str, dict[str, Any]]:

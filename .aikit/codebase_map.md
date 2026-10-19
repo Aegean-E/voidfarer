@@ -9,8 +9,8 @@
 - **Total Python Modules**: `35`
 - **Total Classes**: `89`
 - **Total Top-Level Functions**: `73`
-- **Total Class Methods**: `489`
-- **Total Source Lines**: `14185`
+- **Total Class Methods**: `491`
+- **Total Source Lines**: `14250`
 
 ---
 
@@ -542,7 +542,7 @@
 ### [`tests/test_transit_civ_events.py`](tests/test_transit_civ_events.py)
 > *Tests for in-system transit (TravelState), planetary civilization metadata, and cockpit GameEvents.*
 
-**Size**: `227` lines (`10213` bytes)
+**Size**: `284` lines (`12956` bytes)
 
 **Classes:**
 - `class TestTransitCivEvents` - *Verify TravelState, planetary faction/population/government, and GameEvent lifecycles.*
@@ -556,6 +556,8 @@
   - Method `.test_cli_and_cockpit_surface_for_travel_and_events()`
   - Method `.test_scientifically_accurate_planetary_physics_and_habitability()`
   - Method `.test_legacy_save_backfills_scientific_physics_and_habitability()`
+  - Method `.test_sublight_transit_calculates_2d_euclidean_distance_and_appropriate_ticks()`
+  - Method `.test_cockpit_persistent_transit_animation_and_habitability_display()`
 
 ---
 
@@ -636,7 +638,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `3083` lines (`149605` bytes)
+**Size**: `3091` lines (`150101` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*

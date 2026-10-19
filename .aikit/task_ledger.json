@@ -5,19 +5,9 @@
     "last_phase": "execution",
     "active_phase": 3,
     "status": "in_progress",
-    "updated_at": 1792434953.7674563
+    "updated_at": 1792435304.310347
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-capacity-cli-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] Verified: 225/225 tests green (3.1s); compileall OK; aikit check voidfarer 4/4; ADR-018 and README CLI examples updated; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792386451.4027972,
-      "timestamp_str": "2026-10-19 08:07:31"
-    },
     {
       "task_id": "task-voidfarer-capacity-cli-v1",
       "phase": "completed",
@@ -227,6 +217,16 @@
       "status": "in_progress",
       "timestamp": 1792434953.7674563,
       "timestamp_str": "2026-10-19 21:35:53"
+    },
+    {
+      "task_id": "task-voidfarer-accurate-transit-physics-v1",
+      "phase": "execution",
+      "phase_num": 3,
+      "description": "[milestone 2/3] Add 2D Euclidean sublight transit distance/ticks, persistent tick-synced radar transit animation, and targetHabitability readout; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792435304.310347,
+      "timestamp_str": "2026-10-19 21:41:44"
     }
   ]
 }

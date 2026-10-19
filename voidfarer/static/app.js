@@ -314,6 +314,7 @@ class CockpitApp {
         this.targetGravity = document.getElementById("targetGravity");
         this.targetAtmosphere = document.getElementById("targetAtmosphere");
         this.targetTemp = document.getElementById("targetTemp");
+        this.targetHabitability = document.getElementById("targetHabitability");
         this.targetMoons = document.getElementById("targetMoons");
         this.targetFaction = document.getElementById("targetFaction");
         this.targetPopulation = document.getElementById("targetPopulation");
@@ -820,7 +821,20 @@ class CockpitApp {
             const res = await fetch("/api/state");
             const json = await res.json();
             if (json.ok && json.data) {
+                const prevTick = this.state?.time?.tick;
                 this.state = json.data;
+                const activeTravel = this.state.ship?.travel || this.state.travel || null;
+                if (activeTravel && !this.state.time?.is_paused && prevTick !== undefined && this.state.time?.tick === prevTick) {
+                    const stepRes = await fetch("/api/time/step", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ticks: 1 })
+                    });
+                    const stepJson = await stepRes.json();
+                    if (stepJson.ok && stepJson.state) {
+                        this.state = stepJson.state;
+                    }
+                }
                 this.renderHUD();
                 if (!silent) {
                     this.appendLog(`Telemetry synchronized with ${this.state.current_system.name}.`);
@@ -1919,6 +1933,15 @@ class CockpitApp {
         }
     }
 
+    calculateBodyDistanceAu(fromBody, toBody) {
+        if (!toBody) return 0;
+        const ox = fromBody ? (fromBody.orbit_radius || 0) * Math.cos(fromBody.current_angle || 0) : 0;
+        const oy = fromBody ? (fromBody.orbit_radius || 0) * Math.sin(fromBody.current_angle || 0) : 0;
+        const tx = (toBody.orbit_radius || 0) * Math.cos(toBody.current_angle || 0);
+        const ty = (toBody.orbit_radius || 0) * Math.sin(toBody.current_angle || 0);
+        return Math.max(0.25, Math.hypot(tx - ox, ty - oy));
+    }
+
     updateTargetCard() {
         if (!this.state) return;
         const travel = this.state.ship?.travel || this.state.travel || null;
@@ -1944,6 +1967,7 @@ class CockpitApp {
             this.targetGravity.textContent = "--";
             this.targetAtmosphere.textContent = "--";
             this.targetTemp.textContent = "--";
+            if (this.targetHabitability) this.targetHabitability.textContent = "--";
             this.targetMoons.textContent = "--";
             if (this.targetFaction) this.targetFaction.textContent = "--";
             if (this.targetPopulation) this.targetPopulation.textContent = "--";
@@ -1960,9 +1984,15 @@ class CockpitApp {
             }
             this.selectedTarget = fresh;
             const b = this.selectedTarget;
+            const orbBody = this.state.orbiting_body || (this.state.current_system?.bodies || []).find(x => x.id === this.state.ship?.orbiting_body_id) || null;
+            const distAu = this.calculateBodyDistanceAu(orbBody, b);
+            const engPwr = this.state.ship?.power?.engines ?? 25;
+            const sublightSpeed = Math.max(0.35, 1.15 * Math.max(0.4, engPwr / 25.0));
+            const estTicks = Math.max(1, Math.ceil(distAu / sublightSpeed));
+
             this.targetType.textContent = `TARGET: ${b.body_type.toUpperCase()}`;
             this.targetName.textContent = b.name;
-            this.targetDist.textContent = `${b.orbit_radius.toFixed(2)} AU`;
+            this.targetDist.textContent = `${distAu.toFixed(2)} AU (ORBIT ${b.orbit_radius.toFixed(2)} AU)`;
             this.targetDesc.textContent = b.scan_completed ? b.scan_discovery : "Uncharted body. Orbital sensor sweep required.";
             this.btnOrbitTarget.style.display = "inline-block";
             this.btnJumpTarget.style.display = "none";
@@ -1973,17 +2003,26 @@ class CockpitApp {
             if (this.btnSublightTarget) {
                 this.btnSublightTarget.style.display = "inline-block";
                 this.btnSublightTarget.disabled = inOrbitHere || inTransitHere;
-                this.btnSublightTarget.textContent = inTransitHere && travel.mode === "sublight" ? "TRANSIT ACTIVE" : "SUBLIGHT TRANSIT";
+                this.btnSublightTarget.textContent = inTransitHere && travel.mode === "sublight"
+                    ? `TRANSIT ACTIVE (${Math.max(1, (travel.arrival_tick || 0) - (this.state.time?.tick || 0))}T)`
+                    : `SUBLIGHT TRANSIT (${estTicks}T)`;
             }
             if (this.btnQuantumTarget) {
                 this.btnQuantumTarget.style.display = "inline-block";
                 this.btnQuantumTarget.disabled = inOrbitHere || inTransitHere;
-                this.btnQuantumTarget.textContent = inTransitHere && travel.mode === "quantum" ? "QUANTUM ACTIVE" : "QUANTUM TRANSIT";
+                this.btnQuantumTarget.textContent = inTransitHere && travel.mode === "quantum" ? "QUANTUM ACTIVE" : "QUANTUM TRANSIT (1T)";
             }
 
             this.targetGravity.textContent = `${(b.gravity ?? 1).toFixed(2)} g`;
             this.targetAtmosphere.textContent = b.atmosphere || "none";
             this.targetTemp.textContent = `${b.temperature_c ?? 0} C`;
+            if (this.targetHabitability) {
+                const hab = Number(b.habitability ?? 0);
+                const habLabel = b.body_type === "star"
+                    ? "STELLAR"
+                    : (hab >= 75 ? "OPTIMAL" : (hab >= 45 ? "MARGINAL" : (hab >= 15 ? "HOSTILE" : "BARREN")));
+                this.targetHabitability.textContent = `${hab.toFixed(1)}% (${habLabel})`;
+            }
             this.targetMoons.textContent = `${(b.moons || []).length}`;
             if (this.targetFaction) this.targetFaction.textContent = b.faction || "Unclaimed";
             if (this.targetPopulation) {
@@ -2016,6 +2055,7 @@ class CockpitApp {
             this.targetGravity.textContent = `${s.spectral_type}-class`;
             this.targetAtmosphere.textContent = `${(s.security * 100).toFixed(0)}% sec`;
             this.targetTemp.textContent = `${s.connections.length} links`;
+            if (this.targetHabitability) this.targetHabitability.textContent = "--";
             this.targetMoons.textContent = s.faction;
             if (this.targetFaction) this.targetFaction.textContent = s.faction || "Unclaimed";
             if (this.targetPopulation) this.targetPopulation.textContent = "--";
@@ -2169,7 +2209,8 @@ class CockpitApp {
                 ctx.strokeRect(bx - bodyRadius - 5, by - bodyRadius - 5, (bodyRadius + 5) * 2, (bodyRadius + 5) * 2);
             }
 
-            if (ship.orbiting_body_id === b.id) {
+            const activeTravel = ship.travel || this.state.travel || null;
+            if (ship.orbiting_body_id === b.id && !activeTravel && !this.travelAnimation) {
                 ctx.beginPath();
                 ctx.arc(bx + bodyRadius + 8, by - bodyRadius - 8, 3.5, 0, Math.PI * 2);
                 ctx.fillStyle = "#00ffaa";
@@ -2783,7 +2824,8 @@ class CockpitApp {
         const targetId = this.selectedTarget.id;
         const res = await this.postAction("/api/travel", { body_id: targetId, mode });
         if (res && res.ok) {
-            this.startTravelAnimation(fromId, targetId);
+            const activeTravel = this.state?.ship?.travel || this.state?.travel || null;
+            this.startTravelAnimation(fromId, targetId, activeTravel);
         }
     }
 
@@ -2813,34 +2855,109 @@ class CockpitApp {
         });
     }
 
-    startTravelAnimation(fromBodyId, toBodyId) {
+    startTravelAnimation(fromBodyId, toBodyId, travelState = null) {
         if (!this.travelAnimationEnabled || !this.state) return;
         const bodies = this.state.current_system?.bodies || [];
-        const from = bodies.find(b => b.id === fromBodyId);
-        const to = bodies.find(b => b.id === toBodyId);
+        const activeTravel = travelState || this.state.ship?.travel || this.state.travel || null;
+        const origId = activeTravel?.origin_body_id || fromBodyId;
+        const destId = activeTravel?.destination_body_id || toBodyId;
+        const from = bodies.find(b => b.id === origId);
+        const to = bodies.find(b => b.id === destId);
         if (!to) return;
+        const speed = Math.max(0.25, this.state.time?.speed || 1.0);
+        const totalTicks = activeTravel
+            ? Math.max(1, activeTravel.duration_ticks || (activeTravel.arrival_tick - activeTravel.started_tick) || 1)
+            : 1;
         this.travelAnimation = {
+            fromBodyId: origId,
+            toBodyId: destId,
             fromAngle: from ? (from.current_angle || 0) : 0,
-            fromRadius: from ? from.orbit_radius : to.orbit_radius,
+            fromRadius: from ? from.orbit_radius : 0,
             toAngle: to.current_angle || 0,
             toRadius: to.orbit_radius,
+            startedTick: activeTravel ? activeTravel.started_tick : (this.state.time?.tick || 0),
+            arrivalTick: activeTravel ? activeTravel.arrival_tick : ((this.state.time?.tick || 0) + 1),
+            totalTicks: totalTicks,
+            distanceAu: activeTravel ? activeTravel.distance_au : this.calculateBodyDistanceAu(from, to),
+            mode: activeTravel ? activeTravel.mode : "orbit",
+            isTickSynced: Boolean(activeTravel),
             start: performance.now(),
-            duration: 1300,
+            lastTickSync: performance.now(),
+            lastSeenTick: this.state.time?.tick || 0,
+            visualProgress: 0,
+            completionStart: null,
+            duration: activeTravel ? (totalTicks * 1000) / speed : 1300,
         };
     }
 
     drawTravelAnimation(ctx, cx, cy, auScale) {
+        const activeTravel = this.state?.ship?.travel || this.state?.travel || null;
+        if (this.travelAnimationEnabled && activeTravel) {
+            if (!this.travelAnimation || this.travelAnimation.toBodyId !== activeTravel.destination_body_id) {
+                this.startTravelAnimation(activeTravel.origin_body_id, activeTravel.destination_body_id, activeTravel);
+            }
+        }
         if (!this.travelAnimation) return;
         const anim = this.travelAnimation;
-        const progress = Math.min(1, (performance.now() - anim.start) / anim.duration);
+        const bodies = this.state?.current_system?.bodies || [];
+        const liveFrom = bodies.find(b => b.id === anim.fromBodyId);
+        const liveTo = bodies.find(b => b.id === anim.toBodyId);
+        if (liveFrom) {
+            anim.fromAngle = liveFrom.current_angle || 0;
+            anim.fromRadius = liveFrom.orbit_radius || 0;
+        }
+        if (liveTo) {
+            anim.toAngle = liveTo.current_angle || 0;
+            anim.toRadius = liveTo.orbit_radius || 0;
+        }
+
+        let progress = 0;
+        if (anim.isTickSynced && activeTravel) {
+            const curTick = this.state?.time?.tick ?? anim.startedTick;
+            if (curTick !== anim.lastSeenTick) {
+                anim.lastSeenTick = curTick;
+                anim.lastTickSync = performance.now();
+            }
+            const elapsedTicks = Math.max(0, curTick - anim.startedTick);
+            const speed = Math.max(0.25, this.state?.time?.speed || 1.0);
+            const subTick = this.state?.time?.is_paused
+                ? 0
+                : Math.min(0.98, ((performance.now() - anim.lastTickSync) / 1000) * speed);
+            const targetProgress = Math.min(0.97, Math.max(0, (elapsedTicks + subTick) / Math.max(1, anim.totalTicks)));
+            anim.visualProgress = Math.max(
+                anim.visualProgress || 0,
+                (anim.visualProgress || 0) + (targetProgress - (anim.visualProgress || 0)) * 0.2
+            );
+            progress = anim.visualProgress;
+        } else if (anim.isTickSynced && !activeTravel) {
+            if (!anim.completionStart) {
+                anim.completionStart = performance.now();
+                anim.completionFrom = anim.visualProgress || 0.85;
+            }
+            const finishRatio = Math.min(1, (performance.now() - anim.completionStart) / 420);
+            progress = anim.completionFrom + (1 - anim.completionFrom) * finishRatio;
+        } else {
+            progress = Math.min(1, (performance.now() - anim.start) / anim.duration);
+        }
+
         const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-        let delta = anim.toAngle - anim.fromAngle;
-        while (delta > Math.PI) delta -= Math.PI * 2;
-        while (delta < -Math.PI) delta += Math.PI * 2;
-        const angle = anim.fromAngle + delta * eased;
-        const radius = (anim.fromRadius + (anim.toRadius - anim.fromRadius) * eased) * auScale;
-        const x = cx + Math.cos(angle) * radius;
-        const y = cy + Math.sin(angle) * radius;
+        const ox = cx + Math.cos(anim.fromAngle) * (anim.fromRadius * auScale);
+        const oy = cy + Math.sin(anim.fromAngle) * (anim.fromRadius * auScale);
+        const tx = cx + Math.cos(anim.toAngle) * (anim.toRadius * auScale);
+        const ty = cy + Math.sin(anim.toAngle) * (anim.toRadius * auScale);
+        const x = ox + (tx - ox) * eased;
+        const y = oy + (ty - oy) * eased;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(tx, ty);
+        ctx.strokeStyle = "rgba(0, 240, 255, 0.45)";
+        ctx.lineWidth = 1.25;
+        ctx.setLineDash([5, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
         ctx.beginPath();
         ctx.arc(x, y, 5, 0, Math.PI * 2);
         ctx.fillStyle = "#00f0ff";
@@ -2850,8 +2967,18 @@ class CockpitApp {
         ctx.shadowBlur = 0;
         ctx.font = "9px 'Share Tech Mono'";
         ctx.fillStyle = "#00f0ff";
-        ctx.fillText("VF-TRANSIT", x + 8, y - 8);
-        if (progress >= 1) this.travelAnimation = null;
+        if (activeTravel) {
+            const remTicks = Math.max(1, (activeTravel.arrival_tick || anim.arrivalTick) - (this.state?.time?.tick || 0));
+            const remAu = Math.max(0.05, (anim.distanceAu || 1.0) * (1 - eased)).toFixed(2);
+            ctx.fillText(`VF-TRANSIT [${(anim.mode || "sublight").toUpperCase()}] // ${remAu} AU // ETA ${remTicks}T`, x + 8, y - 8);
+        } else {
+            ctx.fillText("VF-TRANSIT", x + 8, y - 8);
+        }
+        ctx.restore();
+
+        if (!activeTravel && progress >= 1) {
+            this.travelAnimation = null;
+        }
     }
 
     async postAction(endpoint, payload, refreshTab = null) {

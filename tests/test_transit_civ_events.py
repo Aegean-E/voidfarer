@@ -220,8 +220,65 @@ class TestTransitCivEvents(unittest.TestCase):
         self.assertIn("N2", upgraded_body.atmosphere)
         self.assertLessEqual(upgraded_body.gravity, 1.35)
 
+    def test_sublight_transit_calculates_2d_euclidean_distance_and_appropriate_ticks(self) -> None:
+        import math
+        from dataclasses import replace
+        from voidfarer.models import ShipPower
+
+        sol = self.engine.state.systems["sol"]
+        b1 = replace(sol.bodies[1], orbit_radius=2.0, current_angle=0.0)
+        b2 = replace(sol.bodies[2], orbit_radius=6.0, current_angle=math.pi)
+        custom_sol = replace(sol, bodies=(sol.bodies[0], b1, b2, *sol.bodies[3:]))
+        systems = dict(self.engine.state.systems)
+        systems["sol"] = custom_sol
+        paused_time = replace(self.engine.state.time, is_paused=True)
+        low_eng_ship = self.engine._clone_ship(
+            orbiting_body_id=b1.id,
+            power=ShipPower(engines=10, shields=30, sensors=30, weapons=30),
+        )
+        self.engine.state = self.engine._clone_state(
+            systems=systems,
+            ship=low_eng_ship,
+            time=paused_time,
+        )
+
+        ok, _ = self.engine.start_travel(b2.id, mode="sublight")
+        self.assertTrue(ok)
+        travel_low = self.engine.state.ship.travel
+        self.assertIsNotNone(travel_low)
+        # 2D Euclidean distance between (r=2, theta=0) and (r=6, theta=pi) is 8.0 AU (not |6-2|=4.0 AU)
+        self.assertAlmostEqual(travel_low.distance_au, 8.0, places=1)
+        self.assertFalse(self.engine.state.time.is_paused)
+        self.assertGreaterEqual(travel_low.duration_ticks, 10)
+
+        # High engine power reduces sublight duration_ticks for the same 8.0 AU distance
+        high_eng_ship = self.engine._clone_ship(
+            orbiting_body_id=b1.id,
+            travel=None,
+            power=ShipPower(engines=75, shields=10, sensors=10, weapons=5),
+        )
+        self.engine.state = self.engine._clone_state(ship=high_eng_ship)
+        ok_high, _ = self.engine.start_travel(b2.id, mode="sublight")
+        self.assertTrue(ok_high)
+        travel_high = self.engine.state.ship.travel
+        self.assertIsNotNone(travel_high)
+        self.assertAlmostEqual(travel_high.distance_au, 8.0, places=1)
+        self.assertLess(travel_high.duration_ticks, travel_low.duration_ticks)
+
+    def test_cockpit_persistent_transit_animation_and_habitability_display(self) -> None:
+        static_dir = Path(__file__).resolve().parent.parent / "voidfarer" / "static"
+        html = (static_dir / "index.html").read_text(encoding="utf-8")
+        js = (static_dir / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="targetHabitability"', html)
+        self.assertIn("this.targetHabitability", js)
+        self.assertIn("calculateBodyDistanceAu", js)
+        self.assertIn("isTickSynced", js)
+        self.assertIn("!activeTravel && !this.travelAnimation", js)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

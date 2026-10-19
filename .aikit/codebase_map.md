@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `35`
-- **Total Classes**: `90`
+- **Total Classes**: `91`
 - **Total Top-Level Functions**: `73`
-- **Total Class Methods**: `495`
-- **Total Source Lines**: `14287`
+- **Total Class Methods**: `499`
+- **Total Source Lines**: `14334`
 
 ---
 
@@ -105,7 +105,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `387` lines (`16094` bytes)
+**Size**: `434` lines (`18396` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -163,6 +163,11 @@
   - Method `.test_nav_radar_header_is_transparent_on_map_label()`
   - Method `.test_left_terminal_is_collapsible_drawer()`
   - Method `.test_tactical_flight_log_sits_directly_on_map_without_box()`
+- `class TestExpandableReactorAndVitalsAlignment`
+  - Method `.setUpClass()`
+  - Method `.test_reactor_panel_has_toggle_button_and_collapse_wiring()`
+  - Method `.test_topbar_actions_line_appears_before_vitals_row()`
+  - Method `.test_vital_stat_cards_have_equal_size_styling()`
 
 ---
 

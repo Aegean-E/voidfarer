@@ -323,7 +323,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Fleet Command Tab**: Roster of autonomous mining/scout drones with live harvest buttons.
 - **Tactical Combat Overlay**: Battle HUD with dual-layer deflector shield and hull meters, telegraphed enemy action warning banners, armor-piercing kinetic drone strikes, and subsystem targeting.
 - **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, level-up arpeggios, bounty chimes, radio dispatches, and alarms.
-- **Reactor Power Matrix**: Dynamic power allocation sliders with instant subsystem re-routing.
+- **Reactor Power Matrix (`G-006`)**: Dynamic power allocation sliders with instant subsystem re-routing and an expandable HIDE/SHOW toggle.
 
 ---
 
@@ -331,7 +331,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 256-test suite runs in about 4 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 259-test suite runs in about 4 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

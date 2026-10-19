@@ -291,4 +291,16 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   5. Add unit and structural regression tests in `tests/test_cockpit_layout.py` ensuring G-001 through G-005 invariants remain permanently green.
 - **Consequences**: The orbital background radar is completely clear and visually dominant. Terminal content only expands when commanded and tucks neatly away into a slim left rail, the radar title floats as an unobtrusive semi-transparent watermark, and flight telemetry streams directly over space without boxed borders.
 
+### ADR-024: Expandable Reactor Power Routing Panel, Top-Bar Action/Vitals Reordering, and Equal-Sized Vital Telemetry Cards (G-006)
+- **Date**: 2026-10-19
+- **Status**: Accepted
+- **Context**: The user requested three specific cockpit HUD improvements: (1) making the reactor power distribution panel expandable/collapsible with a HIDE/SHOW toggle button identical to the Tactical Flight Log, allowing the player to collapse power routing controls to reclaim bottom-center radar space; (2) swapping the position of the vital telemetry row (`.vitals-row`) with the quick action and sound controls (`.hud-top-actions`) so controls follow Brand -> Actions -> Vitals -> Chrono Clock; and (3) standardizing all vital telemetry stat cards (`vitalHullCard`, `vitalShieldCard`, `vitalFuelCard`, `vitalCreditsCard`, `vitalStreakCard`, `vitalMasteryCard`) to identical width and height dimensions for visual symmetry.
+- **Decision**:
+  1. Add `#btnToggleReactor` to `#panelReactor > .panel-header`, wire it in `voidfarer/static/app.js` to toggle the `.reactor-collapsed` class on `#panelReactor`, and hide `.power-matrix` and `.power-action-row` when `.reactor-collapsed` is active (`display: none`).
+  2. In `voidfarer/static/index.html`, swap the DOM order of `.hud-top-actions` and `.vitals-row` within `#hudTopBar` while ensuring `#hudTimeDeck` remains the pinned right-most child.
+  3. In `voidfarer/static/style.css`, standardize `.vital-card` with equal flex distribution (`flex: 1 1 0`), identical height (`height: 52px; box-sizing: border-box;`), identical min-width (`128px`), and vertical flex alignment (`display: flex; flex-direction: column; justify-content: space-between;`), so all 6 stat cards have the exact same rectangular dimensions across both full and compact viewports.
+  4. Add structural regression tests in `tests/test_cockpit_layout.py` (`TestExpandableReactorAndVitalsAlignment`) verifying the reactor toggle wiring, `.reactor-collapsed` CSS rule, topbar child ordering, and equal-dimension CSS rules.
+- **Consequences**: The player can collapse the reactor matrix at will to maximize radar visibility, the top bar follows a cleaner workflow hierarchy, and all vital status cards are symmetrically aligned with matching widths and heights.
+
+
 

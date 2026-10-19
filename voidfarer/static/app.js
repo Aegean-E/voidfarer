@@ -333,6 +333,8 @@ class CockpitApp {
         this.pwrWepVal = document.getElementById("pwrWepVal");
         this.powerTotal = document.getElementById("powerTotal");
         this.applyPowerBtn = document.getElementById("applyPowerBtn");
+        this.panelReactor = document.getElementById("panelReactor");
+        this.btnToggleReactor = document.getElementById("btnToggleReactor");
         this.powerDirty = false;
 
         // Log
@@ -678,6 +680,15 @@ class CockpitApp {
                 const collapsed = this.logPanel.classList.toggle("log-collapsed");
                 this.btnToggleLog.textContent = collapsed ? "SHOW" : "HIDE";
                 this.btnToggleLog.setAttribute("aria-expanded", String(!collapsed));
+            });
+        }
+
+        // Collapse / expand the reactor power routing panel (layout rule G-006)
+        if (this.btnToggleReactor && this.panelReactor) {
+            this.btnToggleReactor.addEventListener("click", () => {
+                const collapsed = this.panelReactor.classList.toggle("reactor-collapsed");
+                this.btnToggleReactor.textContent = collapsed ? "SHOW" : "HIDE";
+                this.btnToggleReactor.setAttribute("aria-expanded", String(!collapsed));
             });
         }
 

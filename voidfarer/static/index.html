@@ -90,6 +90,18 @@
                 </div>
             </div>
 
+            <!-- Quick Action & Audio Controls -->
+            <div class="hud-top-actions">
+                <button class="btn-hud" id="audioToggleBtn" title="Toggle Synthesized Audio">
+                    <span class="icon" id="audioIcon">🔊</span> SOUND FX
+                </button>
+                <button class="btn-hud btn-cyan" id="quickScanBtn">
+                    <span class="icon">📡</span> SENSOR SCAN
+                </button>
+                <button class="btn-hud" id="btnMainMenu" title="Open Main Menu (Hotkey: ESC)">MENU [ESC]</button>
+                <button class="btn-hud btn-cyan" id="btnOpenPerks" title="Open Pilot Perks">PERKS</button>
+            </div>
+
             <!-- Vital Telemetry Meters -->
             <div class="vitals-row">
                 <div class="vital-card" id="vitalHullCard">
@@ -140,18 +152,6 @@
                     <div class="vital-meter"><div class="meter-fill mastery-fill" id="masteryBar" style="width: 0%;"></div></div>
                     <div class="vital-subtext" id="masterySubtext">0/500 XP // 0 PERKS</div>
                 </div>
-            </div>
-
-            <!-- Quick Action & Audio Controls -->
-            <div class="hud-top-actions">
-                <button class="btn-hud" id="audioToggleBtn" title="Toggle Synthesized Audio">
-                    <span class="icon" id="audioIcon">🔊</span> SOUND FX
-                </button>
-                <button class="btn-hud btn-cyan" id="quickScanBtn">
-                    <span class="icon">ğŸ“¡</span> SENSOR SCAN
-                </button>
-                <button class="btn-hud" id="btnMainMenu" title="Open Main Menu (Hotkey: ESC)">MENU [ESC]</button>
-                <button class="btn-hud btn-cyan" id="btnOpenPerks" title="Open Pilot Perks">PERKS</button>
             </div>
 
             <!-- Cosmic Chronometer & Time Controls -->
@@ -610,6 +610,9 @@
                         <div class="panel-tag"><span class="badge-dot dot-amber"></span> POWER-ROUTING</div>
                         <h2 class="panel-title">REACTOR DISTRIBUTION</h2>
                         <span class="power-total" id="powerTotal">100% ALLOCATED</span>
+                        <div class="reactor-header-actions">
+                            <button class="text-btn" id="btnToggleReactor" aria-controls="panelReactor" aria-expanded="true" title="Hide or show reactor power routing">HIDE</button>
+                        </div>
                     </div>
 
                     <div class="power-matrix">

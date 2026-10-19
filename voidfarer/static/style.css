@@ -178,8 +178,8 @@ body.cockpit-theme {
 /* Vitals Row */
 .vitals-row {
     display: flex;
-    align-items: center;
-    gap: 16px;
+    align-items: stretch;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
@@ -187,11 +187,15 @@ body.cockpit-theme {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: 6px;
-    padding: 6px 14px;
-    min-width: 140px;
+    padding: 6px 10px;
+    flex: 1 1 0;
+    min-width: 128px;
+    height: 52px;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    justify-content: space-between;
+    gap: 3px;
     transition: all 0.2s ease;
 }
 
@@ -206,6 +210,7 @@ body.cockpit-theme {
     font-size: 0.72rem;
     color: var(--text-secondary);
     font-family: var(--font-mono);
+    white-space: nowrap;
 }
 
 .vital-label strong {
@@ -232,7 +237,7 @@ body.cockpit-theme {
 .fuel-fill { background: linear-gradient(90deg, #ffaa00, #ffd700); box-shadow: 0 0 6px #ffaa00; }
 
 .credits-card {
-    min-width: 130px;
+    min-width: 128px;
 }
 
 .gold-text {
@@ -874,6 +879,18 @@ body.cockpit-theme {
     padding: 5px 8px;
     flex: 1;
     justify-content: center;
+}
+
+.reactor-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.reactor-panel.reactor-collapsed .power-matrix,
+.reactor-panel.reactor-collapsed .power-action-row {
+    display: none;
 }
 
 /* Flight Log Stream */

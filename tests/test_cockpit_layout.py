@@ -385,3 +385,50 @@ class TestSleekHUDDeclutter(unittest.TestCase):
             "log-panel must be transparent directly on the map",
         )
 
+class TestExpandableReactorAndVitalsAlignment(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.html = INDEX_HTML.read_text(encoding="utf-8")
+        cls.js = APP_JS.read_text(encoding="utf-8")
+        cls.css = STYLE_CSS.read_text(encoding="utf-8")
+        parser = _TreeBuilder()
+        parser.feed(cls.html)
+        parser.close()
+        cls.dom = parser.root
+
+    def test_reactor_panel_has_toggle_button_and_collapse_wiring(self):
+        reactor = self.dom.find_by_id("panelReactor")
+        self.assertIsNotNone(reactor, "reactor sub-panel (#panelReactor) missing")
+        toggle = reactor.find_by_id("btnToggleReactor")
+        self.assertIsNotNone(toggle, "reactor must have a HIDE/SHOW button (#btnToggleReactor)")
+        self.assertRegex(
+            self.css,
+            r"\.reactor-panel\.reactor-collapsed\s*\.power-matrix[^{]*\{[^}]*display:\s*none",
+            "reactor power matrix must be hidden when reactor is collapsed",
+        )
+        self.assertIn("btnToggleReactor", self.js, "app.js must bind the reactor toggle button")
+        self.assertIn("reactor-collapsed", self.js, "app.js must toggle reactor-collapsed class")
+
+    def test_topbar_actions_line_appears_before_vitals_row(self):
+        topbar = self.dom.find_by_id("hudTopBar")
+        self.assertIsNotNone(topbar)
+        classes = [child.attrs.get("class", "") for child in topbar.children]
+        actions_idx = next((i for i, c in enumerate(classes) if "hud-top-actions" in c), -1)
+        vitals_idx = next((i for i, c in enumerate(classes) if "vitals-row" in c), -1)
+        self.assertNotEqual(actions_idx, -1, "hud-top-actions missing from topbar")
+        self.assertNotEqual(vitals_idx, -1, "vitals-row missing from topbar")
+        self.assertLess(actions_idx, vitals_idx, "sound fx/actions line must be placed before vitals row")
+
+    def test_vital_stat_cards_have_equal_size_styling(self):
+        self.assertRegex(
+            self.css,
+            r"\.vital-card\s*\{[^}]*flex:\s*1\s+1\s+0",
+            "vital cards must have equal flex distribution",
+        )
+        self.assertRegex(
+            self.css,
+            r"\.vital-card\s*\{[^}]*height:\s*52px[^}]*box-sizing:\s*border-box",
+            "vital cards must have equal height and box-sizing",
+        )
+
+

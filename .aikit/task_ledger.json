@@ -1,54 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-sleek-map-hud-v1",
+    "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792437555.4383903,
-    "completed_at": 1792437560.2938137
+    "updated_at": 1792438800.3636346,
+    "completed_at": 1792438804.495899
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-transit-civ-events-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 2/5] Add start_travel, tick transit completion, emit_event, and dismiss_event in SimulationEngine; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792430039.0198495,
-      "timestamp_str": "2026-10-19 20:13:59"
-    },
-    {
-      "task_id": "task-voidfarer-transit-civ-events-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 3/5] Add /api/travel, /api/events/dismiss, and CLI travel and events subcommands; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792430321.601728,
-      "timestamp_str": "2026-10-19 20:18:41"
-    },
-    {
-      "task_id": "task-voidfarer-transit-civ-events-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 4/5] Add planetary civilization fields, sublight/quantum transit controls, and popup event cards to cockpit HUD; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792430733.7544153,
-      "timestamp_str": "2026-10-19 20:25:33"
-    },
-    {
-      "task_id": "task-voidfarer-transit-civ-events-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 5/5] Document travel and events CLI commands in README, verify ADR-020 and 244 tests passing; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792430779.4116602,
-      "timestamp_str": "2026-10-19 20:26:19"
-    },
     {
       "task_id": "task-voidfarer-transit-civ-events-v1",
       "phase": "completed",
@@ -222,6 +182,51 @@
       "status": "completed",
       "timestamp": 1792437560.2938159,
       "timestamp_str": "2026-10-19 22:19:20"
+    },
+    {
+      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Make reactor panel expandable with HIDE/SHOW toggle, swap top-bar vitals and quick actions positions, and equalize stat card dimensions",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792438550.6610649,
+      "timestamp_str": "2026-10-19 22:35:50",
+      "impact_assessment": {
+        "why": "User requested expandable reactor panel like tactical flight log, swapping vitals row with sound/action settings in the top bar, and making all vital stat cards equal in size",
+        "benefits": "Unobstructed bottom center radar space on demand, intuitive top bar visual order, and clean symmetrical vitals cards",
+        "risks": "contract: DOM layout tests in test_cockpit_layout.py must remain satisfied; dependency: none; concurrency: none; state: view-only collapse state",
+        "mitigation": "Add failing-first tests for reactor HIDE/SHOW toggle, topbar child order, and equal vital card sizing while preserving all existing DOM IDs and layout contracts"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
+      "phase": "execution",
+      "phase_num": 3,
+      "description": "[milestone 1/2] Make reactor panel expandable with HIDE/SHOW toggle, swap top-bar vitals and quick actions positions, and equalize stat card dimensions; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792438795.8560789,
+      "timestamp_str": "2026-10-19 22:39:55"
+    },
+    {
+      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[milestone 2/2] Documentation, regression verification, and clean gate delivery; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792438800.3636346,
+      "timestamp_str": "2026-10-19 22:40:00"
+    },
+    {
+      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-expandable-reactor-vitals-align-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792438804.4959004,
+      "timestamp_str": "2026-10-19 22:40:04"
     }
   ]
 }

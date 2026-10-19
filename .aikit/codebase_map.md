@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `35`
 - **Total Classes**: `89`
-- **Total Top-Level Functions**: `67`
-- **Total Class Methods**: `477`
-- **Total Source Lines**: `13559`
+- **Total Top-Level Functions**: `68`
+- **Total Class Methods**: `478`
+- **Total Source Lines**: `13655`
 
 ---
 
@@ -536,7 +536,7 @@
 ### [`tests/test_transit_civ_events.py`](tests/test_transit_civ_events.py)
 > *Tests for in-system transit (TravelState), planetary civilization metadata, and cockpit GameEvents.*
 
-**Size**: `130` lines (`5287` bytes)
+**Size**: `147` lines (`5998` bytes)
 
 **Classes:**
 - `class TestTransitCivEvents` - *Verify TravelState, planetary faction/population/government, and GameEvent lifecycles.*
@@ -547,6 +547,7 @@
   - Method `.test_quantum_in_system_transit_consumes_fuel_and_arrives_next_tick()`
   - Method `.test_start_travel_validation_guards()`
   - Method `.test_event_emission_and_dismissal()`
+  - Method `.test_cli_travel_and_events()`
 
 ---
 
@@ -560,7 +561,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `1562` lines (`80231` bytes)
+**Size**: `1623` lines (`83173` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -591,6 +592,7 @@
 - `def cmd_tutorial(engine, storage, parts)` - *Cadet Flight Academy progressive tutorial system.*
 - `def cmd_story(engine, storage, parts)` - *The Precursor Cipher: Branching episodic space opera campaign.*
 - `def cmd_repl(engine, storage)` - *Launch interactive terminal command session.*
+- `def cmd_events(engine, storage, parts)` - *List or dismiss cockpit popup events.*
 - `def main(argv)` - *Main CLI entrypoint.*
 
 ---
@@ -894,7 +896,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `802` lines (`32499` bytes)
+**Size**: `820` lines (`33237` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*

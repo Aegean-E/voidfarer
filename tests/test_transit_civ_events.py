@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
+from voidfarer.cli import main as cli_main
 from voidfarer.engine import SimulationEngine
 from voidfarer.galaxy import GalaxyGenerator
 from voidfarer.models import CelestialBody, GameEvent, GameState, TravelState
+from voidfarer.server import ThreadedHTTPServer, VoidFarerHTTPHandler
+from voidfarer.storage import StorageManager
 
 
 class TestTransitCivEvents(unittest.TestCase):
@@ -123,6 +128,18 @@ class TestTransitCivEvents(unittest.TestCase):
         self.assertTrue(ok)
         snap_after = self.engine.get_status_snapshot()
         self.assertEqual(len(snap_after["undismissed_events"]), 0)
+
+    def test_cli_travel_and_events(self) -> None:
+        tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp_dir.cleanup)
+        save_path = Path(tmp_dir.name) / "save.json"
+
+        rc_travel = cli_main(["--save-path", str(save_path), "travel", "sol_body_2", "--mode", "sublight"])
+        self.assertEqual(rc_travel, 0)
+
+        rc_events = cli_main(["--save-path", str(save_path), "events", "list"])
+        self.assertEqual(rc_events, 0)
+        self.assertIsNotNone(VoidFarerHTTPHandler)
 
 
 if __name__ == "__main__":

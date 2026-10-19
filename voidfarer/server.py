@@ -610,6 +610,21 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/travel":
+            body_id = str(body.get("body_id", ""))
+            mode = str(body.get("mode", "sublight"))
+            ok, msg = self.engine.start_travel(body_id, mode=mode)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/events/dismiss":
+            event_id = str(body.get("event_id", ""))
+            ok, msg = self.engine.dismiss_event(event_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/reset":
             seed = _int_field(body, "seed", 42, minimum=0)
             ok, msg = self.engine.reset(seed)
@@ -618,6 +633,9 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             return
 
         self._send_error_json("Invalid API endpoint", status=HTTPStatus.NOT_FOUND)
+
+
+VoidFarerHTTPHandler = VoidFarerHandler
 
 
 

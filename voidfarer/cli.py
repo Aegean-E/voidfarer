@@ -81,8 +81,12 @@ def _get_engine(storage_dir: Path | None = None) -> tuple[SimulationEngine, Stor
     """Initialize or restore simulation engine from disk."""
     if storage_dir is None:
         home = Path(os.environ.get("LOCALAPPDATA", Path.home()))
-        storage_dir = home / ".voidfarer"
-    storage = StorageManager(storage_dir)
+        storage = StorageManager(home / ".voidfarer")
+    elif storage_dir.suffix.lower() == ".json":
+        storage = StorageManager(storage_dir.parent)
+        storage.save_file = storage_dir
+    else:
+        storage = StorageManager(storage_dir)
     saved_state = storage.load()
     engine = SimulationEngine(state=saved_state)
     return engine, storage
@@ -1120,6 +1124,21 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
                 ok, msg = engine.orbit(parts[1])
                 print((GREEN if ok else RED) + msg + RESET)
                 storage.save(engine.state)
+        elif cmd == "travel":
+            if len(parts) < 2:
+                print(f"{RED}Usage:{RESET} travel <body_id> [--mode sublight|quantum]")
+            else:
+                mode = "sublight"
+                for idx, tok in enumerate(parts):
+                    if tok == "--mode" and idx + 1 < len(parts):
+                        mode = parts[idx + 1]
+                    elif tok in ("sublight", "quantum"):
+                        mode = tok
+                ok, msg = engine.start_travel(parts[1], mode=mode)
+                print((GREEN if ok else RED) + msg + RESET)
+                storage.save(engine.state)
+        elif cmd == "events":
+            cmd_events(engine, storage, parts)
         elif cmd == "scan":
             ok, msg, _ = engine.scan()
             print((GREEN if ok else RED) + msg + RESET)
@@ -1245,6 +1264,28 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
     return 0
 
 
+def cmd_events(engine: SimulationEngine, storage: StorageManager, parts: Sequence[str]) -> int:
+    """List or dismiss cockpit popup events."""
+    action = parts[1].lower() if len(parts) > 1 else "list"
+    if action == "dismiss":
+        if len(parts) < 3 or not parts[2]:
+            print(f"{RED}Usage:{RESET} events dismiss <event_id>")
+            return 1
+        ok, msg = engine.dismiss_event(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0 if ok else 1
+
+    undismissed = [e for e in engine.state.events if not e.dismissed]
+    if not undismissed:
+        print(f"{DIM}No active cockpit events.{RESET}")
+        return 0
+    print(f"\n{CYAN}{BOLD}=== ACTIVE COCKPIT EVENTS ({len(undismissed)}) ==={RESET}")
+    for evt in undismissed:
+        print(f"  [{evt.id}] ({evt.kind.upper()} @ Tick #{evt.tick}) {BOLD}{evt.title}{RESET}: {evt.message}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Main CLI entrypoint."""
     if argv is None:
@@ -1254,6 +1295,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         prog="voidfarer",
         description="VoidFarer: Autonomous Deep-Space Fleet, Procedural Galaxy & Holographic Cockpit Simulator",
     )
+    parser.add_argument("--save-path", help="Custom save file or directory path")
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("status", help="Print ship telemetry and navigation status")
@@ -1339,6 +1381,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     orbit_p = subparsers.add_parser("orbit", help="Enter orbit around celestial body")
     orbit_p.add_argument("body_id", help="Target body ID")
 
+    travel_p = subparsers.add_parser("travel", help="Initiate sublight or quantum in-system transit")
+    travel_p.add_argument("body_id", help="Destination celestial body ID")
+    travel_p.add_argument("--mode", default="sublight", choices=["sublight", "quantum"], help="Transit mode")
+
+    events_p = subparsers.add_parser("events", help="List or dismiss cockpit popup events")
+    events_p.add_argument("action", nargs="?", default="list", choices=["list", "dismiss"])
+    events_p.add_argument("event_id", nargs="?", help="Event ID to dismiss")
+
     pwr_p = subparsers.add_parser("power", help="Route reactor power (must sum to 100)")
     pwr_p.add_argument("engines", type=int, help="Engines power percentage")
     pwr_p.add_argument("shields", type=int, help="Shields power percentage")
@@ -1382,7 +1432,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return 0
 
-    engine, storage = _get_engine()
+    custom_dir = Path(args.save_path) if getattr(args, "save_path", None) else None
+    engine, storage = _get_engine(custom_dir)
 
     if args.command == "status":
         return cmd_status(engine)
@@ -1517,6 +1568,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         print((GREEN if ok else RED) + msg + RESET)
         storage.save(engine.state)
         return 0 if ok else 1
+    elif args.command == "travel":
+        ok, msg = engine.start_travel(args.body_id, mode=args.mode)
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0 if ok else 1
+    elif args.command == "events":
+        parts = ["events", args.action]
+        if args.event_id:
+            parts.append(args.event_id)
+        return cmd_events(engine, storage, parts)
     elif args.command == "power":
         ok, msg = engine.route_power(args.engines, args.shields, args.sensors, args.weapons)
         print((GREEN if ok else RED) + msg + RESET)

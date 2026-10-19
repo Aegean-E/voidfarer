@@ -2,37 +2,13 @@
   "version": 1,
   "active_task": {
     "task_id": "task-voidfarer-accurate-transit-physics-v1",
-    "last_phase": "execution",
-    "active_phase": 3,
-    "status": "in_progress",
-    "updated_at": 1792435304.310347
+    "last_phase": "verification",
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792435392.2728512,
+    "completed_at": 1792435392.3735216
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-capacity-cli-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-capacity-cli-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792386473.100399,
-      "timestamp_str": "2026-10-19 08:07:53"
-    },
-    {
-      "task_id": "task-voidfarer-gap-closure-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Close documented gaps: concrete faction perks, archetype rep rewards, multi-stat relics, cockpit escaping/color whitelisting, and REPL background server lifecycle",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792391479.094283,
-      "timestamp_str": "2026-10-19 09:31:19",
-      "impact_assessment": {
-        "why": "ADR-015/017 listed these as residual gaps, so advertised behavior and actual simulation diverged",
-        "benefits": "Aligns perks/relic text with mechanics, applies data-driven faction/corp standings, blocks injection in cockpit HTML, and makes the REPL-hosted server complete",
-        "risks": "contract: additive save fields (archetype_id, relic bonuses); dependency: stdlib; concurrency: BackgroundServer stop joins ticker and saves; state: legacy saves default new fields",
-        "mitigation": "Targeted regression tests for each gap, escape/color structural tests, full suite and aikit gates"
-      }
-    },
     {
       "task_id": "task-voidfarer-gap-closure-v1",
       "phase": "in_progress",
@@ -227,6 +203,25 @@
       "status": "in_progress",
       "timestamp": 1792435304.310347,
       "timestamp_str": "2026-10-19 21:41:44"
+    },
+    {
+      "task_id": "task-voidfarer-accurate-transit-physics-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[milestone 3/3] Update living documentation and verify all 4/4 gates for scientific planetary physics and persistent tick-synced transit animation; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792435392.2728512,
+      "timestamp_str": "2026-10-19 21:43:12"
+    },
+    {
+      "task_id": "task-voidfarer-accurate-transit-physics-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-accurate-transit-physics-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792435392.3735232,
+      "timestamp_str": "2026-10-19 21:43:12"
     }
   ]
 }

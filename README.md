@@ -304,8 +304,8 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Full-Viewport Background NAV-Radar (`G-004`)**: Full-screen black-background orbital/galaxy canvas (`100vw x 100vh`) serving as the live game backdrop with all HUD decks floating on top, ORBITS/GALAXY and GRID/LABELS overlay controls, drag-pan, and wheel zoom.
 - **Quest, AI, Depot & Quantum Message Panels**: Unified mission control, AI captain diplomacy/trade/hire/ally actions, per-system cargo depots with direct selling, and an intergalactic quantum inbox/composer.
 - **Pilot Perks Window**: The former Mastery page is now an open/close in-game window with four branching perk trees (Exploration, Combat, Fleet, Trade) and tier-2 prerequisites.
-- **Planet & System Inspector**: Gravity, atmosphere, temperature, moons, resources, spectral class, faction, security, and jump links for selected targets.
-- **Surface Landing**: Land on habitable planets from orbit for survey rewards, and watch the flagship animate between orbital bodies.
+- **Planet & System Inspector**: Scientifically accurate surface gravity ($g = (R/R_\oplus)(\rho/\rho_\oplus)$), chemical atmospheric composition & pressure (`atm`), stellar-flux radiative/greenhouse temperature, Earth Similarity habitability index (`%`), 2D Euclidean orbital distance (`AU`), moons, resources, faction, population, and government.
+- **Tick-Synchronized Transit & Surface Landing**: Initiate sublight or quantum transit with 2D Euclidean distance and engine-scaled tick durations while the flagship animates continuously across the radar until orbital capture, or land on habitable worlds for survey rewards.
 - **Mercenary & Fleet Command**: Per-unit level, efficiency, integrity, sorties, refit/dismiss controls, and hireable mercenary specialists (assault, evasion, repair).
 - **Expanded Procedural Galaxy**: 15 star systems, 5-6 planets each, additional star types (B/O/red giant/binary), savanna/tundra/toxic/barren/super-Earth/ice-giant worlds, moons, and asteroid belts.
 - **Dynamic AI Economy**: Autonomous trader captains move between systems and buy/sell commodities each tick, changing stockpiles and prices alongside the player's trades.
@@ -331,7 +331,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 238-test suite runs in about 3.8 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 255-test suite runs in about 4 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

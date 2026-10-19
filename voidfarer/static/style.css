@@ -516,12 +516,57 @@ body.cockpit-theme {
     min-width: 0;
 }
 
+.panel-left.drawer-collapsed {
+    grid-template-columns: auto;
+    width: fit-content;
+    max-width: 170px;
+    background: rgba(6, 12, 26, 0.45);
+    backdrop-filter: blur(6px);
+}
+
+.panel-left.drawer-collapsed .terminal-content-stack {
+    display: none;
+}
+
 .panel-right {
+    background: transparent;
+    border: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    padding: 0;
+    pointer-events: none;
     justify-content: flex-end;
+}
+
+.panel-right .log-panel {
+    pointer-events: auto;
+}
+
+.log-panel {
+    background: transparent;
+    border: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    padding: 8px 12px;
+}
+
+.log-panel > .panel-header {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.25);
+    padding: 4px 0;
+    backdrop-filter: none;
 }
 
 .panel-right .flight-log-stream {
     height: 220px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.flight-log-stream .log-line {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.9);
 }
 
 .log-header-actions {
@@ -2697,7 +2742,6 @@ body.cockpit-theme {
 .event-popup-container,
 .combat-alert-card,
 .anomaly-alert-card,
-.nav-panel > .panel-header,
 .nav-target-card,
 .reactor-panel {
     position: relative;
@@ -2705,11 +2749,29 @@ body.cockpit-theme {
     pointer-events: auto;
 }
 .nav-panel > .panel-header {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    padding: 8px 12px;
-    backdrop-filter: blur(10px);
+    background: transparent;
+    border: none;
+    backdrop-filter: none;
+    pointer-events: none;
+    opacity: 0.45;
+    padding: 2px 6px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: none;
+}
+.nav-panel > .panel-header .panel-tag {
+    font-size: 0.72rem;
+    color: var(--neon-cyan);
+    letter-spacing: 1.5px;
+    opacity: 0.85;
+}
+.nav-panel > .panel-header .panel-title {
+    font-size: 0.84rem;
+    color: var(--neon-cyan);
+    letter-spacing: 2px;
+    text-shadow: 0 0 6px rgba(0, 240, 255, 0.45);
 }
 .nav-target-card,
 .reactor-panel {

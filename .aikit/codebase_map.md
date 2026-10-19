@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `35`
-- **Total Classes**: `89`
+- **Total Classes**: `90`
 - **Total Top-Level Functions**: `73`
-- **Total Class Methods**: `491`
-- **Total Source Lines**: `14250`
+- **Total Class Methods**: `495`
+- **Total Source Lines**: `14287`
 
 ---
 
@@ -105,7 +105,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `350` lines (`14487` bytes)
+**Size**: `387` lines (`16094` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -158,6 +158,11 @@
   - Method `.setUpClass()`
   - Method `.test_dynamic_server_data_is_escaped()`
   - Method `.test_faction_colors_are_whitelisted()`
+- `class TestSleekHUDDeclutter`
+  - Method `.setUpClass()`
+  - Method `.test_nav_radar_header_is_transparent_on_map_label()`
+  - Method `.test_left_terminal_is_collapsible_drawer()`
+  - Method `.test_tactical_flight_log_sits_directly_on_map_without_box()`
 
 ---
 

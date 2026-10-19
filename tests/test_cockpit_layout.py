@@ -348,3 +348,40 @@ class TestCockpitEscaping(unittest.TestCase):
     def test_faction_colors_are_whitelisted(self):
         self.assertIn("safeColor(value", self.js)
         self.assertIn("this.safeColor(f.primary_color)", self.js)
+
+class TestSleekHUDDeclutter(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.html = INDEX_HTML.read_text(encoding="utf-8")
+        cls.js = APP_JS.read_text(encoding="utf-8")
+        cls.css = STYLE_CSS.read_text(encoding="utf-8")
+
+    def test_nav_radar_header_is_transparent_on_map_label(self):
+        self.assertRegex(
+            self.css,
+            r"\.nav-panel\s*>\s*\.panel-header\s*\{[^}]*background:\s*transparent[^}]*border:\s*none[^}]*backdrop-filter:\s*none[^}]*pointer-events:\s*none",
+            "NAV-radar header must float transparently on the map without a bulky box",
+        )
+
+    def test_left_terminal_is_collapsible_drawer(self):
+        self.assertRegex(
+            self.css,
+            r"\.panel-left\.drawer-collapsed\s*\.terminal-content-stack\s*\{[^}]*display:\s*none",
+            "terminal content stack must be hidden when left drawer is collapsed",
+        )
+        self.assertIn('class="deck-panel panel-left drawer-collapsed"', self.html)
+        self.assertIn("drawer-collapsed", self.js)
+        self.assertIn("this.panelLeft", self.js)
+
+    def test_tactical_flight_log_sits_directly_on_map_without_box(self):
+        self.assertRegex(
+            self.css,
+            r"\.panel-right\s*\{[^}]*background:\s*transparent[^}]*border:\s*none",
+            "panel-right must be transparent without a containing box frame",
+        )
+        self.assertRegex(
+            self.css,
+            r"\.log-panel\s*\{[^}]*background:\s*transparent[^}]*border:\s*none",
+            "log-panel must be transparent directly on the map",
+        )
+

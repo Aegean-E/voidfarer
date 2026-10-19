@@ -234,7 +234,7 @@ class CockpitApp {
         this.state = null;
         this.galaxySystems = {};
         this.viewMode = "ORBITS"; // "ORBITS" or "GALAXY"
-        this.activeRightTab = "market"; // "market", "arsenal", "fleet"
+        this.activeRightTab = null; // null when collapsed, or "market", "arsenal", etc.
         this.selectedTarget = null; // CelestialBody or StarSystem
         this.selectedType = null; // 'body' or 'system'
 
@@ -386,7 +386,8 @@ class CockpitApp {
         this.btnResetCadetAcademy = document.getElementById("btnResetCadetAcademy");
         this.cadetGraduationDismissed = false;
 
-        // Right Deck Tabs
+        // Left Terminal Deck & Tabs
+        this.panelLeft = document.getElementById("panelLeft");
         this.tabBtnMarket = document.getElementById("tabBtnMarket");
         this.tabBtnArsenal = document.getElementById("tabBtnArsenal");
         this.tabBtnFleet = document.getElementById("tabBtnFleet");
@@ -743,22 +744,41 @@ class CockpitApp {
             this.openPerksWindow();
             return;
         }
-        this.activeRightTab = tabName;
 
         const tabButtons = {
             market: this.tabBtnMarket, arsenal: this.tabBtnArsenal, fleet: this.tabBtnFleet,
             contracts: this.tabBtnContracts, story: this.tabBtnStory, factions: this.tabBtnFactions,
             quests: this.tabBtnQuests, ai: this.tabBtnAI, depot: this.tabBtnDepot, messages: this.tabBtnMessages,
         };
-        Object.entries(tabButtons).forEach(([name, button]) => {
-            if (button) button.classList.toggle("active", tabName === name);
-        });
 
         const tabContents = {
             market: this.tabContentMarket, arsenal: this.tabContentArsenal, fleet: this.tabContentFleet,
             contracts: this.tabContentContracts, story: this.tabContentStory, factions: this.tabContentFactions,
             quests: this.tabContentQuests, ai: this.tabContentAI, depot: this.tabContentDepot, messages: this.tabContentMessages,
         };
+
+        // If clicking the already open tab, toggle the drawer closed
+        if (this.activeRightTab === tabName && this.panelLeft && !this.panelLeft.classList.contains("drawer-collapsed")) {
+            this.activeRightTab = null;
+            this.panelLeft.classList.add("drawer-collapsed");
+            Object.values(tabButtons).forEach(button => {
+                if (button) button.classList.remove("active");
+            });
+            Object.values(tabContents).forEach(content => {
+                if (content) content.style.display = "none";
+            });
+            return;
+        }
+
+        this.activeRightTab = tabName;
+        if (this.panelLeft) {
+            this.panelLeft.classList.remove("drawer-collapsed");
+        }
+
+        Object.entries(tabButtons).forEach(([name, button]) => {
+            if (button) button.classList.toggle("active", tabName === name);
+        });
+
         Object.entries(tabContents).forEach(([name, content]) => {
             if (content) content.style.display = (tabName === name) ? "flex" : "none";
         });

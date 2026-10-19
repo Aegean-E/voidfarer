@@ -10,3 +10,4 @@ hand as one line below in the form `- **G-NNN** (source): rule`; IDs are never r
 - **G-002** (user): Cockpit layout rule 2: the Chrono tick and time settings deck is pinned to the upper-right corner, at the far right of the top status bar.
 - **G-003** (user): Cockpit layout rule 3: the Commerce/Arsenal/Fleet terminal runs vertically (up to down) on the left side: a vertical tab rail with the active tab's content beside it.
 - **G-004** (user): Cockpit layout rule 4: the NAV-Radar orbital map is the full-viewport background layer, with all HUD decks and panels rendered on top of it.
+- **G-005** (user): Cockpit layout rule 5: HUD overlays must remain sleek and unbulky over the background radar: NAV-RADAR orbital title is a transparent on-map label, the left terminal rail expands content to the right on demand (collapsible drawer), and the lower-right tactical flight log sits directly on the map without a containing box.

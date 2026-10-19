@@ -301,7 +301,7 @@ python -m voidfarer.cli serve --port 8080
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Cosmic Chronometer & Time Control Deck**: Top-of-HUD cybernetic panel featuring live in-game date (`DD.MM.YYYY`, starting 01.01.3042), tick badge (`TICK #N`), 1-click Pause/Resume button (`Spacebar`), 1x-10x speed multiplier toggles (`1-4`), and step advance button (`T`).
 - **Main Menu (`ESC`) & Multi-Slot Save Management**: Toggle the Main Menu or close active modal windows anytime with `ESC`, and create, inspect, load, or delete multiple named save slots (`default`, `slot_1`..`slot_3`, or custom slot names) alongside Settings.
-- **Full-Viewport Background NAV-Radar (`G-004`)**: Full-screen black-background orbital/galaxy canvas (`100vw x 100vh`) serving as the live game backdrop with all HUD decks floating on top, ORBITS/GALAXY and GRID/LABELS overlay controls, drag-pan, and wheel zoom.
+- **Sleek Decluttered Background Radar HUD (`G-004`, `G-005`)**: Full-screen black-background orbital/galaxy canvas (`100vw x 100vh`) serving as the unobstructed live backdrop with a floating semi-transparent watermark title, an on-demand right-expanding collapsible terminal drawer on the left (`COMMERCE`, `ARSENAL`, `FLEET`, etc.), and a boxless Tactical Flight Log rendered directly over space in the lower-right corner.
 - **Quest, AI, Depot & Quantum Message Panels**: Unified mission control, AI captain diplomacy/trade/hire/ally actions, per-system cargo depots with direct selling, and an intergalactic quantum inbox/composer.
 - **Pilot Perks Window**: The former Mastery page is now an open/close in-game window with four branching perk trees (Exploration, Combat, Fleet, Trade) and tier-2 prerequisites.
 - **Planet & System Inspector**: Scientifically accurate surface gravity ($g = (R/R_\oplus)(\rho/\rho_\oplus)$), chemical atmospheric composition & pressure (`atm`), stellar-flux radiative/greenhouse temperature, Earth Similarity habitability index (`%`), 2D Euclidean orbital distance (`AU`), moons, resources, faction, population, and government.
@@ -331,7 +331,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 255-test suite runs in about 4 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 256-test suite runs in about 4 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

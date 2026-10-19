@@ -1,59 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-accurate-transit-physics-v1",
+    "task_id": "task-voidfarer-sleek-map-hud-v1",
     "last_phase": "verification",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792435392.2728512,
-    "completed_at": 1792435392.3735216
+    "updated_at": 1792437555.4383903,
+    "completed_at": 1792437560.2938137
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-gap-closure-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[2/2] Verified: 238/238 tests green (3.5s); node --check app.js OK; compileall OK; aikit check voidfarer 4/4 after regenerating codebase_map; ADR-019 and README updated; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792391485.308321,
-      "timestamp_str": "2026-10-19 09:31:25"
-    },
-    {
-      "task_id": "task-voidfarer-gap-closure-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-gap-closure-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792391503.3569868,
-      "timestamp_str": "2026-10-19 09:31:43"
-    },
-    {
-      "task_id": "task-voidfarer-transit-civ-events-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/5] Plan: complete in-system transit (TravelState), planetary civilization metadata (faction, population, government), and realtime cockpit popup events (GameEvent) across models, galaxy, engine, server, CLI, and cockpit HUD",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792425329.5286884,
-      "timestamp_str": "2026-10-19 18:55:29",
-      "impact_assessment": {
-        "why": "Uncommitted models in voidfarer/models.py introduced TravelState, GameEvent, and planetary civilization fields (faction, population, government) without serialization in GameState, procedural generation in galaxy.py, simulation/tick wiring in engine.py, or REST/CLI/HUD controls",
-        "benefits": "Players gain sublight and quantum in-system transit with tick-based progress, inhabited planets display faction/population/government metadata, and major simulation events surface as dismissible cockpit alerts while preserving 100% backward compatibility with all 238 existing tests",
-        "risks": "contract: existing engine.orbit(body_id) callers expect instant orbit; dependency: stdlib only; concurrency: all travel and event mutations must run inside engine.lock; state: old saves lack events/travel/population fields",
-        "mitigation": "Keep orbit(body_id) immediate and add start_travel(body_id, mode) + /api/travel + CLI travel; backfill civilization fields in _bootstrap_frontier and default events/travel safely in from_dict; escape all HUD event strings; verify with failing-first tests and aikit check voidfarer"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-transit-civ-events-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 1/5] Add TravelState, GameEvent, and planetary civilization models and galaxy generation; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792429785.6287336,
-      "timestamp_str": "2026-10-19 20:09:45"
-    },
     {
       "task_id": "task-voidfarer-transit-civ-events-v1",
       "phase": "phase 4",
@@ -222,6 +177,51 @@
       "status": "completed",
       "timestamp": 1792435392.3735232,
       "timestamp_str": "2026-10-19 21:43:12"
+    },
+    {
+      "task_id": "task-voidfarer-sleek-map-hud-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Declutter cockpit HUD over background radar: transparent on-map radar title, collapsible right-expanding left terminal drawer, boxless on-map tactical flight log, and compact bottom HUD cards",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792435572.1072786,
+      "timestamp_str": "2026-10-19 21:46:12",
+      "impact_assessment": {
+        "why": "User requested removing bulky UI boxes that block the background orbital map: make NAV-RADAR title a subtle transparent label on the map, make left Commerce/Arsenal/etc. tabs expand to the right on click instead of staying open all the time, and render the Tactical Flight Log directly on the map without a box.",
+        "benefits": "Unobstructed full-viewport orbital map with floating transparent radar title, on-demand right-expanding left terminal drawer, boxless lower-right tactical flight log overlay, and compact bottom target/reactor HUD.",
+        "risks": "contract: existing DOM IDs and G-001..G-004 layout tests in test_cockpit_layout.py must remain satisfied; dependency: none; concurrency: none (UI/CSS/JS only); state: left drawer collapse state is view-only.",
+        "mitigation": "Preserve all required DOM hierarchy, class names, and CSS tokens verified by test_cockpit_layout.py while adding failing-first tests for the collapsible left drawer, transparent on-map radar header, and boxless flight log."
+      }
+    },
+    {
+      "task_id": "task-voidfarer-sleek-map-hud-v1",
+      "phase": "execution",
+      "phase_num": 3,
+      "description": "[milestone 1/2] Declutter cockpit HUD over background radar: transparent on-map radar title, collapsible right-expanding left terminal drawer, boxless on-map tactical flight log, and compact bottom HUD cards; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792437549.7388234,
+      "timestamp_str": "2026-10-19 22:19:09"
+    },
+    {
+      "task_id": "task-voidfarer-sleek-map-hud-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[milestone 2/2] Documentation, Final Gate Verification & Push; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792437555.4383903,
+      "timestamp_str": "2026-10-19 22:19:15"
+    },
+    {
+      "task_id": "task-voidfarer-sleek-map-hud-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-sleek-map-hud-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792437560.2938159,
+      "timestamp_str": "2026-10-19 22:19:20"
     }
   ]
 }

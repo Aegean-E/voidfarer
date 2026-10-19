@@ -3,20 +3,12 @@
   "active_task": {
     "task_id": "task-voidfarer-frontier-command-v1",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792371751.5253453
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792371751.5253453,
+    "completed_at": 1792371774.3242116
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-v10-economy-trading-upgrades",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-v10-economy-trading-upgrades' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792354736.5307932,
-      "timestamp_str": "2026-10-18 23:18:56"
-    },
     {
       "task_id": "task-voidfarer-launcher-fix-v1",
       "phase": "phase 2",
@@ -243,6 +235,15 @@
       "status": "in_progress",
       "timestamp": 1792371751.5253453,
       "timestamp_str": "2026-10-19 04:02:31"
+    },
+    {
+      "task_id": "task-voidfarer-frontier-command-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-frontier-command-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792371774.3242133,
+      "timestamp_str": "2026-10-19 04:02:54"
     }
   ]
 }

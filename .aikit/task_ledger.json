@@ -5,19 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792433359.4685383
+    "updated_at": 1792433644.6797478
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-ai-galaxy-calendar-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[4/4] Verified: 196/196 tests green (2.68s); node --check app.js OK; compileall OK; aikit check voidfarer 4/4; new 16-test adaptive-AI/expanded-galaxy/calendar suite; README and ADR-016 updated; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792367386.2572212,
-      "timestamp_str": "2026-10-19 02:49:46"
-    },
     {
       "task_id": "task-voidfarer-ai-galaxy-calendar-v1",
       "phase": "completed",
@@ -232,6 +222,16 @@
       "status": "in_progress",
       "timestamp": 1792433359.4685383,
       "timestamp_str": "2026-10-19 21:09:19"
+    },
+    {
+      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[milestone 2/4] ESC hotkey menu/overlay toggle and multi-save slot manager UI in Main Menu; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792433644.6797478,
+      "timestamp_str": "2026-10-19 21:14:04"
     }
   ]
 }

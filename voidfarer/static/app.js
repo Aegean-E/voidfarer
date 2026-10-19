@@ -252,6 +252,8 @@ class CockpitApp {
         this.radarLabels = true;
         this.travelAnimationEnabled = true;
         this.travelAnimation = null;
+        this.savesList = [];
+        this.activeSaveSlot = "default";
         this.loadSettings();
 
         this.initDOMElements();
@@ -259,6 +261,7 @@ class CockpitApp {
         this.startAnimationLoop();
         this.refreshState();
         this.fetchGalaxy();
+        this.fetchSaves();
 
         // Polling interval for live sync (1000ms for responsive tick progression)
         setInterval(() => this.refreshState(true), 1000);
@@ -557,7 +560,7 @@ class CockpitApp {
         if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => this.switchRightTab("messages"));
 
         // Main menu, settings, perks, and frontier actions
-        document.getElementById("btnMainMenu")?.addEventListener("click", () => this.openMainMenu());
+        document.getElementById("btnMainMenu")?.addEventListener("click", () => this.toggleMainMenu());
         document.getElementById("btnOpenPerks")?.addEventListener("click", () => this.openPerksWindow());
         document.getElementById("btnClosePerks")?.addEventListener("click", () => this.closePerksWindow());
         document.getElementById("btnCloseSettings")?.addEventListener("click", () => this.closeSettings());
@@ -565,12 +568,23 @@ class CockpitApp {
         document.getElementById("btnMenuSave")?.addEventListener("click", () => this.menuAction("/api/save", "Game saved."));
         document.getElementById("btnMenuLoad")?.addEventListener("click", () => this.menuAction("/api/load", "Game loaded."));
         document.getElementById("btnMenuDelete")?.addEventListener("click", () => {
-            if (window.confirm("Delete the current save permanently?")) this.menuAction("/api/delete-save", "Save deleted.");
+            const slot = this.getSelectedSaveSlot();
+            if (window.confirm(`Delete save slot '${slot}' permanently?`)) this.menuAction("/api/delete-save", "Save deleted.");
         });
         document.getElementById("btnMenuNew")?.addEventListener("click", () => {
-            if (window.confirm("Start a new game? The current save will be replaced.")) this.menuAction("/api/new-game", "New game started.");
+            const slot = this.getSelectedSaveSlot();
+            if (window.confirm(`Start a new game in slot '${slot}'?`)) this.menuAction("/api/new-game", "New game started.");
         });
         document.getElementById("btnMenuSettings")?.addEventListener("click", () => this.openSettings());
+        document.getElementById("saveSlotInput")?.addEventListener("input", (e) => {
+            this.setSelectedSaveSlot(e.target.value, false);
+        });
+        document.querySelectorAll("#saveSlotPresets .slot-pill").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const slot = btn.getAttribute("data-slot") || "default";
+                this.setSelectedSaveSlot(slot, true);
+            });
+        });
         document.getElementById("btnSendMessage")?.addEventListener("click", () => this.handleSendMessage());
         this.btnLandTarget?.addEventListener("click", () => this.handleLandAction());
         document.getElementById("btnToggleGrid")?.addEventListener("click", () => {
@@ -683,9 +697,27 @@ class CockpitApp {
             });
         }
 
-        // Global hotkeys for temporal controls (Space = Pause/Resume, 1-4 = Speeds, T = Step)
+        // Global hotkeys for menu (ESC) and temporal controls (Space = Pause/Resume, 1-4 = Speeds, T = Step)
         window.addEventListener("keydown", (e) => {
             if (e.repeat) return;
+            if (e.key === "Escape") {
+                e.preventDefault();
+                if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) {
+                    document.activeElement.blur();
+                }
+                const settingsOverlay = document.getElementById("settingsOverlay");
+                const perksOverlay = document.getElementById("perksOverlay");
+                if (settingsOverlay && settingsOverlay.style.display !== "none") {
+                    this.closeSettings();
+                    return;
+                }
+                if (perksOverlay && perksOverlay.style.display !== "none") {
+                    this.closePerksWindow();
+                    return;
+                }
+                this.toggleMainMenu();
+                return;
+            }
             if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
             if (e.code === "Space") {
                 e.preventDefault();
@@ -2417,25 +2449,122 @@ class CockpitApp {
         if (overlay) overlay.style.display = "none";
     }
 
+    toggleMainMenu() {
+        const overlay = document.getElementById("mainMenuOverlay");
+        if (!overlay) return;
+        if (overlay.classList.contains("hidden")) {
+            this.openMainMenu();
+        } else {
+            this.closeMainMenu();
+        }
+    }
+
     openMainMenu() {
         const overlay = document.getElementById("mainMenuOverlay");
         if (overlay) overlay.classList.remove("hidden");
+        this.fetchSaves();
+        this.sound.playBeep(760, 0.04);
     }
 
     closeMainMenu() {
         const overlay = document.getElementById("mainMenuOverlay");
         if (overlay) overlay.classList.add("hidden");
+        this.sound.playBeep(640, 0.04);
     }
 
-    async menuAction(endpoint, successMessage) {
+    getSelectedSaveSlot() {
+        const input = document.getElementById("saveSlotInput");
+        const raw = (input ? input.value : this.activeSaveSlot) || "default";
+        const cleaned = raw.trim().replace(/[^A-Za-z0-9_-]/g, "");
+        return cleaned || "default";
+    }
+
+    setSelectedSaveSlot(slot, syncInput = true) {
+        const cleaned = String(slot || "default").trim().replace(/[^A-Za-z0-9_-]/g, "") || "default";
+        this.activeSaveSlot = cleaned;
+        const input = document.getElementById("saveSlotInput");
+        if (syncInput && input) input.value = cleaned;
+        document.querySelectorAll("#saveSlotPresets .slot-pill").forEach(btn => {
+            btn.classList.toggle("active", btn.getAttribute("data-slot") === cleaned);
+        });
+        this.renderSaveSlots();
+    }
+
+    async fetchSaves() {
+        try {
+            const res = await fetch("/api/saves");
+            const json = await res.json();
+            if (json.ok && Array.isArray(json.saves)) {
+                this.savesList = json.saves;
+                this.renderSaveSlots();
+            }
+        } catch (e) {}
+    }
+
+    renderSaveSlots() {
+        const listEl = document.getElementById("saveSlotsList");
+        if (!listEl) return;
+        const active = this.getSelectedSaveSlot();
+        if (!Array.isArray(this.savesList) || this.savesList.length === 0) {
+            listEl.innerHTML = `<div class="save-slot-empty">No saved slots on disk yet. Select a slot and click SAVE TO SLOT.</div>`;
+            return;
+        }
+        listEl.innerHTML = "";
+        this.savesList.forEach(s => {
+            const row = document.createElement("div");
+            row.className = `save-slot-item${s.slot === active ? " active" : ""}`;
+            row.innerHTML = `
+                <div class="save-slot-info">
+                    <strong>[${this.escapeHtml(s.slot)}]</strong> ${this.escapeHtml(s.commander_name)} // ${this.escapeHtml(s.ship_class)}
+                    <small>${this.escapeHtml(s.current_system_id.toUpperCase())} | DATE ${this.escapeHtml(s.stardate)} (TICK #${Number(s.tick || 0)}) | ${Number(s.credits || 0).toLocaleString()} CR</small>
+                </div>
+                <div class="save-slot-actions">
+                    <button type="button" class="btn-slot-act" data-act="load">LOAD</button>
+                    <button type="button" class="btn-slot-act" data-act="save">SAVE</button>
+                    <button type="button" class="btn-slot-act danger" data-act="delete">DEL</button>
+                </div>
+            `;
+            row.querySelector(".save-slot-info")?.addEventListener("click", () => {
+                this.setSelectedSaveSlot(s.slot, true);
+            });
+            row.querySelector('[data-act="load"]')?.addEventListener("click", () => {
+                this.setSelectedSaveSlot(s.slot, true);
+                this.menuAction("/api/load", "Game loaded.", s.slot);
+            });
+            row.querySelector('[data-act="save"]')?.addEventListener("click", () => {
+                this.setSelectedSaveSlot(s.slot, true);
+                this.menuAction("/api/save", "Game saved.", s.slot);
+            });
+            row.querySelector('[data-act="delete"]')?.addEventListener("click", () => {
+                this.setSelectedSaveSlot(s.slot, true);
+                if (window.confirm(`Delete save slot '${s.slot}' permanently?`)) {
+                    this.menuAction("/api/delete-save", "Save deleted.", s.slot);
+                }
+            });
+            listEl.appendChild(row);
+        });
+    }
+
+    async menuAction(endpoint, successMessage, slotOverride = null) {
         const status = document.getElementById("mainMenuStatus");
+        const slot = slotOverride || this.getSelectedSaveSlot();
         if (status) status.textContent = "TRANSMITTING...";
         try {
-            const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+            const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slot }),
+            });
             const json = await res.json();
             if (json.state) {
                 this.state = json.state;
                 this.renderHUD();
+            }
+            if (Array.isArray(json.saves)) {
+                this.savesList = json.saves;
+                this.renderSaveSlots();
+            } else {
+                this.fetchSaves();
             }
             if (status) status.textContent = (json.ok ? "OK: " : "ERROR: ") + (json.message || successMessage);
             if (json.ok && ["/api/load", "/api/new-game"].includes(endpoint)) {

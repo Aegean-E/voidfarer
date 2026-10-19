@@ -2519,16 +2519,103 @@ body.cockpit-theme {
 }
 .main-menu-overlay.hidden { display: none; }
 .main-menu-card {
-    width: min(520px, 92vw);
+    width: min(560px, 94vw);
+    max-height: 90vh;
+    overflow-y: auto;
     border: 1px solid var(--border-glow);
     border-radius: 10px;
-    padding: 28px;
+    padding: 24px 28px;
     background: rgba(4, 8, 18, 0.92);
     box-shadow: 0 0 40px rgba(0, 240, 255, 0.18);
 }
-.main-menu-brand h1 { margin: 4px 0; font-size: 2.4rem; letter-spacing: 6px; color: var(--neon-cyan); }
+.main-menu-brand h1 { margin: 4px 0; font-size: 2.2rem; letter-spacing: 6px; color: var(--neon-cyan); }
 .main-menu-brand p, .main-menu-kicker { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem; }
-.main-menu-actions { display: grid; gap: 8px; margin-top: 22px; }
+.main-menu-saves-panel {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    background: rgba(0, 240, 255, 0.03);
+    display: grid;
+    gap: 8px;
+}
+.save-slot-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--neon-cyan);
+}
+.save-slot-bar input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid var(--border-glow);
+    border-radius: 4px;
+    padding: 5px 8px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+}
+.save-slot-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.slot-pill {
+    padding: 4px 10px;
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    cursor: pointer;
+}
+.slot-pill.active, .slot-pill:hover {
+    background: rgba(0, 240, 255, 0.24);
+    border-color: var(--neon-cyan);
+    color: #fff;
+}
+.save-slots-list {
+    display: grid;
+    gap: 6px;
+    max-height: 140px;
+    overflow-y: auto;
+}
+.save-slot-empty {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    padding: 4px 2px;
+}
+.save-slot-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid rgba(0, 240, 255, 0.18);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.45);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+}
+.save-slot-item.active { border-color: var(--neon-cyan); background: rgba(0, 240, 255, 0.1); }
+.save-slot-info { display: flex; flex-direction: column; gap: 2px; cursor: pointer; flex: 1; min-width: 0; }
+.save-slot-info strong { color: var(--neon-cyan); }
+.save-slot-info small { color: var(--text-secondary); font-size: 0.62rem; }
+.save-slot-actions { display: flex; gap: 4px; }
+.btn-slot-act {
+    padding: 3px 7px;
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    border-radius: 3px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    cursor: pointer;
+}
+.btn-slot-act:hover { background: var(--neon-cyan); color: #030611; }
+.btn-slot-act.danger { border-color: #ff3355; color: #ff6688; }
+.btn-slot-act.danger:hover { background: #ff3355; color: #fff; }
+.main-menu-actions { display: grid; gap: 8px; margin-top: 14px; }
 .menu-btn {
     padding: 11px 14px;
     background: rgba(0, 240, 255, 0.06);

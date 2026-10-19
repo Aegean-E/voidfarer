@@ -301,6 +301,17 @@ class TestFrontierCockpitUI(unittest.TestCase):
         for method in ("renderQuests", "renderAICaptains", "renderDepots", "renderMessages", "openPerksWindow", "renderPerksWindow", "startTravelAnimation", "menuAction", "handleLandAction"):
             self.assertIn(method, self.js)
 
+    def test_esc_key_toggles_main_menu(self):
+        self.assertIn("Escape", self.js)
+        self.assertIn("toggleMainMenu", self.js)
+        self.assertIn("ESC", self.html)
+
+    def test_multiple_save_slots_ui_exists(self):
+        for marker in ("saveSlotInput", "saveSlotsList"):
+            self.assertIn(f'id="{marker}"', self.html)
+        for method in ("fetchSaves", "renderSaveSlots", "/api/saves"):
+            self.assertIn(method, self.js)
+
     def test_radar_background_is_black(self):
         self.assertIn(".canvas-radar-container { background: #000; }", self.css)
 

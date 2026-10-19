@@ -9,8 +9,8 @@
 - **Total Python Modules**: `35`
 - **Total Classes**: `89`
 - **Total Top-Level Functions**: `71`
-- **Total Class Methods**: `484`
-- **Total Source Lines**: `13897`
+- **Total Class Methods**: `486`
+- **Total Source Lines**: `13908`
 
 ---
 
@@ -105,7 +105,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `327` lines (`13480` bytes)
+**Size**: `338` lines (`13935` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -150,6 +150,8 @@
   - Method `.test_main_menu_and_windows_exist()`
   - Method `.test_frontier_tabs_and_radar_overlay_exist()`
   - Method `.test_frontier_renderers_are_wired()`
+  - Method `.test_esc_key_toggles_main_menu()`
+  - Method `.test_multiple_save_slots_ui_exists()`
   - Method `.test_radar_background_is_black()`
 - `class TestCockpitEscaping`
   - Method `.setUpClass()`

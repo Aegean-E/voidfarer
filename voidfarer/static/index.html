@@ -17,15 +17,28 @@
     <div class="main-menu-overlay" id="mainMenuOverlay">
         <div class="main-menu-card">
             <div class="main-menu-brand">
-                <span class="main-menu-kicker">DEEP-SPACE COMMAND</span>
+                <span class="main-menu-kicker">DEEP-SPACE COMMAND // PRESS ESC TO TOGGLE</span>
                 <h1>VOIDFARER</h1>
                 <p>Autonomous galaxy simulation // tactical cockpit</p>
             </div>
+            <div class="main-menu-saves-panel">
+                <div class="save-slot-bar">
+                    <label for="saveSlotInput">ACTIVE SAVE SLOT:</label>
+                    <input type="text" id="saveSlotInput" value="default" maxlength="40" placeholder="default, slot_1, alpha...">
+                </div>
+                <div class="save-slot-presets" id="saveSlotPresets">
+                    <button type="button" class="slot-pill active" data-slot="default">DEFAULT</button>
+                    <button type="button" class="slot-pill" data-slot="slot_1">SLOT 1</button>
+                    <button type="button" class="slot-pill" data-slot="slot_2">SLOT 2</button>
+                    <button type="button" class="slot-pill" data-slot="slot_3">SLOT 3</button>
+                </div>
+                <div class="save-slots-list" id="saveSlotsList"></div>
+            </div>
             <div class="main-menu-actions">
-                <button class="menu-btn" id="btnMenuResume">CONTINUE FLIGHT</button>
-                <button class="menu-btn" id="btnMenuSave">SAVE GAME</button>
-                <button class="menu-btn" id="btnMenuLoad">LOAD GAME</button>
-                <button class="menu-btn danger" id="btnMenuDelete">DELETE SAVE</button>
+                <button class="menu-btn" id="btnMenuResume">CONTINUE FLIGHT (ESC)</button>
+                <button class="menu-btn" id="btnMenuSave">SAVE TO SLOT</button>
+                <button class="menu-btn" id="btnMenuLoad">LOAD FROM SLOT</button>
+                <button class="menu-btn danger" id="btnMenuDelete">DELETE SLOT SAVE</button>
                 <button class="menu-btn primary" id="btnMenuNew">START NEW GAME</button>
                 <button class="menu-btn" id="btnMenuSettings">SETTINGS</button>
             </div>
@@ -137,7 +150,7 @@
                 <button class="btn-hud btn-cyan" id="quickScanBtn">
                     <span class="icon">ğŸ“¡</span> SENSOR SCAN
                 </button>
-                <button class="btn-hud" id="btnMainMenu" title="Open Main Menu">MENU</button>
+                <button class="btn-hud" id="btnMainMenu" title="Open Main Menu (Hotkey: ESC)">MENU [ESC]</button>
                 <button class="btn-hud btn-cyan" id="btnOpenPerks" title="Open Pilot Perks">PERKS</button>
             </div>
 

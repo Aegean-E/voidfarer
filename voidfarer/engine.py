@@ -41,6 +41,7 @@ from voidfarer.galaxy import (
     CANONICAL_COMMODITIES,
     COMMODITY_MAP,
     GalaxyGenerator,
+    compute_scientific_planet_properties,
 )
 from voidfarer.models import (
     AICaptain,
@@ -157,20 +158,40 @@ class SimulationEngine:
             new_bodies = []
             body_changed = False
             for idx, body in enumerate(sys_obj.bodies):
-                if (body.station_dockable or body.landable) and body.population == 0:
-                    pop = 120_000_000 + idx * 45_000_000 if body.landable else 250_000 + idx * 85_000
-                    gov = "Science Directorate" if body.body_type == "research_outpost" else gov_map.get(sys_obj.faction, "Colonial Republic")
-                    new_bodies.append(
-                        replace(
-                            body,
-                            faction=sys_obj.faction if body.faction == "Unclaimed" else body.faction,
-                            population=pop,
-                            government=gov if body.government == "None" else body.government,
-                        )
+                updated_body = body
+                if (updated_body.station_dockable or updated_body.landable) and updated_body.population == 0:
+                    pop = 120_000_000 + idx * 45_000_000 if updated_body.landable else 250_000 + idx * 85_000
+                    gov = "Science Directorate" if updated_body.body_type == "research_outpost" else gov_map.get(sys_obj.faction, "Colonial Republic")
+                    updated_body = replace(
+                        updated_body,
+                        faction=sys_obj.faction if updated_body.faction == "Unclaimed" else updated_body.faction,
+                        population=pop,
+                        government=gov if updated_body.government == "None" else updated_body.government,
                     )
                     body_changed = True
-                else:
-                    new_bodies.append(body)
+                if updated_body.body_type != "star" and ("(" not in updated_body.atmosphere or (updated_body.habitability == 0.0 and updated_body.body_type not in ("gas_giant", "ringed_giant", "ice_giant", "methane_storm", "lava_world"))):
+                    rad_seed = 4000.0 + ((idx + len(sys_id)) % 9) * 6500.0
+                    grav_seed = 0.65 + ((idx * 3 + len(sys_id)) % 7) * 0.22
+                    jitter_seed = ((idx * 5 + len(sys_id)) % 9) - 4
+                    phys = compute_scientific_planet_properties(
+                        body_type=updated_body.body_type,
+                        spectral_type=sys_obj.spectral_type,
+                        orbit_radius_au=updated_body.orbit_radius,
+                        rad_sample=rad_seed,
+                        grav_sample=grav_seed,
+                        temp_jitter=jitter_seed,
+                        hazards=updated_body.hazards,
+                    )
+                    updated_body = replace(
+                        updated_body,
+                        radius_km=float(phys["radius_km"]),
+                        gravity=float(phys["gravity"]),
+                        atmosphere=str(phys["atmosphere"]),
+                        temperature_c=int(phys["temperature_c"]),
+                        habitability=float(phys["habitability"]),
+                    )
+                    body_changed = True
+                new_bodies.append(updated_body)
             if body_changed:
                 updated_systems[sys_id] = replace(sys_obj, bodies=tuple(new_bodies))
                 systems_changed = True

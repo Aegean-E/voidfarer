@@ -172,6 +172,162 @@ ANOMALIES_CATALOG = [
     },
 ]
 
+STELLAR_FLUX_MAP: dict[str, float] = {
+    "O": 16.0,
+    "B": 7.5,
+    "A": 2.8,
+    "F": 1.5,
+    "G": 1.0,
+    "K": 0.55,
+    "M": 0.22,
+    "RedGiant": 4.5,
+    "Binary": 1.8,
+    "WolfRayet": 12.0,
+    "Neutron": 0.30,
+    "BlackHole": 0.35,
+}
+
+STELLAR_TEMP_MAP: dict[str, int] = {
+    "O": 38000,
+    "B": 20000,
+    "A": 8800,
+    "F": 6700,
+    "G": 5778,
+    "K": 4600,
+    "M": 3200,
+    "RedGiant": 3600,
+    "Binary": 6100,
+    "WolfRayet": 45000,
+    "Neutron": 600000,
+    "BlackHole": 120000,
+}
+
+SCIENTIFIC_ATMO_MAP: dict[str, str] = {
+    "terrestrial": "N2 78%, O2 21%, Ar 1% (1.0 atm)",
+    "oceanic": "N2 75%, O2 22%, H2O 3% (1.2 atm)",
+    "savanna": "N2 77%, O2 21%, CO2 1% (1.1 atm)",
+    "tundra": "N2 81%, O2 18%, Ar 1% (0.85 atm)",
+    "super_earth": "N2 74%, O2 23%, CO2 2% (1.8 atm)",
+    "desert_world": "CO2 95%, N2 3%, Ar 2% (0.06 atm)",
+    "ice_world": "N2 95%, CH4 5% (0.15 atm)",
+    "lava_world": "SO2 65%, CO2 30%, SiO Vapor (18 atm)",
+    "volcanic": "CO2 88%, SO2 9%, H2S 3% (4.5 atm)",
+    "toxic": "CO2 96%, N2 3.5%, H2SO4 Clouds (90 atm)",
+    "gas_giant": "H2 89%, He 10%, CH4 1% (Deep Envelope)",
+    "ringed_giant": "H2 93%, He 6.5%, NH3 0.5% (Deep Envelope)",
+    "ice_giant": "H2 80%, He 17%, CH4 3% (Ice Giant)",
+    "methane_storm": "H2 80%, He 17%, CH4 3% (Ice Giant)",
+    "barren": "Vacuum / Trace Exosphere (0 atm)",
+    "asteroid_belt": "Vacuum (0 atm)",
+    "orbital_station": "Regulated N2 79%, O2 21% (1.0 atm)",
+    "research_outpost": "Regulated N2 78%, O2 21% (0.95 atm)",
+    "star": "Ionized H/He Plasma Corona",
+}
+
+
+def compute_habitability_index(
+    body_type: str,
+    gravity: float,
+    temperature_c: int,
+    atmosphere: str,
+    hazards: Sequence[str] = (),
+) -> float:
+    """Compute a scientific Earth Similarity / Habitability Index in [0.0, 100.0]."""
+    if body_type in ("star", "gas_giant", "ringed_giant", "ice_giant", "methane_storm", "lava_world"):
+        return 0.0
+    if body_type in ("orbital_station", "research_outpost"):
+        return 82.0
+
+    temp_sim = math.exp(-(((temperature_c - 18.0) / 36.0) ** 2)) if -90 <= temperature_c <= 115 else 0.0
+    grav_sim = math.exp(-(((gravity - 1.0) / 0.58) ** 2)) if 0.1 <= gravity <= 3.0 else 0.05
+
+    atmo_upper = atmosphere.upper()
+    if "O2" in atmo_upper and "N2" in atmo_upper:
+        atmo_factor = 0.90 if body_type in ("tundra", "super_earth") else 1.0
+    elif body_type == "desert_world":
+        atmo_factor = 0.32
+    elif body_type == "ice_world":
+        atmo_factor = 0.18
+    elif body_type in ("volcanic", "toxic"):
+        atmo_factor = 0.04
+    else:
+        atmo_factor = 0.02
+
+    hazard_factor = 0.88 ** len(hazards)
+    score = 100.0 * atmo_factor * (0.55 * temp_sim + 0.45 * grav_sim) * hazard_factor
+    return round(min(100.0, max(0.0, score)), 1)
+
+
+def compute_scientific_planet_properties(
+    body_type: str,
+    spectral_type: str,
+    orbit_radius_au: float,
+    rad_sample: float = 6000.0,
+    grav_sample: float = 1.0,
+    temp_jitter: int = 0,
+    hazards: Sequence[str] = (),
+) -> dict[str, float | int | str]:
+    """Derive physically consistent radius_km, gravity, atmosphere, temperature_c, and habitability."""
+    u = max(0.0, min(1.0, (rad_sample - 2500.0) / 62500.0))
+    v = max(0.0, min(1.0, (grav_sample - 0.4) / 2.2))
+
+    # (min_r_km, max_r_km, min_density_gcm3, max_density_gcm3, albedo, greenhouse_k, min_t_c, max_t_c)
+    physics_table: dict[str, tuple[float, float, float, float, float, float, int, int]] = {
+        "terrestrial": (5900.0, 6800.0, 5.25, 5.65, 0.30, 33.0, 6, 30),
+        "oceanic": (6300.0, 7200.0, 4.60, 5.05, 0.27, 36.0, 10, 34),
+        "savanna": (5800.0, 6600.0, 5.20, 5.55, 0.28, 38.0, 18, 38),
+        "tundra": (5500.0, 6300.0, 5.10, 5.45, 0.52, 18.0, -38, -8),
+        "super_earth": (8100.0, 9900.0, 5.75, 6.25, 0.32, 42.0, 4, 36),
+        "desert_world": (4200.0, 5700.0, 4.35, 5.00, 0.36, 12.0, -14, 62),
+        "barren": (2400.0, 3900.0, 3.80, 5.00, 0.12, 0.0, -195, 220),
+        "ice_world": (2600.0, 4300.0, 1.95, 2.65, 0.65, 4.0, -195, -95),
+        "lava_world": (6000.0, 7700.0, 5.60, 6.20, 0.10, 680.0, 560, 1320),
+        "volcanic": (5700.0, 7300.0, 5.35, 5.95, 0.18, 290.0, 210, 490),
+        "toxic": (5900.0, 6500.0, 5.15, 5.42, 0.72, 480.0, 175, 465),
+        "gas_giant": (64000.0, 71500.0, 1.24, 1.42, 0.50, 25.0, -155, -95),
+        "ringed_giant": (55000.0, 61000.0, 0.69, 0.88, 0.47, 18.0, -180, -120),
+        "ice_giant": (24000.0, 26500.0, 1.28, 1.62, 0.42, 12.0, -212, -160),
+        "methane_storm": (24000.0, 26500.0, 1.28, 1.62, 0.42, 12.0, -212, -160),
+        "asteroid_belt": (420.0, 820.0, 2.10, 2.75, 0.14, 0.0, -205, 65),
+        "orbital_station": (12.0, 18.0, 1.0, 1.0, 0.35, 0.0, 20, 22),
+        "research_outpost": (10.0, 15.0, 1.0, 1.0, 0.35, 0.0, 20, 22),
+    }
+
+    r_min, r_max, rho_min, rho_max, albedo, gh_k, t_min, t_max = physics_table.get(
+        body_type, (5800.0, 6500.0, 5.10, 5.51, 0.30, 30.0, -10, 35)
+    )
+    radius_km = round(r_min + u * (r_max - r_min), 1)
+    if body_type == "orbital_station":
+        gravity = 0.50
+    elif body_type == "research_outpost":
+        gravity = 0.40
+    else:
+        density = rho_min + v * (rho_max - rho_min)
+        gravity = round(max(0.02, (radius_km / 6371.0) * (density / 5.514)), 2)
+
+    lum = STELLAR_FLUX_MAP.get(spectral_type, 1.0)
+    r_eff = max(0.35, float(orbit_radius_au))
+    t_eq_k = 278.5 * ((lum * (1.0 - albedo)) ** 0.25) / math.sqrt(r_eff)
+    raw_temp_c = int(round(t_eq_k + gh_k - 273.15 + temp_jitter))
+    if body_type in ("orbital_station", "research_outpost"):
+        temperature_c = 21
+    elif body_type in ("barren", "asteroid_belt"):
+        temperature_c = max(t_min, min(t_max, raw_temp_c))
+    else:
+        mid_t = 0.5 * (t_min + t_max)
+        blended = int(round(0.65 * mid_t + 0.35 * raw_temp_c))
+        temperature_c = max(t_min, min(t_max, blended))
+
+    atmosphere = SCIENTIFIC_ATMO_MAP.get(body_type, "Vacuum (0 atm)")
+    habitability = compute_habitability_index(body_type, gravity, temperature_c, atmosphere, hazards)
+    return {
+        "radius_km": radius_km,
+        "gravity": gravity,
+        "atmosphere": atmosphere,
+        "temperature_c": temperature_c,
+        "habitability": habitability,
+    }
+
 
 class GalaxyGenerator:
     """Generates deterministic star systems, celestial bodies, and hyperlane corridors."""
@@ -262,9 +418,10 @@ class GalaxyGenerator:
                 scan_completed=True,
                 scan_discovery=f"{spectral}-class stellar primary emitting radiant plasma.",
                 gravity=28.0,
-                atmosphere="plasma",
-                temperature_c=5500,
+                atmosphere=SCIENTIFIC_ATMO_MAP["star"],
+                temperature_c=STELLAR_TEMP_MAP.get(spectral, 5778),
                 resources=("helium",),
+                habitability=0.0,
             )
         )
 
@@ -293,26 +450,6 @@ class GalaxyGenerator:
             )
 
         habitable_types = {"terrestrial", "oceanic", "savanna", "tundra"}
-        gravity_map = {
-            "terrestrial": 1.0, "oceanic": 1.1, "gas_giant": 2.3, "asteroid_belt": 0.1,
-            "orbital_station": 0.0, "desert_world": 0.8, "ice_world": 0.9, "lava_world": 1.2,
-            "ringed_giant": 2.0, "research_outpost": 0.0, "savanna": 1.05, "tundra": 0.95,
-            "toxic": 1.3, "barren": 0.4, "super_earth": 1.6, "ice_giant": 1.9, "volcanic": 1.4,
-        }
-        atmosphere_map = {
-            "terrestrial": "nitrogen-oxygen", "oceanic": "nitrogen-oxygen", "gas_giant": "hydrogen-helium",
-            "orbital_station": "pressurized", "asteroid_belt": "none", "desert_world": "thin-carbon-dioxide",
-            "ice_world": "methane-nitrogen", "lava_world": "sulfur-dioxide", "ringed_giant": "hydrogen-helium",
-            "research_outpost": "pressurized", "savanna": "nitrogen-oxygen", "tundra": "thin-nitrogen-oxygen",
-            "toxic": "chlorine-methane", "barren": "none", "super_earth": "nitrogen-oxygen", "ice_giant": "methane-hydrogen",
-            "volcanic": "sulfur-dioxide",
-        }
-        temp_map = {
-            "terrestrial": 18, "oceanic": 22, "gas_giant": -110, "asteroid_belt": -80,
-            "orbital_station": 20, "desert_world": 48, "ice_world": -65, "lava_world": 420,
-            "ringed_giant": -140, "research_outpost": 20, "savanna": 26, "tundra": -12,
-            "toxic": 90, "barren": -40, "super_earth": 16, "ice_giant": -180, "volcanic": 310,
-        }
         resource_map = {
             "terrestrial": ("titanium",), "oceanic": ("hydroponics",), "gas_giant": ("fuel_cells",),
             "asteroid_belt": ("titanium", "xenoliths"), "desert_world": ("titanium",), "ice_world": ("hydroponics",),
@@ -371,6 +508,20 @@ class GalaxyGenerator:
                 body_pop = 0
                 body_gov = "None"
 
+            body_hazards = ("pirate_activity",) if market_arch == "black_market" else ()
+            rad_seed = 4000.0 + ((i + len(sys_id)) % 9) * 6500.0
+            grav_seed = 0.65 + ((i * 3 + len(sys_id)) % 7) * 0.22
+            jitter_seed = ((i * 5 + len(sys_id)) % 9) - 4
+            phys = compute_scientific_planet_properties(
+                body_type=body_type,
+                spectral_type=spectral,
+                orbit_radius_au=orbit_dist,
+                rad_sample=rad_seed,
+                grav_sample=grav_seed,
+                temp_jitter=jitter_seed,
+                hazards=body_hazards,
+            )
+
             bodies.append(
                 CelestialBody(
                     id=body_id,
@@ -379,34 +530,46 @@ class GalaxyGenerator:
                     orbit_radius=orbit_dist,
                     orbit_speed=orbit_speed,
                     current_angle=(i * 1.6) % (2 * math.pi),
-                    radius_km=3000.0 + i * 2500.0,
+                    radius_km=float(phys["radius_km"]),
                     color=color,
-                    hazards=("pirate_activity",) if market_arch == "black_market" else (),
+                    hazards=body_hazards,
                     station_dockable=is_inhabited,
                     market_archetype=market_arch,
                     scan_completed=False,
                     scan_discovery=discovery,
-                    gravity=gravity_map.get(body_type, 1.0),
-                    atmosphere=atmosphere_map.get(body_type, "none"),
-                    temperature_c=temp_map.get(body_type, 0),
+                    gravity=float(phys["gravity"]),
+                    atmosphere=str(phys["atmosphere"]),
+                    temperature_c=int(phys["temperature_c"]),
                     resources=resource_map.get(body_type, ()),
                     moons=moons,
                     landable=body_type in habitable_types,
                     faction=faction if is_inhabited else "Unclaimed",
                     population=body_pop,
                     government=body_gov,
+                    habitability=float(phys["habitability"]),
                 )
             )
 
         if not any(b.landable for b in bodies[1:]):
             landable_index = len(bodies) - 2 if bodies[-1].station_dockable else len(bodies) - 1
+            savanna_phys = compute_scientific_planet_properties(
+                body_type="savanna",
+                spectral_type=spectral,
+                orbit_radius_au=bodies[landable_index].orbit_radius,
+                rad_sample=6200.0,
+                grav_sample=1.0,
+                temp_jitter=0,
+                hazards=bodies[landable_index].hazards,
+            )
             bodies[landable_index] = replace(
                 bodies[landable_index],
                 body_type="savanna",
                 color="#90be6d",
-                atmosphere="nitrogen-oxygen",
-                temperature_c=24,
-                gravity=1.0,
+                radius_km=float(savanna_phys["radius_km"]),
+                atmosphere=str(savanna_phys["atmosphere"]),
+                temperature_c=int(savanna_phys["temperature_c"]),
+                gravity=float(savanna_phys["gravity"]),
+                habitability=float(savanna_phys["habitability"]),
                 resources=("hydroponics", "medicines"),
                 landable=True,
                 station_dockable=True,
@@ -417,10 +580,20 @@ class GalaxyGenerator:
             )
 
         if not any(b.station_dockable for b in bodies[1:]):
+            station_phys = compute_scientific_planet_properties(
+                body_type="orbital_station",
+                spectral_type=spectral,
+                orbit_radius_au=bodies[-1].orbit_radius,
+            )
             bodies[-1] = replace(
                 bodies[-1],
                 body_type="orbital_station",
                 color="#00f0ff",
+                radius_km=float(station_phys["radius_km"]),
+                gravity=float(station_phys["gravity"]),
+                atmosphere=str(station_phys["atmosphere"]),
+                temperature_c=int(station_phys["temperature_c"]),
+                habitability=float(station_phys["habitability"]),
                 hazards=(),
                 station_dockable=True,
                 market_archetype="high_tech",

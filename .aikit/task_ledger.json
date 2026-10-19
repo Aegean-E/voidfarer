@@ -1,39 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
-    "last_phase": "verification",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792433861.8996668,
-    "completed_at": 1792433862.0156276
+    "task_id": "task-voidfarer-accurate-transit-physics-v1",
+    "last_phase": "execution",
+    "active_phase": 3,
+    "status": "in_progress",
+    "updated_at": 1792434953.7674563
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-frontier-command-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-frontier-command-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792371774.3242133,
-      "timestamp_str": "2026-10-19 04:02:54"
-    },
-    {
-      "task_id": "task-voidfarer-capacity-cli-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/2] Follow-up hardening: enforce cargo capacity on combat/anomaly rewards and expose frontier systems through CLI commands, with regression tests",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792386437.1772544,
-      "timestamp_str": "2026-10-19 08:07:17",
-      "impact_assessment": {
-        "why": "ADR-017 recorded reward-cargo capacity bypass and web-only frontier access as residual gaps",
-        "benefits": "Maintains the cargo-volume invariant across all grants and makes AI/depot/message/landing/merc/alliance systems usable from the terminal",
-        "risks": "contract: additive CLI commands only; dependency: stdlib; concurrency: existing engine locks; state: overflow cargo is jettisoned and reported",
-        "mitigation": "Shared _grant_cargo helper, explicit overflow messages, full suite plus aikit gates"
-      }
-    },
     {
       "task_id": "task-voidfarer-capacity-cli-v1",
       "phase": "in_progress",
@@ -227,6 +201,32 @@
       "status": "completed",
       "timestamp": 1792433862.0156322,
       "timestamp_str": "2026-10-19 21:17:42"
+    },
+    {
+      "task_id": "task-voidfarer-accurate-transit-physics-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/3] Scientifically accurate planetary physics (gravity, atmosphere, temperature, habitability), 2D Euclidean sublight transit distance/ticks, and persistent tick-synced radar transit animation",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792434488.0807726,
+      "timestamp_str": "2026-10-19 21:28:08",
+      "impact_assessment": {
+        "why": "User requested that clicking transit does not end the animation early, sublight transit calculates true orbital distance and advances appropriate ticks, and planetary atmosphere, gravity, temperature, and habitability are scientifically accurate.",
+        "benefits": "Continuous tick-synchronized radar transit trajectory until arrival, accurate 2D polar-to-Cartesian Euclidean orbital distance and sublight tick scaling, and astrophysically grounded planetary radius, density, surface gravity, stellar-flux equilibrium temperature, atmospheric composition/pressure, and Earth Similarity habitability index.",
+        "risks": "contract: CelestialBody gains habitability field and updated atmosphere/gravity/temperature values; dependency: none (stdlib math only); concurrency: thread-safe SimulationEngine lock preserved; state: legacy saves need deterministic physics and habitability backfill without altering RNG seed streams.",
+        "mitigation": "Preserve exact RNG call counts in GalaxyGenerator._generate_bodies, backfill legacy saves in SimulationEngine._bootstrap_frontier, and verify with failing-first unit and cockpit tests."
+      }
+    },
+    {
+      "task_id": "task-voidfarer-accurate-transit-physics-v1",
+      "phase": "execution",
+      "phase_num": 3,
+      "description": "[milestone 1/3] Add scientifically accurate planetary physics, atmosphere, gravity, temperature, and habitability index; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792434953.7674563,
+      "timestamp_str": "2026-10-19 21:35:53"
     }
   ]
 }

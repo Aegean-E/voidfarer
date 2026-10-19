@@ -152,7 +152,76 @@ class TestTransitCivEvents(unittest.TestCase):
         self.assertIn("/api/travel", js)
         self.assertIn("/api/events/dismiss", js)
 
+    def test_scientifically_accurate_planetary_physics_and_habitability(self) -> None:
+        from voidfarer.galaxy import compute_habitability_index, compute_scientific_planet_properties
+
+        systems = GalaxyGenerator(seed=42).generate_galaxy()
+        all_planets = [b for s in systems.values() for b in s.bodies[1:]]
+        self.assertGreater(len(all_planets), 40)
+
+        for sys_obj in systems.values():
+            star = sys_obj.bodies[0]
+            self.assertEqual(star.habitability, 0.0)
+            for b in sys_obj.bodies[1:]:
+                self.assertGreaterEqual(b.habitability, 0.0)
+                self.assertLessEqual(b.habitability, 100.0)
+                if b.body_type in ("terrestrial", "oceanic", "savanna"):
+                    self.assertIn("N2", b.atmosphere)
+                    self.assertIn("O2", b.atmosphere)
+                    self.assertIn("atm", b.atmosphere)
+                    self.assertGreaterEqual(b.gravity, 0.65)
+                    self.assertLessEqual(b.gravity, 1.35)
+                    self.assertGreaterEqual(b.temperature_c, -15)
+                    self.assertLessEqual(b.temperature_c, 55)
+                    self.assertGreaterEqual(b.habitability, 65.0)
+                elif b.body_type in ("gas_giant", "ringed_giant"):
+                    self.assertIn("H2", b.atmosphere)
+                    self.assertIn("He", b.atmosphere)
+                    self.assertGreaterEqual(b.radius_km, 50000.0)
+                    self.assertEqual(b.habitability, 0.0)
+                elif b.body_type == "methane_storm":
+                    self.assertIn("CH4", b.atmosphere)
+                    self.assertGreaterEqual(b.radius_km, 20000.0)
+                    self.assertLessEqual(b.radius_km, 30000.0)
+                    self.assertEqual(b.habitability, 0.0)
+                elif b.body_type == "asteroid_belt":
+                    self.assertLessEqual(b.gravity, 0.15)
+                    self.assertLessEqual(b.habitability, 5.0)
+                elif b.body_type == "lava_world":
+                    self.assertGreaterEqual(b.temperature_c, 500)
+                    self.assertEqual(b.habitability, 0.0)
+
+        # Closer orbit around an O-type star vs far orbit around an M-type star on airless barren worlds
+        hot_barren = compute_scientific_planet_properties("barren", "O", 1.2, 3500.0, 1.0, 0)
+        cold_barren = compute_scientific_planet_properties("barren", "M", 6.5, 3500.0, 1.0, 0)
+        self.assertGreater(hot_barren["temperature_c"], cold_barren["temperature_c"])
+        self.assertGreaterEqual(compute_habitability_index("terrestrial", 1.0, 18, "N2 78%, O2 21% (1.0 atm)", ()), 85.0)
+
+    def test_legacy_save_backfills_scientific_physics_and_habitability(self) -> None:
+        from dataclasses import replace
+
+        sol = self.engine.state.systems["sol"]
+        legacy_body = replace(
+            sol.bodies[1],
+            body_type="terrestrial",
+            atmosphere="breathable",
+            gravity=2.5,
+            temperature_c=0,
+            habitability=0.0,
+        )
+        legacy_sol = replace(sol, bodies=(sol.bodies[0], legacy_body, *sol.bodies[2:]))
+        legacy_systems = dict(self.engine.state.systems)
+        legacy_systems["sol"] = legacy_sol
+        legacy_state = self.engine._clone_state(systems=legacy_systems)
+
+        reloaded_engine = SimulationEngine(seed=42, state=legacy_state)
+        upgraded_body = reloaded_engine.state.systems["sol"].bodies[1]
+        self.assertGreater(upgraded_body.habitability, 65.0)
+        self.assertIn("N2", upgraded_body.atmosphere)
+        self.assertLessEqual(upgraded_body.gravity, 1.35)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

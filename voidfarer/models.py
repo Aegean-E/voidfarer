@@ -61,6 +61,7 @@ class CelestialBody:
     faction: str = "Unclaimed"
     population: int = 0
     government: str = "None"
+    habitability: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -90,6 +91,7 @@ class CelestialBody:
             faction=str(data.get("faction", "Unclaimed")),
             population=int(data.get("population", 0)),
             government=str(data.get("government", "None")),
+            habitability=float(data.get("habitability", 0.0)),
         )
 
 

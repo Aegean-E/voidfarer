@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `35`
 - **Total Classes**: `89`
-- **Total Top-Level Functions**: `71`
-- **Total Class Methods**: `487`
-- **Total Source Lines**: `13920`
+- **Total Top-Level Functions**: `73`
+- **Total Class Methods**: `489`
+- **Total Source Lines**: `14185`
 
 ---
 
@@ -542,7 +542,7 @@
 ### [`tests/test_transit_civ_events.py`](tests/test_transit_civ_events.py)
 > *Tests for in-system transit (TravelState), planetary civilization metadata, and cockpit GameEvents.*
 
-**Size**: `158` lines (`6572` bytes)
+**Size**: `227` lines (`10213` bytes)
 
 **Classes:**
 - `class TestTransitCivEvents` - *Verify TravelState, planetary faction/population/government, and GameEvent lifecycles.*
@@ -554,6 +554,8 @@
   - Method `.test_start_travel_validation_guards()`
   - Method `.test_event_emission_and_dismissal()`
   - Method `.test_cli_and_cockpit_surface_for_travel_and_events()`
+  - Method `.test_scientifically_accurate_planetary_physics_and_habitability()`
+  - Method `.test_legacy_save_backfills_scientific_physics_and_habitability()`
 
 ---
 
@@ -634,7 +636,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `3062` lines (`148156` bytes)
+**Size**: `3083` lines (`149605` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -746,7 +748,7 @@
 ### [`voidfarer/galaxy.py`](voidfarer/galaxy.py)
 > *Procedural galaxy generator, celestial orbital mechanics, and market economy.*
 
-**Size**: `545` lines (`25177` bytes)
+**Size**: `718` lines (`31814` bytes)
 
 **Classes:**
 - `class GalaxyGenerator` - *Generates deterministic star systems, celestial bodies, and hyperlane corridors.*
@@ -756,6 +758,10 @@
   - Method `._build_hyperlanes(systems)` - *Calculate hyperlane network ensuring a fully connected graph.*
   - Method `.get_market_quotes(system, body)` - *Compute localized commodity market pricing based on archetype and security.*
   - Method `.get_random_anomaly(seed)` - *Select and instantiate a deep-space anomaly event.*
+
+**Functions:**
+- `def compute_habitability_index(body_type, gravity, temperature_c, atmosphere, hazards)` - *Compute a scientific Earth Similarity / Habitability Index in [0.0, 100.0].*
+- `def compute_scientific_planet_properties(body_type, spectral_type, orbit_radius_au, rad_sample, grav_sample, temp_jitter, hazards)` - *Derive physically consistent radius_km, gravity, atmosphere, temperature_c, and habitability.*
 
 ---
 
@@ -778,7 +784,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1267` lines (`45031` bytes)
+**Size**: `1269` lines (`45124` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*

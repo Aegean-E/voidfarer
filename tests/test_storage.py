@@ -101,6 +101,37 @@ class TestStorage(unittest.TestCase):
         self.storage.save_file.write_bytes(b"\xff\xfe\x00broken")
         self.assertIsNone(self.storage.load())
 
+    def test_multiple_save_slots_persist_list_and_delete_independently(self):
+        self.storage.save(self.engine.state)
+        alt_engine = SimulationEngine(seed=99)
+        alt_engine.tick(3)
+        slot_path = self.storage.save(alt_engine.state, slot="slot_1")
+        self.assertTrue(slot_path.exists())
+        self.assertEqual(slot_path.name, "voidfarer_save_slot_1.json")
+
+        saves = self.storage.list_saves()
+        slots = {entry["slot"]: entry for entry in saves}
+        self.assertIn("default", slots)
+        self.assertIn("slot_1", slots)
+        self.assertEqual(slots["slot_1"]["tick"], 3)
+        self.assertIn("credits", slots["slot_1"])
+
+        loaded_default = self.storage.load("default")
+        loaded_slot1 = self.storage.load("slot_1")
+        self.assertIsNotNone(loaded_default)
+        self.assertIsNotNone(loaded_slot1)
+        self.assertEqual(loaded_default.galaxy_seed, 42)
+        self.assertEqual(loaded_slot1.galaxy_seed, 99)
+
+        self.assertTrue(self.storage.delete_save("slot_1"))
+        self.assertIsNone(self.storage.load("slot_1"))
+        self.assertIsNotNone(self.storage.load("default"))
+
+    def test_invalid_save_slot_name_raises_value_error(self):
+        for bad_slot in ("../escape", "slot/2", "slot with spaces", "a" * 45):
+            with self.assertRaises(ValueError):
+                self.storage.save(self.engine.state, slot=bad_slot)
+
 
 if __name__ == "__main__":
     unittest.main()

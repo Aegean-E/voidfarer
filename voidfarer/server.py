@@ -19,7 +19,7 @@ from voidfarer.economy import get_galactic_trade_routes
 from voidfarer.engine import SimulationEngine
 from voidfarer.frontier import MERCENARY_CATALOG
 from voidfarer.inventory import get_inventory_manifest
-from voidfarer.storage import StorageManager
+from voidfarer.storage import StorageManager, resolve_slot_name
 from voidfarer.upgrades import (
     CATALOG_CHASSIS,
     CATALOG_UPGRADES,
@@ -244,6 +244,10 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             })
             return
 
+        if path == "/api/saves":
+            self._send_json({"ok": True, "saves": self.storage.list_saves()})
+            return
+
         # Serve static assets
         if path == "/" or path == "":
             rel_path = "index.html"
@@ -291,29 +295,55 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         body = self._read_body_json()
 
         if path == "/api/save":
-            self.storage.save(self.engine.state)
-            self._send_json({"ok": True, "message": "Game saved."})
+            slot = resolve_slot_name(body.get("slot"))
+            self.storage.save(self.engine.state, slot=slot)
+            self._send_json({
+                "ok": True,
+                "slot": slot,
+                "message": f"Game saved ({slot}).",
+                "saves": self.storage.list_saves(),
+            })
             return
 
         if path == "/api/load":
-            loaded = self.storage.load()
+            slot = resolve_slot_name(body.get("slot"))
+            loaded = self.storage.load(slot=slot)
             if loaded is None:
-                self._send_error_json("No save file is available.", status=HTTPStatus.NOT_FOUND)
+                self._send_error_json(f"No save file is available for slot '{slot}'.", status=HTTPStatus.NOT_FOUND)
                 return
             ok, msg = self.engine.load_state(loaded)
-            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            self._send_json({
+                "ok": ok,
+                "slot": slot,
+                "message": f"{msg} [{slot}]",
+                "state": self.engine.get_status_snapshot(),
+                "saves": self.storage.list_saves(),
+            })
             return
 
         if path == "/api/delete-save":
-            self.storage.clear()
-            self._send_json({"ok": True, "message": "Save deleted."})
+            slot = resolve_slot_name(body.get("slot"))
+            self.storage.clear(slot=slot)
+            self._send_json({
+                "ok": True,
+                "slot": slot,
+                "message": f"Save deleted ({slot}).",
+                "saves": self.storage.list_saves(),
+            })
             return
 
         if path == "/api/new-game":
             seed = _int_field(body, "seed", 42, minimum=0)
+            slot = resolve_slot_name(body.get("slot"))
             ok, msg = self.engine.reset(seed)
-            self.storage.save(self.engine.state)
-            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            self.storage.save(self.engine.state, slot=slot)
+            self._send_json({
+                "ok": ok,
+                "slot": slot,
+                "message": msg,
+                "state": self.engine.get_status_snapshot(),
+                "saves": self.storage.list_saves(),
+            })
             return
 
         if path == "/api/land":

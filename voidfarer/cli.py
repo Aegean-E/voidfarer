@@ -618,6 +618,50 @@ def cmd_land(engine: SimulationEngine, storage: StorageManager, body_id: str) ->
     return 0 if ok else 1
 
 
+def cmd_saves(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """List, save, load, or delete named save slots."""
+    action = parts[1].lower() if len(parts) > 1 else "list"
+    slot = parts[2] if len(parts) > 2 else "default"
+    if action == "list":
+        saves = storage.list_saves()
+        print(f"\n{BOLD}{CYAN}=== SAVE SLOTS ==={RESET}")
+        if not saves:
+            print(f"{DIM}No save slots found.{RESET}")
+            return 0
+        for s in saves:
+            print(
+                f"  [{BOLD}{s['slot']:<14}{RESET}] {s['commander_name']} ({s['ship_class']}) | "
+                f"System: {s['current_system_id']} | Date: {s['stardate']} (Tick #{s['tick']}) | {YELLOW}{s['credits']} cr{RESET}"
+            )
+        return 0
+    try:
+        if action == "save":
+            storage.save(engine.state, slot=slot)
+            print(f"{GREEN}Saved game state to slot '{slot}'.{RESET}")
+            return 0
+        if action == "load":
+            loaded = storage.load(slot=slot)
+            if loaded is None:
+                print(f"{RED}No save found in slot '{slot}'.{RESET}")
+                return 1
+            ok, msg = engine.load_state(loaded)
+            storage.save(engine.state)
+            print((GREEN if ok else RED) + f"{msg} [{slot}]" + RESET)
+            return 0 if ok else 1
+        if action == "delete":
+            deleted = storage.delete_save(slot=slot)
+            if not deleted:
+                print(f"{YELLOW}No save file existed for slot '{slot}'.{RESET}")
+                return 1
+            print(f"{GREEN}Deleted save slot '{slot}'.{RESET}")
+            return 0
+    except ValueError as exc:
+        print(f"{RED}{exc}{RESET}")
+        return 1
+    print(f"{RED}Usage:{RESET} saves [list|save|load|delete] [slot]")
+    return 1
+
+
 def cmd_mercs(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
     action = parts[1] if len(parts) > 1 else "list"
     if action == "list":
@@ -1217,6 +1261,11 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             cmd_shipyard(engine, storage, parts)
         elif cmd in ("chassis",):
             cmd_shipyard(engine, storage, ["shipyard", "chassis"] + parts[1:])
+        elif cmd in ("saves", "save", "load"):
+            if cmd in ("save", "load"):
+                cmd_saves(engine, storage, ["saves", cmd] + parts[1:])
+            else:
+                cmd_saves(engine, storage, parts)
         elif cmd == "help":
             print(f"{BOLD}Available subcommands:{RESET}")
             print("  status                         - Telemetry, fleet roster, and subsystem readouts")
@@ -1254,6 +1303,7 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             print("  land <body_id>                 - Land on a habitable body")
             print("  mercs [list|hire|dismiss|refit] - Mercenary contracts and fleet refits")
             print("  allies [list|form]             - Alliance roster and formation")
+            print("  saves [list|save|load|delete] [slot] - Manage multiple save slots")
             print("  exit / quit                    - Close interactive link")
         else:
             print(f"{RED}Unknown command '{cmd}'. Type 'help' for command matrix.{RESET}")
@@ -1388,6 +1438,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     events_p = subparsers.add_parser("events", help="List or dismiss cockpit popup events")
     events_p.add_argument("action", nargs="?", default="list", choices=["list", "dismiss"])
     events_p.add_argument("event_id", nargs="?", help="Event ID to dismiss")
+
+    saves_p = subparsers.add_parser("saves", help="List, save, load, or delete save slots")
+    saves_p.add_argument("action", nargs="?", default="list", choices=["list", "save", "load", "delete"])
+    saves_p.add_argument("slot", nargs="?", default="default", help="Save slot name (default: 'default')")
 
     pwr_p = subparsers.add_parser("power", help="Route reactor power (must sum to 100)")
     pwr_p.add_argument("engines", type=int, help="Engines power percentage")
@@ -1578,6 +1632,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.event_id:
             parts.append(args.event_id)
         return cmd_events(engine, storage, parts)
+    elif args.command == "saves":
+        return cmd_saves(engine, storage, ["saves", args.action, args.slot])
     elif args.command == "power":
         ok, msg = engine.route_power(args.engines, args.shields, args.sensors, args.weapons)
         print((GREEN if ok else RED) + msg + RESET)

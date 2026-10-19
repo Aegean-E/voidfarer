@@ -1,39 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-transit-civ-events-v1",
-    "last_phase": "phase 4",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792430779.4116602,
-    "completed_at": 1792430779.557971
+    "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
+    "last_phase": "verification",
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792433359.4685383
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-audit-hardening-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-audit-hardening-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792363069.4341273,
-      "timestamp_str": "2026-10-19 01:37:49"
-    },
-    {
-      "task_id": "task-voidfarer-ai-galaxy-calendar-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/4] Plan: add adaptive enemy AI intents/profiles, expand every star system to 5-6 planets with guaranteed docking, and display an in-game calendar date (DD.MM.YYYY) alongside ticks across engine, CLI, server, and cockpit",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792365224.8294218,
-      "timestamp_str": "2026-10-19 02:13:44",
-      "impact_assessment": {
-        "why": "The game currently has scripted enemy abilities, only 2-3 planets per system, and a hard-to-read stardate; the requested feature set needs deterministic, save-compatible additions that preserve existing combat, economy, time, and HUD contracts",
-        "benefits": "Enemies react to player combo, hull, and shields; exploration/trading gets roughly double the planets with guaranteed stations; players see an intuitive date while stardate and tick data remain available to existing consumers",
-        "risks": "contract: CombatEncounter save fields are additive with defaults, TimeState keeps stardate, body_1..body_3 ids stay stable; dependency: stdlib datetime only; concurrency: AI decisions are pure functions under the engine lock; state: new enum-like strings default safely on old saves",
-        "mitigation": "Failing-first tests for policy branches and combat deltas, galaxy invariants, and date rollover; ADR-016 records trade-offs; full suite plus aikit check gates"
-      }
-    },
     {
       "task_id": "task-voidfarer-ai-galaxy-calendar-v1",
       "phase": "in_progress",
@@ -232,6 +206,32 @@
       "status": "completed",
       "timestamp": 1792430779.5579722,
       "timestamp_str": "2026-10-19 20:26:19"
+    },
+    {
+      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/4] Add ESC menu hotkey, multiple save slots across storage/REST/CLI/cockpit, and full-viewport background NAV-Radar orbital map (G-004)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792432959.2480946,
+      "timestamp_str": "2026-10-19 21:02:39",
+      "impact_assessment": {
+        "why": "Deliver user-requested ESC menu toggle, multi-slot save/load/delete/list persistence across backend and cockpit UI, and full-screen background orbital radar map with all HUD decks floating on top",
+        "benefits": "Instant ESC menu/modal control, independent named/numbered save slots with rich metadata and default-slot backward compatibility, and an immersive full-viewport interactive orbital radar background",
+        "risks": "contract: /api/save, /api/load, /api/delete-save and StorageManager must stay backward-compatible with no-arg callers; dependency: zero external dependencies; concurrency: StorageManager write lock and engine lock must guard multi-slot operations; state: CSS backdrop-filter on parent containers would trap position:fixed radar if not cleared on #panelCenter/#panelNav",
+        "mitigation": "Default slot=None to voidfarer_save.json, validate slot identifiers against path traversal, reuse atomic write + .bak recovery per slot, remove ancestor backdrop-filter on #panelCenter/#panelNav while keeping HUD cards elevated at z-index>=2 with pointer-events pass-through"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[milestone 1/4] Multi-slot atomic save/load/list/delete in StorageManager, REST API (/api/saves, /api/save, /api/load, /api/delete-save), and CLI saves subcommand; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792433359.4685383,
+      "timestamp_str": "2026-10-19 21:09:19"
     }
   ]
 }

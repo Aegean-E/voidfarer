@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `35`
 - **Total Classes**: `89`
-- **Total Top-Level Functions**: `68`
-- **Total Class Methods**: `478`
-- **Total Source Lines**: `13666`
+- **Total Top-Level Functions**: `71`
+- **Total Class Methods**: `484`
+- **Total Source Lines**: `13897`
 
 ---
 
@@ -418,7 +418,7 @@
 ### [`tests/test_server.py`](tests/test_server.py)
 > *Unit and integration tests for embedded HTTP server REST endpoints.*
 
-**Size**: `239` lines (`9981` bytes)
+**Size**: `273` lines (`11495` bytes)
 
 **Classes:**
 - `class TestServer`
@@ -448,13 +448,14 @@
   - Method `.test_frontier_endpoints()`
   - Method `.test_landing_and_depot_endpoints()`
   - Method `.test_save_load_delete_endpoints()`
+  - Method `.test_multiple_save_slots_endpoints_and_listing()`
 
 ---
 
 ### [`tests/test_storage.py`](tests/test_storage.py)
 > *Unit tests for atomic persistence, crash safety, and shadow backup recovery.*
 
-**Size**: `106` lines (`4397` bytes)
+**Size**: `137` lines (`5803` bytes)
 
 **Classes:**
 - `class TestStorage`
@@ -464,6 +465,8 @@
   - Method `.test_failed_atomic_replace_raises_and_preserves_previous_save()`
   - Method `.test_schema_invalid_primary_falls_back_to_backup()`
   - Method `.test_invalid_utf8_does_not_crash_loading()`
+  - Method `.test_multiple_save_slots_persist_list_and_delete_independently()`
+  - Method `.test_invalid_save_slot_name_raises_value_error()`
 
 ---
 
@@ -561,7 +564,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `1623` lines (`83173` bytes)
+**Size**: `1679` lines (`85727` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -579,6 +582,7 @@
 - `def cmd_messages(engine, storage, parts)`
 - `def cmd_depot(engine, storage, parts)`
 - `def cmd_land(engine, storage, body_id)`
+- `def cmd_saves(engine, storage, parts)` - *List, save, load, or delete named save slots.*
 - `def cmd_mercs(engine, storage, parts)`
 - `def cmd_allies(engine, storage, parts)`
 - `def cmd_upgrades(engine, storage, parts)` - *Inspect and purchase hardware modules from station arsenal.*
@@ -896,7 +900,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `820` lines (`33237` bytes)
+**Size**: `850` lines (`34248` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*
@@ -926,7 +930,7 @@
 ### [`voidfarer/storage.py`](voidfarer/storage.py)
 > *Crash-resilient storage engine and atomic persistence for VoidFarer.*
 
-**Size**: `114` lines (`4255` bytes)
+**Size**: `194` lines (`7708` bytes)
 
 **Classes:**
 - `class StorageManager` - *Manages power-loss safe atomic persistence and shadow backups.*
@@ -934,9 +938,16 @@
   - Method `._write_atomic(target_path, data)` - *Write JSON payload atomically using a unique temporary file, fsync, and shadow backup.*
   - Method `._read_json_file(target_path)`
   - Method `._quarantine(target_path)`
-  - Method `.save(state)` - *Atomically persist universe and ship state.*
-  - Method `.load()` - *Load game state from disk, quarantining corrupt primary data and trying the backup.*
-  - Method `.clear()` - *Remove save file and shadow backup.*
+  - Method `._slot_path(slot)`
+  - Method `.save(state, slot)` - *Atomically persist universe and ship state into the requested save slot.*
+  - Method `.load(slot)` - *Load game state from disk for the given slot, quarantining corrupt primary data and trying the backup.*
+  - Method `.clear(slot)` - *Remove save file and shadow backup for the given slot.*
+  - Method `.delete_save(slot)` - *Delete a save slot and its shadow backup.*
+  - Method `.list_saves()` - *List all available save slots with summary metadata.*
+
+**Functions:**
+- `def resolve_slot_name(slot)` - *Validate and normalize a save slot identifier.*
+- `def _extract_save_summary(slot_name, path, data)` - *Build a compact metadata dictionary for a save slot.*
 
 ---
 

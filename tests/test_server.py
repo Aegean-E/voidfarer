@@ -234,6 +234,40 @@ class TestServer(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
 
+    def test_multiple_save_slots_endpoints_and_listing(self):
+        st_s1, data_s1 = self._post("/api/save", {"slot": "slot_1"})
+        self.assertEqual(st_s1, 200)
+        payload_s1 = json.loads(data_s1.decode("utf-8"))
+        self.assertTrue(payload_s1["ok"])
+        self.assertEqual(payload_s1["slot"], "slot_1")
+
+        self._post("/api/new-game", {"seed": 19})
+        st_s2, _ = self._post("/api/save", {"slot": "slot_2"})
+        self.assertEqual(st_s2, 200)
+
+        st_list, data_list = self._get("/api/saves")
+        self.assertEqual(st_list, 200)
+        saves_payload = json.loads(data_list.decode("utf-8"))
+        self.assertTrue(saves_payload["ok"])
+        slot_names = {entry["slot"] for entry in saves_payload["saves"]}
+        self.assertIn("slot_1", slot_names)
+        self.assertIn("slot_2", slot_names)
+
+        st_load, data_load = self._post("/api/load", {"slot": "slot_1"})
+        self.assertEqual(st_load, 200)
+        loaded_payload = json.loads(data_load.decode("utf-8"))
+        self.assertTrue(loaded_payload["ok"])
+        self.assertEqual(loaded_payload["slot"], "slot_1")
+
+        st_del, data_del = self._post("/api/delete-save", {"slot": "slot_1"})
+        self.assertEqual(st_del, 200)
+        self.assertTrue(json.loads(data_del.decode("utf-8"))["ok"])
+        st_missing, _ = self._post("/api/load", {"slot": "slot_1"})
+        self.assertEqual(st_missing, 404)
+
+        st_bad, _ = self._post("/api/save", {"slot": "../bad"})
+        self.assertEqual(st_bad, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

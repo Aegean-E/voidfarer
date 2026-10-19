@@ -129,7 +129,7 @@ class TestTransitCivEvents(unittest.TestCase):
         snap_after = self.engine.get_status_snapshot()
         self.assertEqual(len(snap_after["undismissed_events"]), 0)
 
-    def test_cli_travel_and_events(self) -> None:
+    def test_cli_and_cockpit_surface_for_travel_and_events(self) -> None:
         tmp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(tmp_dir.cleanup)
         save_path = Path(tmp_dir.name) / "save.json"
@@ -139,7 +139,18 @@ class TestTransitCivEvents(unittest.TestCase):
 
         rc_events = cli_main(["--save-path", str(save_path), "events", "list"])
         self.assertEqual(rc_events, 0)
-        self.assertIsNotNone(VoidFarerHTTPHandler)
+
+        static_dir = Path(__file__).resolve().parent.parent / "voidfarer" / "static"
+        html = (static_dir / "index.html").read_text(encoding="utf-8")
+        js = (static_dir / "app.js").read_text(encoding="utf-8")
+        self.assertIn("targetFaction", html)
+        self.assertIn("targetPopulation", html)
+        self.assertIn("targetGovernment", html)
+        self.assertIn("btnSublightTarget", html)
+        self.assertIn("btnQuantumTarget", html)
+        self.assertIn("eventPopupContainer", html)
+        self.assertIn("/api/travel", js)
+        self.assertIn("/api/events/dismiss", js)
 
 
 if __name__ == "__main__":

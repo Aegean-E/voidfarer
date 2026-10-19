@@ -5,18 +5,9 @@
     "last_phase": "phase 4",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792430321.601728
+    "updated_at": 1792430733.7544153
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-equipment-bonuses-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-equipment-bonuses-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792360083.2368681,
-      "timestamp_str": "2026-10-19 00:48:03"
-    },
     {
       "task_id": "task-voidfarer-audit-hardening-v1",
       "phase": "in_progress",
@@ -237,6 +228,16 @@
       "status": "in_progress",
       "timestamp": 1792430321.601728,
       "timestamp_str": "2026-10-19 20:18:41"
+    },
+    {
+      "task_id": "task-voidfarer-transit-civ-events-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 4/5] Add planetary civilization fields, sublight/quantum transit controls, and popup event cards to cockpit HUD; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792430733.7544153,
+      "timestamp_str": "2026-10-19 20:25:33"
     }
   ]
 }

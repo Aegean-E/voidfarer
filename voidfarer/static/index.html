@@ -478,6 +478,8 @@
 
             <!-- Center Deck: Context Alerts, NAV-Radar & Reactor Matrix -->
             <section class="deck-panel panel-center" id="panelCenter">
+                <!-- Realtime Cockpit Popup Events -->
+                <div class="event-popup-container" id="eventPopupContainer" style="display: none;"></div>
                 <!-- Combat Intercept Overlay (Active when intercepted) -->
                 <div class="combat-alert-card" id="combatCard" style="display: none;">
                     <div class="combat-header">
@@ -573,10 +575,15 @@
                             <span>ATMOSPHERE <strong id="targetAtmosphere">--</strong></span>
                             <span>TEMP <strong id="targetTemp">--</strong></span>
                             <span>MOONS <strong id="targetMoons">--</strong></span>
+                            <span>FACTION <strong id="targetFaction">--</strong></span>
+                            <span>POPULATION <strong id="targetPopulation">--</strong></span>
+                            <span>GOVERNMENT <strong id="targetGovernment">--</strong></span>
                         </div>
                         <div class="target-resources" id="targetResources"></div>
                         <div class="target-actions" id="targetActions">
                             <button class="btn-action btn-cyan" id="btnOrbitTarget" disabled>ENTER ORBIT</button>
+                            <button class="btn-action btn-amber" id="btnSublightTarget" disabled>SUBLIGHT TRANSIT</button>
+                            <button class="btn-action btn-purple" id="btnQuantumTarget" disabled>QUANTUM TRANSIT</button>
                             <button class="btn-action btn-green" id="btnLandTarget" style="display:none;" disabled>LAND ON SURFACE</button>
                             <button class="btn-action btn-purple" id="btnJumpTarget" style="display:none;" disabled>HYPERSPACE JUMP</button>
                         </div>

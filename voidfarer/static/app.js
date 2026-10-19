@@ -304,13 +304,19 @@ class CockpitApp {
         this.targetDist = document.getElementById("targetDist");
         this.targetDesc = document.getElementById("targetDesc");
         this.btnOrbitTarget = document.getElementById("btnOrbitTarget");
+        this.btnSublightTarget = document.getElementById("btnSublightTarget");
+        this.btnQuantumTarget = document.getElementById("btnQuantumTarget");
         this.btnLandTarget = document.getElementById("btnLandTarget");
         this.btnJumpTarget = document.getElementById("btnJumpTarget");
         this.targetGravity = document.getElementById("targetGravity");
         this.targetAtmosphere = document.getElementById("targetAtmosphere");
         this.targetTemp = document.getElementById("targetTemp");
         this.targetMoons = document.getElementById("targetMoons");
+        this.targetFaction = document.getElementById("targetFaction");
+        this.targetPopulation = document.getElementById("targetPopulation");
+        this.targetGovernment = document.getElementById("targetGovernment");
         this.targetResources = document.getElementById("targetResources");
+        this.eventPopupContainer = document.getElementById("eventPopupContainer");
 
         // Power Matrix
         this.sliderEng = document.getElementById("sliderEng");
@@ -505,6 +511,8 @@ class CockpitApp {
 
         // Target actions
         this.btnOrbitTarget.addEventListener("click", () => this.handleOrbitAction());
+        this.btnSublightTarget?.addEventListener("click", () => this.handleTravelAction("sublight"));
+        this.btnQuantumTarget?.addEventListener("click", () => this.handleTravelAction("quantum"));
         this.btnJumpTarget.addEventListener("click", () => this.handleJumpAction());
 
         // Power Sliders
@@ -1058,6 +1066,7 @@ class CockpitApp {
             this.renderMessages();
         }
 
+        this.renderEventPopups();
         this.updateTargetCard();
     }
 
@@ -1880,19 +1889,33 @@ class CockpitApp {
 
     updateTargetCard() {
         if (!this.state) return;
+        const travel = this.state.ship?.travel || this.state.travel || null;
         if (!this.selectedTarget) {
-            this.targetType.textContent = "TARGET: NONE SELECTED";
+            this.targetType.textContent = travel
+                ? `IN TRANSIT (${travel.mode.toUpperCase()}) -> ${travel.destination_body_id.toUpperCase()}`
+                : "TARGET: NONE SELECTED";
             this.targetName.textContent = "Select a celestial body on radar";
             this.targetDist.textContent = "--";
             this.targetDesc.textContent = "Click on any planet, station, or star in the radar display to calculate orbital approach.";
             this.btnOrbitTarget.style.display = "inline-block";
             this.btnOrbitTarget.disabled = true;
+            if (this.btnSublightTarget) {
+                this.btnSublightTarget.style.display = "inline-block";
+                this.btnSublightTarget.disabled = true;
+            }
+            if (this.btnQuantumTarget) {
+                this.btnQuantumTarget.style.display = "inline-block";
+                this.btnQuantumTarget.disabled = true;
+            }
             this.btnJumpTarget.style.display = "none";
             if (this.btnLandTarget) this.btnLandTarget.style.display = "none";
             this.targetGravity.textContent = "--";
             this.targetAtmosphere.textContent = "--";
             this.targetTemp.textContent = "--";
             this.targetMoons.textContent = "--";
+            if (this.targetFaction) this.targetFaction.textContent = "--";
+            if (this.targetPopulation) this.targetPopulation.textContent = "--";
+            if (this.targetGovernment) this.targetGovernment.textContent = "--";
             this.targetResources.innerHTML = "";
             return;
         }
@@ -1911,17 +1934,35 @@ class CockpitApp {
             this.targetDesc.textContent = b.scan_completed ? b.scan_discovery : "Uncharted body. Orbital sensor sweep required.";
             this.btnOrbitTarget.style.display = "inline-block";
             this.btnJumpTarget.style.display = "none";
-            this.btnOrbitTarget.disabled = (this.state.ship.orbiting_body_id === b.id);
-            this.btnOrbitTarget.textContent = (this.state.ship.orbiting_body_id === b.id) ? "ALREADY IN ORBIT" : "ENTER ORBIT";
+            const inOrbitHere = (this.state.ship.orbiting_body_id === b.id && !travel);
+            const inTransitHere = Boolean(travel && travel.destination_body_id === b.id);
+            this.btnOrbitTarget.disabled = inOrbitHere;
+            this.btnOrbitTarget.textContent = inOrbitHere ? "ALREADY IN ORBIT" : "ENTER ORBIT";
+            if (this.btnSublightTarget) {
+                this.btnSublightTarget.style.display = "inline-block";
+                this.btnSublightTarget.disabled = inOrbitHere || inTransitHere;
+                this.btnSublightTarget.textContent = inTransitHere && travel.mode === "sublight" ? "TRANSIT ACTIVE" : "SUBLIGHT TRANSIT";
+            }
+            if (this.btnQuantumTarget) {
+                this.btnQuantumTarget.style.display = "inline-block";
+                this.btnQuantumTarget.disabled = inOrbitHere || inTransitHere;
+                this.btnQuantumTarget.textContent = inTransitHere && travel.mode === "quantum" ? "QUANTUM ACTIVE" : "QUANTUM TRANSIT";
+            }
 
             this.targetGravity.textContent = `${(b.gravity ?? 1).toFixed(2)} g`;
             this.targetAtmosphere.textContent = b.atmosphere || "none";
             this.targetTemp.textContent = `${b.temperature_c ?? 0} C`;
             this.targetMoons.textContent = `${(b.moons || []).length}`;
+            if (this.targetFaction) this.targetFaction.textContent = b.faction || "Unclaimed";
+            if (this.targetPopulation) {
+                const pop = Number(b.population || 0);
+                this.targetPopulation.textContent = pop > 0 ? pop.toLocaleString("en-US") : "Uninhabited";
+            }
+            if (this.targetGovernment) this.targetGovernment.textContent = b.government || "None";
             this.targetResources.innerHTML = (b.resources || []).map(r => `<span>${this.escapeHtml(r)}</span>`).join("");
             if (this.btnLandTarget) {
                 this.btnLandTarget.style.display = b.landable ? "inline-block" : "none";
-                const canLand = b.landable && this.state.ship.orbiting_body_id === b.id && this.state.ship.landed_body_id !== b.id;
+                const canLand = b.landable && this.state.ship.orbiting_body_id === b.id && this.state.ship.landed_body_id !== b.id && !travel;
                 this.btnLandTarget.disabled = !canLand;
                 this.btnLandTarget.textContent = this.state.ship.landed_body_id === b.id ? "LANDED" : "LAND ON SURFACE";
             }
@@ -1944,8 +1985,13 @@ class CockpitApp {
             this.targetAtmosphere.textContent = `${(s.security * 100).toFixed(0)}% sec`;
             this.targetTemp.textContent = `${s.connections.length} links`;
             this.targetMoons.textContent = s.faction;
+            if (this.targetFaction) this.targetFaction.textContent = s.faction || "Unclaimed";
+            if (this.targetPopulation) this.targetPopulation.textContent = "--";
+            if (this.targetGovernment) this.targetGovernment.textContent = "--";
             this.targetResources.innerHTML = "";
             if (this.btnLandTarget) this.btnLandTarget.style.display = "none";
+            if (this.btnSublightTarget) this.btnSublightTarget.style.display = "none";
+            if (this.btnQuantumTarget) this.btnQuantumTarget.style.display = "none";
             this.btnOrbitTarget.style.display = "none";
             this.btnJumpTarget.style.display = "inline-block";
             this.btnJumpTarget.disabled = (!isConn || s.id === curSys.id);
@@ -2588,6 +2634,42 @@ class CockpitApp {
     async handleLandAction() {
         if (!this.selectedTarget || this.selectedType !== "body") return;
         await this.postAction("/api/land", { target: this.selectedTarget.id });
+    }
+
+    async handleTravelAction(mode = "sublight") {
+        if (!this.selectedTarget || this.selectedType !== "body") return;
+        const fromId = this.state?.ship?.orbiting_body_id || null;
+        const targetId = this.selectedTarget.id;
+        const res = await this.postAction("/api/travel", { body_id: targetId, mode });
+        if (res && res.ok) {
+            this.startTravelAnimation(fromId, targetId);
+        }
+    }
+
+    renderEventPopups() {
+        if (!this.eventPopupContainer || !this.state) return;
+        const events = this.state.undismissed_events || (this.state.events || []).filter(e => !e.dismissed);
+        if (!events || events.length === 0) {
+            this.eventPopupContainer.style.display = "none";
+            this.eventPopupContainer.innerHTML = "";
+            return;
+        }
+        this.eventPopupContainer.style.display = "flex";
+        this.eventPopupContainer.innerHTML = events.slice(-3).map(evt => `
+            <div class="event-popup-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;margin-bottom:6px;background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.35);border-radius:6px;">
+                <div>
+                    <div style="font-size:0.65rem;color:var(--neon-cyan);font-family:var(--font-mono);">[${this.escapeHtml(String(evt.kind || "system").toUpperCase())} // TICK #${Number(evt.tick || 0)}]</div>
+                    <strong style="font-size:0.82rem;color:#fff;">${this.escapeHtml(evt.title || "")}</strong>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">${this.escapeHtml(evt.message || "")}</div>
+                </div>
+                <button class="btn-hud btn-cyan" data-dismiss-event="${this.escapeHtml(evt.id)}">DISMISS</button>
+            </div>
+        `).join("");
+        this.eventPopupContainer.querySelectorAll("[data-dismiss-event]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                this.postAction("/api/events/dismiss", { event_id: btn.dataset.dismissEvent });
+            });
+        });
     }
 
     startTravelAnimation(fromBodyId, toBodyId) {

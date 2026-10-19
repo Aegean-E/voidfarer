@@ -5,25 +5,9 @@
     "last_phase": "phase 4",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792429785.6287336
+    "updated_at": 1792430039.0198495
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-equipment-bonuses-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/4] Plan: make inert hardware stat_bonus effects and chassis perks real, add failing-first tests for aggregation and engine integrations, and repair the launcher test's env-sensitive invocation",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792359594.487377,
-      "timestamp_str": "2026-10-19 00:39:54",
-      "impact_assessment": {
-        "why": "ADR-010 deferred wiring of inert upgrade stat bonuses and chassis perks; players currently buy modules whose advertised effects (fuel, scan, combat, shield regen, evasion, ECM) do nothing, and the 135-test baseline is red in this environment because NoDefaultCurrentDirectoryInExePath=1 makes 'cmd /c play.bat' unresolvable",
-        "benefits": "Every advertised module and chassis perk changes gameplay; bonuses are centralized and test-pinned; launcher regression test becomes portable across hardened Windows hosts",
-        "risks": "contract: preserve save schema, REST/CLI shapes and catalog ids; dependency: stdlib only; concurrency: pure calculation under the existing engine lock; state: no new persisted fields, chassis lookup stays class-based",
-        "mitigation": "Pure calculate_equipment_bonuses(ship) helper, additive/multiplicative rules documented in ADR-014, integration tests compare before/after behavior, absolute launcher path in the subprocess test, full suite plus aikit check gate"
-      }
-    },
     {
       "task_id": "task-voidfarer-equipment-bonuses-v1",
       "phase": "in_progress",
@@ -243,6 +227,16 @@
       "status": "in_progress",
       "timestamp": 1792429785.6287336,
       "timestamp_str": "2026-10-19 20:09:45"
+    },
+    {
+      "task_id": "task-voidfarer-transit-civ-events-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 2/5] Add start_travel, tick transit completion, emit_event, and dismiss_event in SimulationEngine; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792430039.0198495,
+      "timestamp_str": "2026-10-19 20:13:59"
     }
   ]
 }

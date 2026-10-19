@@ -62,6 +62,68 @@ class TestTransitCivEvents(unittest.TestCase):
             self.assertNotEqual(body.government, "None")
             self.assertNotEqual(body.faction, "Unclaimed")
 
+    def test_sublight_transit_progresses_and_completes_on_tick(self) -> None:
+        self.engine.orbit("sol_body_1")
+        target_id = "sol_body_3"
+        fuel_before = self.engine.state.ship.fuel
+
+        ok, msg = self.engine.start_travel(target_id, mode="sublight")
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.engine.state.ship.fuel, fuel_before)
+        travel = self.engine.state.ship.travel
+        self.assertIsNotNone(travel)
+        self.assertEqual(travel.destination_body_id, target_id)
+        self.assertEqual(travel.mode, "sublight")
+        self.assertGreaterEqual(travel.duration_ticks, 1)
+
+        # Advance ticks to arrival
+        self.engine.tick(travel.duration_ticks)
+        self.assertIsNone(self.engine.state.ship.travel)
+        self.assertEqual(self.engine.state.ship.orbiting_body_id, target_id)
+        self.assertTrue(any(e.kind == "arrival" for e in self.engine.state.events))
+
+    def test_quantum_in_system_transit_consumes_fuel_and_arrives_next_tick(self) -> None:
+        self.engine.orbit("sol_body_1")
+        target_id = "sol_body_4"
+        fuel_before = self.engine.state.ship.fuel
+
+        ok, msg = self.engine.start_travel(target_id, mode="quantum")
+        self.assertTrue(ok, msg)
+        self.assertLess(self.engine.state.ship.fuel, fuel_before)
+        travel = self.engine.state.ship.travel
+        self.assertIsNotNone(travel)
+        self.assertEqual(travel.mode, "quantum")
+        self.assertEqual(travel.duration_ticks, 1)
+
+        self.engine.tick(1)
+        self.assertIsNone(self.engine.state.ship.travel)
+        self.assertEqual(self.engine.state.ship.orbiting_body_id, target_id)
+
+    def test_start_travel_validation_guards(self) -> None:
+        ok_bad_body, _ = self.engine.start_travel("nonexistent_body", mode="sublight")
+        self.assertFalse(ok_bad_body)
+
+        ok_bad_mode, _ = self.engine.start_travel("sol_body_2", mode="wormhole")
+        self.assertFalse(ok_bad_mode)
+
+        # Insufficient fuel for quantum transit
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(fuel=0)
+        )
+        ok_no_fuel, _ = self.engine.start_travel("sol_body_4", mode="quantum")
+        self.assertFalse(ok_no_fuel)
+
+    def test_event_emission_and_dismissal(self) -> None:
+        evt = self.engine.emit_event("alert", "Test Alert", "Hull integrity warning.")
+        snap = self.engine.get_status_snapshot()
+        self.assertEqual(len(snap["undismissed_events"]), 1)
+        self.assertEqual(snap["undismissed_events"][0]["id"], evt.id)
+
+        ok, _ = self.engine.dismiss_event(evt.id)
+        self.assertTrue(ok)
+        snap_after = self.engine.get_status_snapshot()
+        self.assertEqual(len(snap_after["undismissed_events"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -667,6 +667,7 @@ class SimulationEngine:
                 current_system_id=target_system_id,
                 orbiting_body_id=target_sys.bodies[0].id if target_sys.bodies else None,
                 landed_body_id=None,
+                travel=None,
                 fleet_drones=updated_drones,
                 flight_log=tuple(new_log[-20:]),
                 streak=new_streak,
@@ -736,6 +737,8 @@ class SimulationEngine:
                     cargo_capacity=new_ship.cargo_capacity,
                     current_system_id=new_ship.current_system_id,
                     orbiting_body_id=new_ship.orbiting_body_id,
+                    landed_body_id=None,
+                    travel=None,
                     power=new_ship.power,
                     upgrades=new_ship.upgrades,
                     equipped_upgrades=new_ship.equipped_upgrades,
@@ -793,6 +796,7 @@ class SimulationEngine:
             new_ship = self._clone_ship(
                 orbiting_body_id=body_id,
                 landed_body_id=None,
+                travel=None,
                 credits=self.state.ship.credits + tut_cr,
                 mastery=new_mastery,
                 relics=tuple(list(self.state.ship.relics) + tut_relics),
@@ -802,6 +806,62 @@ class SimulationEngine:
 
             self.state = self._clone_state(ship=new_ship)
             return True, f"Now in orbit around {matched.name}."
+
+    def start_travel(self, body_id: str, mode: str = "sublight") -> tuple[bool, str]:
+        """Initiate sublight or quantum in-system transit toward a celestial body."""
+        with self.lock:
+            norm_mode = str(mode).strip().lower()
+            if norm_mode not in ("sublight", "quantum"):
+                return False, f"Invalid transit mode '{mode}'. Choose 'sublight' or 'quantum'."
+
+            cur_sys = self.current_system
+            matched = None
+            for b in cur_sys.bodies:
+                if b.id == body_id:
+                    matched = b
+                    break
+
+            if not matched:
+                return False, f"Celestial body '{body_id}' not found in {cur_sys.name}."
+
+            origin = self.orbiting_body
+            origin_id = origin.id if origin else None
+            origin_r = origin.orbit_radius if origin else 0.0
+            distance_au = round(max(0.5, abs(matched.orbit_radius - origin_r)), 2)
+
+            new_fuel = self.state.ship.fuel
+            if norm_mode == "quantum":
+                fuel_cost = max(2, int(math.ceil(distance_au * 0.8)))
+                if self.state.ship.fuel < fuel_cost:
+                    return False, f"Insufficient quantum fuel for micro-jump: need {fuel_cost}, have {self.state.ship.fuel}."
+                new_fuel -= fuel_cost
+                duration_ticks = 1
+            else:
+                engine_factor = max(0.5, self.state.ship.power.engines / 25.0)
+                duration_ticks = max(1, min(8, int(math.ceil(distance_au / (1.2 * engine_factor)))))
+
+            cur_tick = self.state.time.tick
+            travel = TravelState(
+                origin_body_id=origin_id,
+                destination_body_id=matched.id,
+                mode=norm_mode,
+                started_tick=cur_tick,
+                arrival_tick=cur_tick + duration_ticks,
+                distance_au=distance_au,
+                duration_ticks=duration_ticks,
+            )
+
+            log_entry = f"Engaged {norm_mode} drive toward {matched.name} ({distance_au:.1f} AU, ETA {duration_ticks} tick(s))."
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+
+            new_ship = self._clone_ship(
+                fuel=new_fuel,
+                landed_body_id=None,
+                travel=travel,
+                flight_log=tuple(new_log[-20:]),
+            )
+            self.state = self._clone_state(ship=new_ship)
+            return True, log_entry
 
     def scan(self) -> tuple[bool, str, dict[str, Any]]:
         """Perform sensor sweep of current body or local space."""
@@ -2395,6 +2455,9 @@ class SimulationEngine:
                 "ai_captains": [c.to_dict() for c in self.state.ai_captains],
                 "depots": [d.to_dict() for d in self.state.depots],
                 "messages": [m.to_dict() for m in self.state.messages],
+                "events": [e.to_dict() for e in self.state.events],
+                "undismissed_events": [e.to_dict() for e in self.state.events if not e.dismissed],
+                "travel": self.state.ship.travel.to_dict() if self.state.ship.travel else None,
                 "allies": list(self.state.ship.allies),
                 "quests": self.get_quests(),
                 "mercenary_catalog": MERCENARY_CATALOG,
@@ -2846,9 +2909,41 @@ class SimulationEngine:
             if econ_logs:
                 new_flight_log.extend(econ_logs)
 
+            # 7. In-system transit progression and arrival
+            new_orbiting_body_id = cur_ship.orbiting_body_id
+            new_landed_body_id = cur_ship.landed_body_id
+            new_travel = cur_ship.travel
+            new_events = list(self.state.events)
+            if cur_ship.travel is not None and new_tick >= cur_ship.travel.arrival_tick:
+                new_orbiting_body_id = cur_ship.travel.destination_body_id
+                new_landed_body_id = None
+                new_travel = None
+                cur_sys_obj = updated_systems.get(cur_ship.current_system_id, self.current_system)
+                dest_name = new_orbiting_body_id
+                for b in cur_sys_obj.bodies:
+                    if b.id == new_orbiting_body_id:
+                        dest_name = b.name
+                        break
+                arr_msg = f"Orbital capture achieved around {dest_name} after {cur_ship.travel.mode} transit."
+                new_flight_log.append(arr_msg)
+                evt_id = f"evt_{new_tick}_{len(new_events) + 1}"
+                new_events.append(
+                    GameEvent(
+                        id=evt_id,
+                        kind="arrival",
+                        title=f"Orbital Capture: {dest_name}",
+                        message=arr_msg,
+                        tick=new_tick,
+                        dismissed=False,
+                    )
+                )
+
             new_ship = self._clone_ship(
                 hull=new_hull,
                 shield=new_shield,
+                orbiting_body_id=new_orbiting_body_id,
+                landed_body_id=new_landed_body_id,
+                travel=new_travel,
                 fleet_drones=new_drones,
                 flight_log=tuple(new_flight_log[-20:]),
             )
@@ -2860,6 +2955,7 @@ class SimulationEngine:
                 time=new_time,
                 economy=new_econ,
                 ai_captains=new_ai_captains,
+                events=tuple(new_events[-50:]),
             )
 
             return {
@@ -2874,6 +2970,39 @@ class SimulationEngine:
                 "time_scale": new_time.time_scale,
                 "is_paused": new_time.is_paused,
             }
+
+    def emit_event(self, kind: str, title: str, message: str) -> GameEvent:
+        """Create and append a cockpit popup GameEvent."""
+        with self.lock:
+            cur_tick = self.state.time.tick
+            evt = GameEvent(
+                id=f"evt_{cur_tick}_{len(self.state.events) + 1}",
+                kind=str(kind),
+                title=str(title),
+                message=str(message),
+                tick=cur_tick,
+                dismissed=False,
+            )
+            updated = list(self.state.events) + [evt]
+            self.state = self._clone_state(events=tuple(updated[-50:]))
+            return evt
+
+    def dismiss_event(self, event_id: str) -> tuple[bool, str]:
+        """Mark a cockpit popup GameEvent as dismissed."""
+        with self.lock:
+            target = str(event_id).strip()
+            updated: list[GameEvent] = []
+            found = False
+            for evt in self.state.events:
+                if evt.id == target:
+                    updated.append(replace(evt, dismissed=True))
+                    found = True
+                else:
+                    updated.append(evt)
+            if not found:
+                return False, f"Event '{target}' not found."
+            self.state = self._clone_state(events=tuple(updated))
+            return True, f"Event '{target}' dismissed."
 
     def pause_time(self) -> tuple[bool, str]:
         """Pause simulation temporal clock while preserving current playback rate."""

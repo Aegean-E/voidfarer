@@ -9,8 +9,8 @@
 - **Total Python Modules**: `35`
 - **Total Classes**: `89`
 - **Total Top-Level Functions**: `67`
-- **Total Class Methods**: `470`
-- **Total Source Lines**: `13368`
+- **Total Class Methods**: `477`
+- **Total Source Lines**: `13559`
 
 ---
 
@@ -536,13 +536,17 @@
 ### [`tests/test_transit_civ_events.py`](tests/test_transit_civ_events.py)
 > *Tests for in-system transit (TravelState), planetary civilization metadata, and cockpit GameEvents.*
 
-**Size**: `68` lines (`2515` bytes)
+**Size**: `130` lines (`5287` bytes)
 
 **Classes:**
 - `class TestTransitCivEvents` - *Verify TravelState, planetary faction/population/government, and GameEvent lifecycles.*
   - Method `.setUp()`
   - Method `.test_gamestate_roundtrip_preserves_events_travel_and_civ_metadata()`
   - Method `.test_galaxy_generates_planetary_civilization_metadata()`
+  - Method `.test_sublight_transit_progresses_and_completes_on_tick()`
+  - Method `.test_quantum_in_system_transit_consumes_fuel_and_arrives_next_tick()`
+  - Method `.test_start_travel_validation_guards()`
+  - Method `.test_event_emission_and_dismissal()`
 
 ---
 
@@ -621,7 +625,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `2933` lines (`142356` bytes)
+**Size**: `3062` lines (`148156` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -642,6 +646,7 @@
   - Method `._process_drone_cycle(ship)` - *Advance autonomous drone harvest cycle across star systems.*
   - Method `.jump(target_system_id)` - *Execute a hyperspace jump to an adjacent star system.*
   - Method `.orbit(body_id)` - *Establish orbital trajectory around a celestial body in the current system.*
+  - Method `.start_travel(body_id, mode)` - *Initiate sublight or quantum in-system transit toward a celestial body.*
   - Method `.scan()` - *Perform sensor sweep of current body or local space.*
   - Method `.route_power(engines, shields, sensors, weapons)` - *Adjust reactor power distribution across ship subsystems.*
   - Method `.trade(commodity_id, quantity, is_buy)` - *Execute buy or sell commodity order at orbiting market.*
@@ -683,6 +688,8 @@
   - Method `.refit_fleet_unit(drone_id)`
   - Method `.form_alliance(captain_id)`
   - Method `.tick(num_ticks)` - *Advance the simulation universe by num_ticks.*
+  - Method `.emit_event(kind, title, message)` - *Create and append a cockpit popup GameEvent.*
+  - Method `.dismiss_event(event_id)` - *Mark a cockpit popup GameEvent as dismissed.*
   - Method `.pause_time()` - *Pause simulation temporal clock while preserving current playback rate.*
   - Method `.resume_time()` - *Resume simulation temporal clock restoring previous speed multiplier.*
   - Method `.set_time_speed(speed)` - *Set simulation speed multiplier (0.0x to 10.0x).*

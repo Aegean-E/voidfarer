@@ -155,3 +155,24 @@ class EngineHardeningTest(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(self.engine.state.ship.credits, credits)
         self.assertEqual(len(self.engine.state.ship.fleet_drones), drones)
+
+    def test_cargo_grant_clamps_to_free_volume(self):
+        cargo = {"titanium": 19}
+        granted, overflow = self.engine._grant_cargo(cargo, "fuel_cells", 3)
+        self.assertEqual(granted, 2)
+        self.assertEqual(overflow, 1)
+        self.assertEqual(cargo["fuel_cells"], 2)
+
+    def test_combat_salvage_respects_full_cargo_hold(self):
+        from voidfarer.models import CombatEncounter
+        combat = CombatEncounter(
+            id="full_hold_combat", enemy_name="Wreck", enemy_class="Drone",
+            enemy_hull=1, enemy_max_hull=1, enemy_damage=0, bounty_credits=5,
+            salvage_commodity="titanium",
+        )
+        self._set_ship(cargo={"titanium": 20}, cargo_capacity=40)
+        self.engine.state = self.engine._clone_state(active_combat=combat)
+        ok, msg = self.engine.combat_action("fire_lasers")
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.cargo.get("titanium"), 20)
+        self.assertIn("jettisoned", msg)

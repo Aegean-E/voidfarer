@@ -68,7 +68,7 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- 222-test unit & integration suite (about 3.1s)
+└── tests/                    <- 225-test unit & integration suite (about 3.1s)
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
@@ -262,6 +262,23 @@ python -m voidfarer.cli repl
 ```
 Inside the interactive REPL, you can execute all commands (`status`, `chart`, `time`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `economy`, `inventory`, `shipyard`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
+Frontier commands are also available directly:
+```bash
+python -m voidfarer.cli quests
+python -m voidfarer.cli ai list
+python -m voidfarer.cli ai hail captain_vega
+python -m voidfarer.cli messages list
+python -m voidfarer.cli messages send "Captain Vega" "Trade lane" "Meeting at Sol."
+python -m voidfarer.cli depot status
+python -m voidfarer.cli depot deposit titanium 2
+python -m voidfarer.cli depot sell titanium 1
+python -m voidfarer.cli land sol_body_2
+python -m voidfarer.cli mercs list
+python -m voidfarer.cli mercs hire merc_ironclad
+python -m voidfarer.cli allies list
+python -m voidfarer.cli allies form captain_sable
+```
+
 ### 17. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 ```bash
@@ -297,7 +314,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 222-test suite runs in about 3.1 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 225-test suite runs in about 3.1 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

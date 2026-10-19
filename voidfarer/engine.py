@@ -200,6 +200,15 @@ class SimulationEngine:
             messages=kwargs.get("messages", cur.messages),
         )
 
+    def _grant_cargo(self, cargo: dict[str, int], commodity_id: str, quantity: int) -> tuple[int, int]:
+        """Add as many units as the hold allows, returning (granted, overflow)."""
+        unit_volume = max(1, calculate_cargo_volume({commodity_id: 1}))
+        free_volume = self.state.ship.cargo_capacity - calculate_cargo_volume(cargo)
+        granted = min(max(0, int(quantity)), max(0, free_volume // unit_volume))
+        if granted > 0:
+            cargo[commodity_id] = cargo.get(commodity_id, 0) + granted
+        return granted, int(quantity) - granted
+
     def _apply_relic_stat_bonuses(
         self,
         hull: int,
@@ -1669,7 +1678,7 @@ class SimulationEngine:
             # Check if enemy was neutralized
             if enemy_rem_hull <= 0:
                 new_credits += combat.bounty_credits
-                cargo[combat.salvage_commodity] = cargo.get(combat.salvage_commodity, 0) + 2
+                salvage_granted, salvage_overflow = self._grant_cargo(cargo, combat.salvage_commodity, 2)
                 stats["combat_victories"] += 1
                 stats["credits_earned"] += combat.bounty_credits
                 if any(d.drone_type == "mercenary" and d.specialty == "repair" for d in self.state.ship.fleet_drones):
@@ -1718,7 +1727,8 @@ class SimulationEngine:
 
                 msg = (
                     f"VICTORY: {combat.enemy_name} neutralized! "
-                    f"Collected {combat.bounty_credits} cr bounty, salvaged 2x {combat.salvage_commodity}.{relic_note}{rep_note}"
+                    f"Collected {combat.bounty_credits} cr bounty, salvaged {salvage_granted}x {combat.salvage_commodity}"
+                    f"{f' ({salvage_overflow} jettisoned: hold full)' if salvage_overflow else ''}.{relic_note}{rep_note}"
                 )
                 log_entry = f"Combat outcome: {msg}"
                 new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + contract_logs + xp_logs
@@ -1880,10 +1890,15 @@ class SimulationEngine:
             new_fuel = min(self.state.ship.max_fuel, max(0, self.state.ship.fuel + choice.fuel_delta))
 
             cargo = dict(self.state.ship.cargo)
+            overflow_items: list[str] = []
             for item_k, item_v in choice.cargo_reward.items():
-                cargo[item_k] = cargo.get(item_k, 0) + item_v
+                granted, overflow = self._grant_cargo(cargo, item_k, item_v)
+                if overflow:
+                    overflow_items.append(f"{overflow}x {item_k}")
 
             log_entry = f"Anomaly resolved: {choice.outcome_text}"
+            if overflow_items:
+                log_entry += f" Hold full: jettisoned {', '.join(overflow_items)}."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
             new_ship = self._clone_ship(

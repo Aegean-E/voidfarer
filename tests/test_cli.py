@@ -178,7 +178,21 @@ class TestCLIRelicsWithRecoveredRelics(_IsolatedCliTestCase):
         self.assertIn("Active Passive Fleet Modifiers", output)
         self.assertIn("Scan Bounty Boost", output)
         self.assertIn("Hull Reinforcement", output)
-
+    def test_cli_frontier_commands(self):
+        cases = [
+            (["quests"], "QUEST PANEL"),
+            (["ai", "list"], "AI CAPTAINS"),
+            (["messages", "list"], "QUANTUM INBOX"),
+            (["depot", "status"], None),
+            (["mercs", "list"], "MERCENARY CONTRACTS"),
+            (["allies", "list"], "ALLIANCES"),
+        ]
+        for argv, expected in cases:
+            with patch("sys.stdout", new_callable=io.StringIO) as mock_out:
+                code = main(argv)
+                self.assertNotEqual(code, 2, argv)
+                if expected:
+                    self.assertIn(expected, mock_out.getvalue())
 
 if __name__ == "__main__":
     unittest.main()

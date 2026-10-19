@@ -1,46 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-frontier-command-v1",
+    "task_id": "task-voidfarer-capacity-cli-v1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792371751.5253453,
-    "completed_at": 1792371774.3242116
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792386451.4027972
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-launcher-fix-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/4] Planning: reproduce play.bat double-click crash (exit 255) from unescaped banner pipes and LF-only endings; fix and failing-first regression tests designed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792355117.3511515,
-      "timestamp_str": "2026-10-18 23:25:17",
-      "impact_assessment": {
-        "why": "Clicking play.bat or voidfarer.bat on Windows aborts before the menu: unescaped '|' characters in the ASCII banner pipe the echo into a nonexistent '_' command, cmd exits 255 and the console window vanishes, so the reported symptom is 'nothing happens'. Both launchers also ship LF-only line endings, which is fragile for cmd block parsing.",
-        "benefits": "One-click launch works again for both launchers; every menu option path renders and exits cleanly; two regression tests (CRLF policy unit test, Windows-only menu integration test) pin the exact double-click flow so future tool rewrites cannot silently break it.",
-        "risks": "contract: none - no Python API, CLI surface, save schema or REST contract changes, only launcher text and a new test module; dependency: none new - tests use stdlib subprocess/pathlib only and skip off Windows; concurrency: none - the tested path exits before any server or ticker starts; state: none - tests only read files and exercise the exit-only menu path, never touching the player save.",
-        "mitigation": "Re-run the exact failing invocation before and after the fix (cmd /c play.bat with piped input), keep the menu test on the exit-only choice [0] so it cannot start a server or open a browser, verify CRLF conversion byte-level in a dedicated unit test, and gate the commit on the full suite plus aikit.py check voidfarer."
-      }
-    },
-    {
-      "task_id": "task-voidfarer-launcher-fix-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/5] Re-plan after Phase 4 gate failure: cmd_relics calls calculate_passive_multipliers with the wrong arity and prints absent keys, crashing any save with relics; CLI/story tests resolve main() storage to the live save (%LOCALAPPDATA%\\.voidfarer) and mutate it; milestones extended with failing-first coverage for both",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792355490.4974635,
-      "timestamp_str": "2026-10-18 23:31:30",
-      "impact_assessment": {
-        "why": "The Phase 4 gate exposed two real defects beyond the launcher: cmd_relics passes two arguments to calculate_passive_multipliers(ship) and prints keys absent from its result, so any save with relics now crashes the relics command; and CLI/story tests call main() without isolation, which resolves default storage to the player's live save in LOCALAPPDATA\\.voidfarer, so test runs read player progress and mutating test commands (power) write it back.",
-        "benefits": "The relics command works again for saves with relics, the automated suite can no longer read or write the player's live save, and a seeded regression test pins the relics rendering path so the API drift cannot silently return.",
-        "risks": "contract: none - calculate_passive_multipliers keeps its shape, only cmd_relics's call and output keys change to match it; dependency: none; concurrency: none - CLI tests remain single-threaded; state: tests isolate storage by patching LOCALAPPDATA/HOME/USERPROFILE into per-test temp dirs, no schema or save-format change.",
-        "mitigation": "Failing-first: seed a save with all story relics and run main(['relics']) before the fix; after the fix, hash LOCALAPPDATA\\.voidfarer\\voidfarer_save.json before and after full suite runs to prove the live save is untouched; gate on the full suite plus aikit check voidfarer."
-      }
-    },
     {
       "task_id": "task-voidfarer-launcher-fix-v1",
       "phase": "phase 4",
@@ -244,6 +211,32 @@
       "status": "completed",
       "timestamp": 1792371774.3242133,
       "timestamp_str": "2026-10-19 04:02:54"
+    },
+    {
+      "task_id": "task-voidfarer-capacity-cli-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/2] Follow-up hardening: enforce cargo capacity on combat/anomaly rewards and expose frontier systems through CLI commands, with regression tests",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792386437.1772544,
+      "timestamp_str": "2026-10-19 08:07:17",
+      "impact_assessment": {
+        "why": "ADR-017 recorded reward-cargo capacity bypass and web-only frontier access as residual gaps",
+        "benefits": "Maintains the cargo-volume invariant across all grants and makes AI/depot/message/landing/merc/alliance systems usable from the terminal",
+        "risks": "contract: additive CLI commands only; dependency: stdlib; concurrency: existing engine locks; state: overflow cargo is jettisoned and reported",
+        "mitigation": "Shared _grant_cargo helper, explicit overflow messages, full suite plus aikit gates"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-capacity-cli-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[2/2] Verified: 225/225 tests green (3.1s); compileall OK; aikit check voidfarer 4/4; ADR-018 and README CLI examples updated; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792386451.4027972,
+      "timestamp_str": "2026-10-19 08:07:31"
     }
   ]
 }

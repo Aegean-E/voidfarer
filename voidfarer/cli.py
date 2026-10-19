@@ -28,6 +28,7 @@ from voidfarer.factions import (
     get_faction_standing_tier,
 )
 from voidfarer.galaxy import COMMODITY_MAP
+from voidfarer.frontier import MERCENARY_CATALOG
 from voidfarer.retention import (
     PILOT_TALENTS,
     calculate_passive_multipliers,
@@ -516,6 +517,142 @@ def cmd_fleet(engine: SimulationEngine, storage: StorageManager, parts: list[str
         print(f"{RED}Unknown fleet command '{sub}'. Options: list, harvest, buy, deploy.{RESET}")
         return 1
 
+
+
+
+def cmd_quests(engine: SimulationEngine) -> int:
+    print(f"\n{BOLD}{CYAN}=== QUEST PANEL ==={RESET}")
+    for quest in engine.get_quests():
+        print(f"{BOLD}{quest['title']}{RESET} [{quest['kind'].upper()}]")
+        print(f"  {quest['description']}")
+        print(f"  Progress: {quest['progress']}/{quest['target_count']} // Reward: {quest['reward']}")
+    print()
+    return 0
+
+
+def cmd_ai(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    action = parts[1] if len(parts) > 1 else "list"
+    if action == "list":
+        print(f"\n{BOLD}{CYAN}=== AI CAPTAINS ==={RESET}")
+        for c in engine.state.ai_captains:
+            print(f"{c.id:<18} {BOLD}{c.name:<20}{RESET} {c.archetype:<10} {c.system_id:<14} trust={c.trust:<4} ally={c.ally}")
+        return 0
+    if len(parts) < 3:
+        print(f"{RED}Usage:{RESET} ai <hail|buy|sell|hire|ally> <captain_id> [commodity] [qty]")
+        return 1
+    captain_id = parts[2]
+    commodity = parts[3] if len(parts) > 3 else None
+    quantity = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 1
+    ok, msg = engine.interact_ai(captain_id, action, commodity, quantity)
+    print((GREEN if ok else RED) + msg + RESET)
+    storage.save(engine.state)
+    return 0 if ok else 1
+
+
+def cmd_messages(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    action = parts[1] if len(parts) > 1 else "list"
+    if action == "list":
+        print(f"\n{BOLD}{CYAN}=== QUANTUM INBOX ==={RESET}")
+        for m in engine.state.messages:
+            marker = " " if m.read else "*"
+            print(f"{marker} {m.id:<24} {m.sender:<18} {m.subject}")
+        return 0
+    if action == "send":
+        if len(parts) < 5:
+            print(f"{RED}Usage:{RESET} messages send <recipient> <subject> <body>")
+            return 1
+        ok, msg = engine.send_quantum_message(parts[2], parts[3], " ".join(parts[4:]))
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0 if ok else 1
+    if action == "read":
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} messages read <message_id>")
+            return 1
+        ok, msg = engine.mark_message_read(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0 if ok else 1
+    print(f"{RED}Unknown messages action '{action}'.{RESET}")
+    return 1
+
+
+def cmd_depot(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    action = parts[1] if len(parts) > 1 else "status"
+    depot = next((d for d in engine.state.depots if d.system_id == engine.state.ship.current_system_id), None)
+    if action == "status":
+        if not depot:
+            print(f"{RED}No depot in this system.{RESET}")
+            return 1
+        print(f"\n{BOLD}{CYAN}{depot.name}{RESET} ({depot.capacity} capacity)")
+        for item, qty in sorted(depot.cargo.items()):
+            print(f"  {item:<20} x{qty}")
+        return 0
+    if len(parts) < 3:
+        print(f"{RED}Usage:{RESET} depot <deposit|withdraw|sell> <item> [qty]")
+        return 1
+    qty = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+    handlers = {
+        "deposit": engine.deposit_cargo,
+        "withdraw": engine.withdraw_cargo,
+        "sell": engine.sell_from_depot,
+    }
+    handler = handlers.get(action)
+    if not handler:
+        print(f"{RED}Unknown depot action '{action}'.{RESET}")
+        return 1
+    ok, msg = handler(parts[2], qty)
+    print((GREEN if ok else RED) + msg + RESET)
+    storage.save(engine.state)
+    return 0 if ok else 1
+
+
+def cmd_land(engine: SimulationEngine, storage: StorageManager, body_id: str) -> int:
+    ok, msg = engine.land_on_body(body_id)
+    print((GREEN if ok else RED) + msg + RESET)
+    storage.save(engine.state)
+    return 0 if ok else 1
+
+
+def cmd_mercs(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    action = parts[1] if len(parts) > 1 else "list"
+    if action == "list":
+        print(f"\n{BOLD}{CYAN}=== MERCENARY CONTRACTS ==={RESET}")
+        for merc in MERCENARY_CATALOG.values():
+            print(f"{merc['id']:<16} {merc['name']:<20} {merc['cost']:>6} cr  {merc['description']}")
+        return 0
+    if len(parts) < 3:
+        print(f"{RED}Usage:{RESET} mercs <hire> <merc_id> | mercs <dismiss|refit> <drone_id>")
+        return 1
+    if action == "hire":
+        ok, msg = engine.hire_mercenary(parts[2])
+    elif action == "dismiss":
+        ok, msg = engine.dismiss_fleet_unit(parts[2])
+    elif action == "refit":
+        ok, msg = engine.refit_fleet_unit(parts[2])
+    else:
+        print(f"{RED}Unknown mercenary action '{action}'.{RESET}")
+        return 1
+    print((GREEN if ok else RED) + msg + RESET)
+    storage.save(engine.state)
+    return 0 if ok else 1
+
+
+def cmd_allies(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    action = parts[1] if len(parts) > 1 else "list"
+    if action == "list":
+        print(f"\n{BOLD}{CYAN}=== ALLIANCES ==={RESET}")
+        print("Allies:", ", ".join(engine.state.ship.allies) or "none")
+        for c in engine.state.ai_captains:
+            print(f"  {c.id:<18} {c.name:<20} trust={c.trust:<4} ally={c.ally}")
+        return 0
+    if action == "form" and len(parts) >= 3:
+        ok, msg = engine.form_alliance(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0 if ok else 1
+    print(f"{RED}Usage:{RESET} allies form <captain_id>")
+    return 1
 
 def cmd_upgrades(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
     """Inspect and purchase hardware modules from station arsenal."""
@@ -1128,6 +1265,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     fleet_p.add_argument("arg1", nargs="?", help="Drone type or drone ID")
     fleet_p.add_argument("arg2", nargs="?", help="Target star system ID")
 
+    subparsers.add_parser("quests", help="Unified quest panel (story + contracts)")
+
+    ai_p = subparsers.add_parser("ai", help="AI captain diplomacy, trade, hire, and alliances")
+    ai_p.add_argument("action", nargs="?", default="list", choices=["list", "hail", "buy", "sell", "hire", "ally"])
+    ai_p.add_argument("captain_id", nargs="?", help="AI captain ID")
+    ai_p.add_argument("commodity_id", nargs="?", help="Commodity for buy/sell")
+    ai_p.add_argument("quantity", nargs="?", type=int, default=1)
+
+    msg_p = subparsers.add_parser("messages", help="Intergalactic quantum messaging")
+    msg_p.add_argument("action", nargs="?", default="list", choices=["list", "send", "read"])
+    msg_p.add_argument("args", nargs="*", help="Message arguments")
+
+    depot_p = subparsers.add_parser("depot", help="System cargo depot operations")
+    depot_p.add_argument("action", nargs="?", default="status", choices=["status", "deposit", "withdraw", "sell"])
+    depot_p.add_argument("item_id", nargs="?", help="Item ID")
+    depot_p.add_argument("quantity", nargs="?", type=int, default=1)
+
+    land_p = subparsers.add_parser("land", help="Land on a habitable body")
+    land_p.add_argument("body_id", help="Celestial body ID")
+
+    merc_p = subparsers.add_parser("mercs", help="Mercenary contracts and fleet refits")
+    merc_p.add_argument("action", nargs="?", default="list", choices=["list", "hire", "dismiss", "refit"])
+    merc_p.add_argument("target_id", nargs="?", help="Mercenary catalog ID or fleet drone ID")
+
+    allies_p = subparsers.add_parser("allies", help="Alliance roster and formation")
+    allies_p.add_argument("action", nargs="?", default="list", choices=["list", "form"])
+    allies_p.add_argument("captain_id", nargs="?", help="AI captain ID")
+
     upg_p = subparsers.add_parser("upgrades", help="Station hardware modules arsenal")
     upg_p.add_argument("action", nargs="?", default="list", choices=["list", "buy"])
     upg_p.add_argument("upgrade_id", nargs="?", help="Upgrade ID to purchase")
@@ -1253,6 +1418,38 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.arg2:
                 parts.append(args.arg2)
         return cmd_fleet(engine, storage, parts)
+    elif args.command == "quests":
+        return cmd_quests(engine)
+    elif args.command == "ai":
+        parts = ["ai", args.action]
+        if args.captain_id:
+            parts.append(args.captain_id)
+        if args.commodity_id:
+            parts.append(args.commodity_id)
+        if args.quantity is not None:
+            parts.append(str(args.quantity))
+        return cmd_ai(engine, storage, parts)
+    elif args.command == "messages":
+        return cmd_messages(engine, storage, ["messages", args.action] + list(args.args))
+    elif args.command == "depot":
+        parts = ["depot", args.action]
+        if args.item_id:
+            parts.append(args.item_id)
+        if args.quantity is not None:
+            parts.append(str(args.quantity))
+        return cmd_depot(engine, storage, parts)
+    elif args.command == "land":
+        return cmd_land(engine, storage, args.body_id)
+    elif args.command == "mercs":
+        parts = ["mercs", args.action]
+        if args.target_id:
+            parts.append(args.target_id)
+        return cmd_mercs(engine, storage, parts)
+    elif args.command == "allies":
+        parts = ["allies", args.action]
+        if args.captain_id:
+            parts.append(args.captain_id)
+        return cmd_allies(engine, storage, parts)
     elif args.command == "upgrades":
         parts = ["upgrades"]
         if args.action != "list":
@@ -1352,3 +1549,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

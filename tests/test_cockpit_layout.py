@@ -312,6 +312,18 @@ class TestFrontierCockpitUI(unittest.TestCase):
         for method in ("fetchSaves", "renderSaveSlots", "/api/saves"):
             self.assertIn(method, self.js)
 
+    def test_nav_radar_orbital_map_is_full_viewport_background(self):
+        self.assertRegex(
+            self.css,
+            r"\.canvas-radar-container\.radar-background-layer\s*\{[^}]*position:\s*fixed[^}]*inset:\s*0[^}]*width:\s*100vw[^}]*height:\s*100vh[^}]*z-index:\s*0",
+        )
+        self.assertIn("radar-background-layer", self.html)
+        self.assertRegex(
+            self.css,
+            r"\.panel-center\s*\{[^}]*backdrop-filter:\s*none[^}]*pointer-events:\s*none",
+        )
+        self.assertIn("resizeRadarCanvas", self.js)
+
     def test_radar_background_is_black(self):
         self.assertIn(".canvas-radar-container { background: #000; }", self.css)
 

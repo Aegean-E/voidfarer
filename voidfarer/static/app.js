@@ -2033,6 +2033,16 @@ class CockpitApp {
 
     // --- Canvas Radar Rendering ---
 
+    resizeRadarCanvas() {
+        if (!this.canvas) return;
+        const w = Math.max(560, window.innerWidth || 1280);
+        const h = Math.max(420, window.innerHeight || 720);
+        if (this.canvas.width !== w || this.canvas.height !== h) {
+            this.canvas.width = w;
+            this.canvas.height = h;
+        }
+    }
+
     pointerToCanvas(e) {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / Math.max(1, rect.width);
@@ -2044,6 +2054,8 @@ class CockpitApp {
     }
 
     startAnimationLoop() {
+        this.resizeRadarCanvas();
+        window.addEventListener("resize", () => this.resizeRadarCanvas());
         const render = () => {
             this.drawRadar();
             requestAnimationFrame(render);

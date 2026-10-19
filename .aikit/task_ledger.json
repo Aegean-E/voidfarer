@@ -5,18 +5,9 @@
     "last_phase": "verification",
     "active_phase": 4,
     "status": "in_progress",
-    "updated_at": 1792433644.6797478
+    "updated_at": 1792433771.018688
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-ai-galaxy-calendar-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-ai-galaxy-calendar-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792367409.8938498,
-      "timestamp_str": "2026-10-19 02:50:09"
-    },
     {
       "task_id": "task-voidfarer-frontier-command-v1",
       "phase": "in_progress",
@@ -232,6 +223,16 @@
       "status": "in_progress",
       "timestamp": 1792433644.6797478,
       "timestamp_str": "2026-10-19 21:14:04"
+    },
+    {
+      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[milestone 3/4] Make NAV-Radar orbital map the full-viewport background layer with floating HUD decks on top (G-004); checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792433771.018688,
+      "timestamp_str": "2026-10-19 21:16:11"
     }
   ]
 }

@@ -2659,6 +2659,82 @@ body.cockpit-theme {
 .radar-overlay-settings { display: flex; gap: 4px; }
 .radar-overlay-settings .ctrl-btn { width: auto; padding: 0 8px; font-size: 0.6rem; }
 .canvas-radar-container { background: #000; }
+/* Cockpit layout rule 4 (G-004): NAV-Radar orbital map is the full-viewport background layer; all HUD decks and panels sit on top of it. */
+.canvas-radar-container.radar-background-layer {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    border: none;
+    border-radius: 0;
+    pointer-events: auto;
+}
+.cockpit-frame,
+.cockpit-grid {
+    pointer-events: none;
+}
+.panel-center {
+    background: transparent;
+    border: none;
+    padding: 0;
+    backdrop-filter: none;
+    pointer-events: none;
+    justify-content: flex-end;
+}
+.nav-panel {
+    background: transparent;
+    border: none;
+    padding: 0;
+    backdrop-filter: none;
+    pointer-events: none;
+}
+.hud-topbar,
+.cadet-academy-banner,
+.panel-left,
+.panel-right,
+.hud-footer,
+.event-popup-container,
+.combat-alert-card,
+.anomaly-alert-card,
+.nav-panel > .panel-header,
+.nav-target-card,
+.reactor-panel {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+}
+.nav-panel > .panel-header {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 8px 12px;
+    backdrop-filter: blur(10px);
+}
+.nav-target-card,
+.reactor-panel {
+    background: rgba(10, 18, 38, 0.82);
+    backdrop-filter: blur(10px);
+}
+.canvas-radar-container.radar-background-layer .radar-overlay-top {
+    top: 88px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    gap: 12px;
+    z-index: 1;
+}
+.canvas-radar-container.radar-background-layer .radar-controls {
+    top: 88px;
+    right: 24px;
+    z-index: 1;
+}
+.canvas-radar-container.radar-background-layer .radar-coords {
+    bottom: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+}
 .target-info-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 8px 0; font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-muted); }
 .target-info-grid strong { display: block; color: var(--text-primary); font-size: 0.72rem; }
 .target-resources { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
@@ -2676,3 +2752,4 @@ body.cockpit-theme {
 .message-composer textarea { min-height: 60px; resize: vertical; }
 .message-card.unread { border-color: var(--neon-amber); }
 @media (max-width: 720px) { .target-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+

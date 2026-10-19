@@ -3,21 +3,12 @@
   "active_task": {
     "task_id": "task-voidfarer-gap-closure-v1",
     "last_phase": "in_progress",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792391485.308321
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792391485.308321,
+    "completed_at": 1792391503.3569853
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-cockpit-layout-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[4/5] Implemented: index.html restructured (left deck = vertical tab rail + content stack, center deck = alerts + radar sub-panel + reactor, right deck = telemetry log only, chrono deck last in the top bar); style.css layout rules (grid 1.5/1.15/0.9fr, rail column, bottom-anchored log, log-collapsed, margin-left auto) + mobile rail fallback; app.js HIDE/SHOW toggle wired to log-collapsed; 11 new layout tests green after failing-first red (11/11 before, 11/11 after)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792356859.0721102,
-      "timestamp_str": "2026-10-18 23:54:19"
-    },
     {
       "task_id": "task-voidfarer-cockpit-layout-v1",
       "phase": "phase 4",
@@ -237,6 +228,15 @@
       "status": "in_progress",
       "timestamp": 1792391485.308321,
       "timestamp_str": "2026-10-19 09:31:25"
+    },
+    {
+      "task_id": "task-voidfarer-gap-closure-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-gap-closure-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792391503.3569868,
+      "timestamp_str": "2026-10-19 09:31:43"
     }
   ]
 }

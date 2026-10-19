@@ -10,7 +10,7 @@
 - **Total Classes**: `89`
 - **Total Top-Level Functions**: `68`
 - **Total Class Methods**: `478`
-- **Total Source Lines**: `13655`
+- **Total Source Lines**: `13666`
 
 ---
 
@@ -536,7 +536,7 @@
 ### [`tests/test_transit_civ_events.py`](tests/test_transit_civ_events.py)
 > *Tests for in-system transit (TravelState), planetary civilization metadata, and cockpit GameEvents.*
 
-**Size**: `147` lines (`5998` bytes)
+**Size**: `158` lines (`6572` bytes)
 
 **Classes:**
 - `class TestTransitCivEvents` - *Verify TravelState, planetary faction/population/government, and GameEvent lifecycles.*
@@ -547,7 +547,7 @@
   - Method `.test_quantum_in_system_transit_consumes_fuel_and_arrives_next_tick()`
   - Method `.test_start_travel_validation_guards()`
   - Method `.test_event_emission_and_dismissal()`
-  - Method `.test_cli_travel_and_events()`
+  - Method `.test_cli_and_cockpit_surface_for_travel_and_events()`
 
 ---
 

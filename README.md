@@ -115,6 +115,14 @@ Prints the sector hyperlane network, visited system flags, security ratings, and
 # Enter orbit around a planet or space station
 python -m voidfarer.cli orbit sol_body_1
 
+# Initiate timed sublight or quantum in-system transit
+python -m voidfarer.cli travel sol_body_2 --mode sublight
+python -m voidfarer.cli travel sol_body_4 --mode quantum
+
+# Inspect or dismiss cockpit popup events
+python -m voidfarer.cli events list
+python -m voidfarer.cli events dismiss evt_2_1
+
 # Perform sensor sweep of orbiting body (earns research bounty)
 python -m voidfarer.cli scan
 

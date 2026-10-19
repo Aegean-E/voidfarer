@@ -3,37 +3,12 @@
   "active_task": {
     "task_id": "task-voidfarer-transit-civ-events-v1",
     "last_phase": "phase 4",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792430733.7544153
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792430779.4116602,
+    "completed_at": 1792430779.557971
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-audit-hardening-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Audit-driven hardening: engine input/data-integrity guards, storage atomicity and backup recovery, server request validation and lifecycle, CLI parity, and cockpit runtime fixes, each with regression tests",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792361274.5377944,
-      "timestamp_str": "2026-10-19 01:07:54",
-      "impact_assessment": {
-        "why": "A full-project audit found exploitable or corrupting defects: negative repair/refuel amounts mint credits and reduce hull, failed atomic saves report success, malformed REST payloads 500, upgrade swaps leave ghost modules, drone harvest ignores cargo volume, CLI help/README advertise unreachable commands, and cockpit controls mis-handle pre-load state, power sync, and cargo volume",
-        "benefits": "Prevents economy corruption and save loss, turns malformed requests into explicit 400 responses, restores documented CLI surfaces, makes cockpit pointer/power/cargo state match the engine, and adds regression coverage for each repaired path",
-        "risks": "contract: REST/CLI additive changes only, save schema unchanged; dependency: stdlib only; concurrency: storage lock plus unique temp names, no new threads; state: no migration, but failed saves now raise instead of silently succeeding",
-        "mitigation": "Failing-first tests per milestone, narrow helpers for validation and storage, full suite plus aikit check, and ADR-015 documenting each change's trade-off and residual risk"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-audit-hardening-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[5/5] Verified: 179/179 tests green (2.5s), node --check app.js OK, compileall OK, aikit check voidfarer 4/4 (test, hygiene, guidelines, secrets); ADR-015 records implemented fixes, trade-offs, and deferred gaps; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792363057.2316267,
-      "timestamp_str": "2026-10-19 01:37:37"
-    },
     {
       "task_id": "task-voidfarer-audit-hardening-v1",
       "phase": "completed",
@@ -238,6 +213,25 @@
       "status": "in_progress",
       "timestamp": 1792430733.7544153,
       "timestamp_str": "2026-10-19 20:25:33"
+    },
+    {
+      "task_id": "task-voidfarer-transit-civ-events-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 5/5] Document travel and events CLI commands in README, verify ADR-020 and 244 tests passing; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792430779.4116602,
+      "timestamp_str": "2026-10-19 20:26:19"
+    },
+    {
+      "task_id": "task-voidfarer-transit-civ-events-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-transit-civ-events-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792430779.5579722,
+      "timestamp_str": "2026-10-19 20:26:19"
     }
   ]
 }

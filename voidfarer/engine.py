@@ -42,6 +42,8 @@ from voidfarer.galaxy import (
     COMMODITY_MAP,
     GalaxyGenerator,
     compute_scientific_planet_properties,
+    get_colony_tier,
+    step_population_dynamics,
 )
 from voidfarer.models import (
     AICaptain,
@@ -723,8 +725,13 @@ class SimulationEngine:
                 updated_bodies = []
                 for body in system.bodies:
                     d_angle = body.orbit_speed * 0.05 * 2
+                    updated_pop = step_population_dynamics(body, 2) if body.population > 0 else body.population
                     updated_bodies.append(
-                        replace(body, current_angle=(body.current_angle + d_angle) % (2.0 * math.pi))
+                        replace(
+                            body,
+                            current_angle=(body.current_angle + d_angle) % (2.0 * math.pi),
+                            population=updated_pop,
+                        )
                     )
                 updated_systems[sys_id] = StarSystem(
                     id=system.id,
@@ -793,6 +800,22 @@ class SimulationEngine:
                 msg += f" WARNING: Intercepted by {combat.enemy_name}!"
             return True, msg
 
+    def compute_body_distance_au(
+        self,
+        target_body: CelestialBody,
+        origin_body: CelestialBody | None = None,
+    ) -> float:
+        """Compute 2D polar Euclidean distance in AU between two bodies (or current orbit/star origin)."""
+        origin = origin_body if origin_body is not None else self.orbiting_body
+        if origin is not None:
+            ox = origin.orbit_radius * math.cos(origin.current_angle)
+            oy = origin.orbit_radius * math.sin(origin.current_angle)
+        else:
+            ox, oy = 0.0, 0.0
+        tx = target_body.orbit_radius * math.cos(target_body.current_angle)
+        ty = target_body.orbit_radius * math.sin(target_body.current_angle)
+        return round(max(0.25, math.hypot(tx - ox, ty - oy)), 2)
+
     def orbit(self, body_id: str) -> tuple[bool, str]:
         """Establish orbital trajectory around a celestial body in the current system."""
         with self.lock:
@@ -806,7 +829,8 @@ class SimulationEngine:
             if not matched:
                 return False, f"Celestial body '{body_id}' not found in {cur_sys.name}."
 
-            log_entry = f"Orbital capture achieved around {matched.name}."
+            distance_au = self.compute_body_distance_au(matched)
+            log_entry = f"Orbital capture achieved around {matched.name} ({distance_au:.1f} AU)."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
 
             new_tut, tut_cr, tut_xp, tut_relics, tut_logs = self._progress_tutorial("orbit")
@@ -826,7 +850,7 @@ class SimulationEngine:
             )
 
             self.state = self._clone_state(ship=new_ship)
-            return True, f"Now in orbit around {matched.name}."
+            return True, f"Now in orbit around {matched.name} ({distance_au:.1f} AU)."
 
     def start_travel(self, body_id: str, mode: str = "sublight") -> tuple[bool, str]:
         """Initiate sublight or quantum in-system transit toward a celestial body."""
@@ -847,14 +871,7 @@ class SimulationEngine:
 
             origin = self.orbiting_body
             origin_id = origin.id if origin else None
-            if origin is not None:
-                ox = origin.orbit_radius * math.cos(origin.current_angle)
-                oy = origin.orbit_radius * math.sin(origin.current_angle)
-            else:
-                ox, oy = 0.0, 0.0
-            tx = matched.orbit_radius * math.cos(matched.current_angle)
-            ty = matched.orbit_radius * math.sin(matched.current_angle)
-            distance_au = round(max(0.25, math.hypot(tx - ox, ty - oy)), 2)
+            distance_au = self.compute_body_distance_au(matched, origin)
 
             new_fuel = self.state.ship.fuel
             if norm_mode == "quantum":
@@ -2871,8 +2888,13 @@ class SimulationEngine:
                 updated_bodies = []
                 for body in system.bodies:
                     d_angle = body.orbit_speed * 0.05 * num_ticks
+                    updated_pop = step_population_dynamics(body, num_ticks) if body.population > 0 else body.population
                     updated_bodies.append(
-                        replace(body, current_angle=(body.current_angle + d_angle) % (2.0 * math.pi))
+                        replace(
+                            body,
+                            current_angle=(body.current_angle + d_angle) % (2.0 * math.pi),
+                            population=updated_pop,
+                        )
                     )
                 updated_systems[sys_id] = StarSystem(
                     id=system.id,

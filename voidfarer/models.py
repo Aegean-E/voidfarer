@@ -43,10 +43,10 @@ class CelestialBody:
     name: str
     body_type: str  # 'star', 'terrestrial', 'gas_giant', 'oceanic', 'volcanic', 'orbital_station', 'asteroid_belt', 'desert_world', 'ice_world', 'lava_world', 'ringed_giant', 'research_outpost'
     orbit_radius: float  # In Astronomical Units (AU)
-    orbit_speed: float  # Orbital angular velocity
-    current_angle: float  # Current orbital phase (radians)
-    radius_km: float
-    color: str  # Hex display color
+    orbit_speed: float = 0.05  # Orbital angular velocity
+    current_angle: float = 0.0  # Current orbital phase (radians)
+    radius_km: float = 6000.0
+    color: str = "#00f0ff"  # Hex display color
     hazards: tuple[str, ...] = ()
     station_dockable: bool = False
     market_archetype: str = "none"  # 'none', 'mining', 'agricultural', 'industrial', 'high_tech', 'black_market'

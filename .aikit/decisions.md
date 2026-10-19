@@ -302,5 +302,17 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   4. Add structural regression tests in `tests/test_cockpit_layout.py` (`TestExpandableReactorAndVitalsAlignment`) verifying the reactor toggle wiring, `.reactor-collapsed` CSS rule, topbar child ordering, and equal-dimension CSS rules.
 - **Consequences**: The player can collapse the reactor matrix at will to maximize radar visibility, the top bar follows a cleaner workflow hierarchy, and all vital status cards are symmetrically aligned with matching widths and heights.
 
+### ADR-025: Shared 2D Polar Distance Calculation for Orbit and Transit, Single-Line Top-Bar Vitals/Chrono Symmetry (G-007), and Dynamic Demographic Population Mechanics
+- **Date**: 2026-10-19
+- **Status**: Accepted
+- **Context**: The user requested three complementary enhancements: (1) ensuring "ENTER ORBIT" and "SUBLIGHT TRANSIT" adhere strictly to the exact same 2D polar Euclidean distance calculation $d_{\text{AU}} = \sqrt{(r_2\cos\theta_2 - r_1\cos\theta_1)^2 + (r_2\sin\theta_2 - r_1\sin\theta_1)^2}$ across the simulation engine, flight log, and Target Card; (2) guaranteeing that all top-bar vital stat cards (`vitalHullCard`, `vitalShieldCard`, etc.) and the Chrono date box (`hudTimeDeck`) have the exact same height (`52px; box-sizing: border-box;`) and remain strictly on the same non-wrapping line (`flex-wrap: nowrap;`); and (3) implementing dynamic planetary population mechanics, including tick-based demographic growth scaling with habitability, demographic colony tiers (`Outpost`, `Colony`, `Settlement`, `Metropolis`, `Mega-Ecumenopolis`), and population-scaled market consumption.
+- **Decision**:
+  1. Add `compute_body_distance_au(target_body, origin_body=None)` in `voidfarer/engine.py` and consume it in both `orbit(body_id)` and `start_travel(body_id, mode)`. Update `orbit` flight logging and returned messages to report the true 2D Euclidean distance, and update `updateTargetCard()` in `voidfarer/static/app.js` so both the "ENTER ORBIT" and "SUBLIGHT TRANSIT" buttons display and use identical distance calculations.
+  2. In `voidfarer/static/style.css`, enforce `flex-wrap: nowrap; overflow-x: auto;` on `.hud-topbar` and `.vitals-row`, and set `height: 52px; box-sizing: border-box;` on `.hud-time-deck` matching `.vital-card`, ensuring all stat cards and the chrono deck sit on a unified single line with matching vertical dimension.
+  3. Add `step_population_dynamics(body, num_ticks)` in `voidfarer/galaxy.py` and `get_colony_tier(population)`. On simulation `tick()`, advance inhabited body populations based on habitability ($g \approx 0.00025 \times (\text{habitability}/100)$) or life-support station steady migration, and integrate population-tier reporting into the planet inspector and CLI status.
+  4. Write failing-first tests in `tests/test_cockpit_layout.py` and `tests/test_galaxy.py` to pin the distance parity, single-line CSS, and population demographic simulation.
+- **Consequences**: Navigation distances are astrophysically uniform across immediate orbital capture and timed transit, the cockpit top bar displays a clean, symmetrical, single-line layout matching the chrono clock, and star systems feature living planetary populations that evolve dynamically over time.
+
+
 
 

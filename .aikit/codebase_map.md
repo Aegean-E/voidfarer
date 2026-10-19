@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `35`
-- **Total Classes**: `91`
-- **Total Top-Level Functions**: `73`
-- **Total Class Methods**: `499`
-- **Total Source Lines**: `14334`
+- **Total Classes**: `92`
+- **Total Top-Level Functions**: `75`
+- **Total Class Methods**: `506`
+- **Total Source Lines**: `14455`
 
 ---
 
@@ -105,7 +105,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `434` lines (`18396` bytes)
+**Size**: `464` lines (`19516` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -168,6 +168,11 @@
   - Method `.test_reactor_panel_has_toggle_button_and_collapse_wiring()`
   - Method `.test_topbar_actions_line_appears_before_vitals_row()`
   - Method `.test_vital_stat_cards_have_equal_size_styling()`
+- `class TestSingleLineVitalsAndDistanceParity`
+  - Method `.setUpClass()`
+  - Method `.test_topbar_and_vitals_are_on_single_non_wrapping_line()`
+  - Method `.test_vital_cards_match_chrono_box_height()`
+  - Method `.test_orbit_button_adheres_to_distance_calculation()`
 
 ---
 
@@ -344,7 +349,7 @@
 ### [`tests/test_galaxy.py`](tests/test_galaxy.py)
 > *Unit tests for procedural galaxy generation, hyperlane mesh, and market quotes.*
 
-**Size**: `52` lines (`1917` bytes)
+**Size**: `88` lines (`3742` bytes)
 
 **Classes:**
 - `class TestGalaxy`
@@ -352,6 +357,8 @@
   - Method `.test_hyperlane_connectivity()`
   - Method `.test_market_quotes_calculation()`
   - Method `.test_random_anomaly_generation()`
+  - Method `.test_population_mechanics_and_colony_tiers()`
+  - Method `.test_orbit_and_sublight_distance_parity()`
 
 ---
 
@@ -648,7 +655,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `3091` lines (`150101` bytes)
+**Size**: `3113` lines (`151153` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -668,6 +675,7 @@
   - Property `.orbiting_body`
   - Method `._process_drone_cycle(ship)` - *Advance autonomous drone harvest cycle across star systems.*
   - Method `.jump(target_system_id)` - *Execute a hyperspace jump to an adjacent star system.*
+  - Method `.compute_body_distance_au(target_body, origin_body)` - *Compute 2D polar Euclidean distance in AU between two bodies (or current orbit/star origin).*
   - Method `.orbit(body_id)` - *Establish orbital trajectory around a celestial body in the current system.*
   - Method `.start_travel(body_id, mode)` - *Initiate sublight or quantum in-system transit toward a celestial body.*
   - Method `.scan()` - *Perform sensor sweep of current body or local space.*
@@ -760,7 +768,7 @@
 ### [`voidfarer/galaxy.py`](voidfarer/galaxy.py)
 > *Procedural galaxy generator, celestial orbital mechanics, and market economy.*
 
-**Size**: `718` lines (`31814` bytes)
+**Size**: `751` lines (`32909` bytes)
 
 **Classes:**
 - `class GalaxyGenerator` - *Generates deterministic star systems, celestial bodies, and hyperlane corridors.*
@@ -774,6 +782,8 @@
 **Functions:**
 - `def compute_habitability_index(body_type, gravity, temperature_c, atmosphere, hazards)` - *Compute a scientific Earth Similarity / Habitability Index in [0.0, 100.0].*
 - `def compute_scientific_planet_properties(body_type, spectral_type, orbit_radius_au, rad_sample, grav_sample, temp_jitter, hazards)` - *Derive physically consistent radius_km, gravity, atmosphere, temperature_c, and habitability.*
+- `def get_colony_tier(population)` - *Classify world or habitat population into sociological colony tiers.*
+- `def step_population_dynamics(body, num_ticks)` - *Advance population deterministically based on habitability and world type.*
 
 ---
 
@@ -796,7 +806,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1269` lines (`45124` bytes)
+**Size**: `1269` lines (`45158` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*

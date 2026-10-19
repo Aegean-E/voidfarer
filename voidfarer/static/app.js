@@ -2030,7 +2030,7 @@ class CockpitApp {
             const inOrbitHere = (this.state.ship.orbiting_body_id === b.id && !travel);
             const inTransitHere = Boolean(travel && travel.destination_body_id === b.id);
             this.btnOrbitTarget.disabled = inOrbitHere;
-            this.btnOrbitTarget.textContent = inOrbitHere ? "ALREADY IN ORBIT" : "ENTER ORBIT";
+            this.btnOrbitTarget.textContent = inOrbitHere ? "ALREADY IN ORBIT" : `ENTER ORBIT (${distAu.toFixed(2)} AU)`;
             if (this.btnSublightTarget) {
                 this.btnSublightTarget.style.display = "inline-block";
                 this.btnSublightTarget.disabled = inOrbitHere || inTransitHere;
@@ -2058,7 +2058,12 @@ class CockpitApp {
             if (this.targetFaction) this.targetFaction.textContent = b.faction || "Unclaimed";
             if (this.targetPopulation) {
                 const pop = Number(b.population || 0);
-                this.targetPopulation.textContent = pop > 0 ? pop.toLocaleString("en-US") : "Uninhabited";
+                if (pop <= 0) {
+                    this.targetPopulation.textContent = "Uninhabited";
+                } else {
+                    const tier = pop < 10000 ? "Outpost" : (pop < 1000000 ? "Colony" : (pop < 50000000 ? "Settlement" : (pop < 1000000000 ? "Metropolis" : "Mega-Ecumenopolis")));
+                    this.targetPopulation.textContent = `${pop.toLocaleString("en-US")} [${tier.toUpperCase()}]`;
+                }
             }
             if (this.targetGovernment) this.targetGovernment.textContent = b.government || "None";
             this.targetResources.innerHTML = (b.resources || []).map(r => `<span>${this.escapeHtml(r)}</span>`).join("");

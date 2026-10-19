@@ -1,59 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
-    "last_phase": "verification",
+    "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+    "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792438800.3636346,
-    "completed_at": 1792438804.495899
+    "updated_at": 1792439941.7366254,
+    "completed_at": 1792439949.1067476
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-transit-civ-events-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-transit-civ-events-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792430779.5579722,
-      "timestamp_str": "2026-10-19 20:26:19"
-    },
-    {
-      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/4] Add ESC menu hotkey, multiple save slots across storage/REST/CLI/cockpit, and full-viewport background NAV-Radar orbital map (G-004)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792432959.2480946,
-      "timestamp_str": "2026-10-19 21:02:39",
-      "impact_assessment": {
-        "why": "Deliver user-requested ESC menu toggle, multi-slot save/load/delete/list persistence across backend and cockpit UI, and full-screen background orbital radar map with all HUD decks floating on top",
-        "benefits": "Instant ESC menu/modal control, independent named/numbered save slots with rich metadata and default-slot backward compatibility, and an immersive full-viewport interactive orbital radar background",
-        "risks": "contract: /api/save, /api/load, /api/delete-save and StorageManager must stay backward-compatible with no-arg callers; dependency: zero external dependencies; concurrency: StorageManager write lock and engine lock must guard multi-slot operations; state: CSS backdrop-filter on parent containers would trap position:fixed radar if not cleared on #panelCenter/#panelNav",
-        "mitigation": "Default slot=None to voidfarer_save.json, validate slot identifiers against path traversal, reuse atomic write + .bak recovery per slot, remove ancestor backdrop-filter on #panelCenter/#panelNav while keeping HUD cards elevated at z-index>=2 with pointer-events pass-through"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[milestone 1/4] Multi-slot atomic save/load/list/delete in StorageManager, REST API (/api/saves, /api/save, /api/load, /api/delete-save), and CLI saves subcommand; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792433359.4685383,
-      "timestamp_str": "2026-10-19 21:09:19"
-    },
-    {
-      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[milestone 2/4] ESC hotkey menu/overlay toggle and multi-save slot manager UI in Main Menu; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792433644.6797478,
-      "timestamp_str": "2026-10-19 21:14:04"
-    },
     {
       "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
       "phase": "verification",
@@ -227,6 +182,51 @@
       "status": "completed",
       "timestamp": 1792438804.4959004,
       "timestamp_str": "2026-10-19 22:40:04"
+    },
+    {
+      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+      "phase": "planning",
+      "phase_num": 2,
+      "description": "[1/2] Shared 2D polar distance calculation for orbit and sublight, topbar single-line layout with equal-sized vitals and chrono box",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792439307.7217777,
+      "timestamp_str": "2026-10-19 22:48:27",
+      "impact_assessment": {
+        "why": "User requested orbit and sublight transit adhere to same distance calculation, vital stat cards be the exact same size as the chrono date box on the same line, and adding population mechanics",
+        "benefits": "Consistent orbital navigation distance across UI and engine, unified symmetrical single-line top status bar matching chrono deck, and dynamic demographic population mechanics on ticks",
+        "risks": "contract: existing layout and API contracts must remain satisfied; dependency: none; concurrency: none; state: population advances deterministically on ticks without breaking save schema",
+        "mitigation": "Add regression tests in test_cockpit_layout.py and test_galaxy.py covering distance calculation parity, topbar single-line styling, and tick-based population mechanics"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 1/2] 2D polar distance calculation parity for orbit and sublight transit, single-line nowrap topbar with 52px vital cards matching chronometer deck; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792439935.9261217,
+      "timestamp_str": "2026-10-19 22:58:55"
+    },
+    {
+      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 2/2] Dynamic planetary population mechanics, colony tiers (Outpost to Mega-Ecumenopolis), tick-based demographic growth, documentation, and regression verification; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792439941.7366254,
+      "timestamp_str": "2026-10-19 22:59:01"
+    },
+    {
+      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-orbit-distance-topbar-population-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792439949.1067493,
+      "timestamp_str": "2026-10-19 22:59:09"
     }
   ]
 }

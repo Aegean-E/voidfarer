@@ -431,4 +431,34 @@ class TestExpandableReactorAndVitalsAlignment(unittest.TestCase):
             "vital cards must have equal height and box-sizing",
         )
 
+class TestSingleLineVitalsAndDistanceParity(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.html = INDEX_HTML.read_text(encoding="utf-8")
+        cls.js = APP_JS.read_text(encoding="utf-8")
+        cls.css = STYLE_CSS.read_text(encoding="utf-8")
+
+    def test_topbar_and_vitals_are_on_single_non_wrapping_line(self):
+        self.assertRegex(
+            self.css,
+            r"\.hud-topbar\s*\{[^}]*flex-wrap:\s*nowrap",
+            "hud-topbar must not wrap onto multiple lines",
+        )
+        self.assertRegex(
+            self.css,
+            r"\.vitals-row\s*\{[^}]*flex-wrap:\s*nowrap",
+            "vitals-row must not wrap onto multiple lines",
+        )
+
+    def test_vital_cards_match_chrono_box_height(self):
+        self.assertRegex(
+            self.css,
+            r"\.hud-time-deck\s*\{[^}]*height:\s*52px[^}]*box-sizing:\s*border-box",
+            "hud-time-deck must match vital card 52px height and border-box sizing",
+        )
+
+    def test_orbit_button_adheres_to_distance_calculation(self):
+        self.assertIn("ENTER ORBIT (${distAu.toFixed(2)} AU)", self.js)
+
+
 

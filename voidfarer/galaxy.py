@@ -329,6 +329,39 @@ def compute_scientific_planet_properties(
     }
 
 
+def get_colony_tier(population: int) -> str:
+    """Classify world or habitat population into sociological colony tiers."""
+    pop = int(population)
+    if pop <= 0:
+        return "Uninhabited"
+    if pop < 10_000:
+        return "Outpost"
+    if pop < 1_000_000:
+        return "Colony"
+    if pop < 50_000_000:
+        return "Settlement"
+    if pop < 1_000_000_000:
+        return "Metropolis"
+    return "Mega-Ecumenopolis"
+
+
+def step_population_dynamics(body: CelestialBody, num_ticks: int = 1) -> int:
+    """Advance population deterministically based on habitability and world type."""
+    if body.population <= 0 or num_ticks <= 0:
+        return 0
+    hab = max(0.0, min(100.0, float(body.habitability)))
+    if body.station_dockable or body.body_type in ("orbital_station", "research_outpost"):
+        growth_rate = 0.00015
+    else:
+        growth_rate = (hab / 100.0) * 0.00025
+
+    factor = (1.0 + growth_rate) ** num_ticks
+    growth = int(round(body.population * (factor - 1.0)))
+    if growth == 0 and growth_rate > 0:
+        growth = 1
+    return body.population + growth
+
+
 class GalaxyGenerator:
     """Generates deterministic star systems, celestial bodies, and hyperlane corridors."""
 

@@ -288,6 +288,9 @@ python -m voidfarer.cli mercs list
 python -m voidfarer.cli mercs hire merc_ironclad
 python -m voidfarer.cli allies list
 python -m voidfarer.cli allies form captain_sable
+python -m voidfarer.cli saves list
+python -m voidfarer.cli saves save slot_1
+python -m voidfarer.cli saves load slot_1
 ```
 
 ### 17. Holographic Web Cockpit Interface
@@ -297,8 +300,8 @@ python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Cosmic Chronometer & Time Control Deck**: Top-of-HUD cybernetic panel featuring live in-game date (`DD.MM.YYYY`, starting 01.01.3042), tick badge (`TICK #N`), 1-click Pause/Resume button (`Spacebar`), 1x-10x speed multiplier toggles (`1-4`), and step advance button (`T`).
-- **Main Menu & Save Management**: Opening window with Continue, Save Game, Load Game, Delete Save, Start New Game, and Settings (sound, radar grid, orbit labels, travel animation, starfield density).
-- **Centered NAV-Radar**: Black-background orbit/galaxy canvas with ORBITS/GALAXY and GRID/LABELS controls overlaid directly on the map, plus drag-pan and wheel zoom.
+- **Main Menu (`ESC`) & Multi-Slot Save Management**: Toggle the Main Menu or close active modal windows anytime with `ESC`, and create, inspect, load, or delete multiple named save slots (`default`, `slot_1`..`slot_3`, or custom slot names) alongside Settings.
+- **Full-Viewport Background NAV-Radar (`G-004`)**: Full-screen black-background orbital/galaxy canvas (`100vw x 100vh`) serving as the live game backdrop with all HUD decks floating on top, ORBITS/GALAXY and GRID/LABELS overlay controls, drag-pan, and wheel zoom.
 - **Quest, AI, Depot & Quantum Message Panels**: Unified mission control, AI captain diplomacy/trade/hire/ally actions, per-system cargo depots with direct selling, and an intergalactic quantum inbox/composer.
 - **Pilot Perks Window**: The former Mastery page is now an open/close in-game window with four branching perk trees (Exploration, Combat, Fleet, Trade) and tier-2 prerequisites.
 - **Planet & System Inspector**: Gravity, atmosphere, temperature, moons, resources, spectral class, faction, security, and jump links for selected targets.

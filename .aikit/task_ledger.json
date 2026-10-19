@@ -3,37 +3,12 @@
   "active_task": {
     "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
     "last_phase": "verification",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792433771.018688
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792433861.8996668,
+    "completed_at": 1792433862.0156276
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-frontier-command-v1",
-      "phase": "in_progress",
-      "phase_num": 2,
-      "description": "[1/5] Frontier Command expansion: main menu/save management, centered black NAV-radar overlays, AI captains and dynamic economy, quests/depots/quantum messages, landing/moons/star types, mercenary/fleet/ally systems, transit animation, and branching perks window",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792371744.9232008,
-      "timestamp_str": "2026-10-19 04:02:24",
-      "impact_assessment": {
-        "why": "The requested feature set adds major player-facing surfaces and persistent entities; implementing them without a plan risks breaking save compatibility, the existing 196-test suite, and the cockpit layout rules",
-        "benefits": "One coherent frontier layer ties AI trade to prices, surfaces unit/depot/message state, adds save management and procedural depth, and converts the perks page into a branchable window while keeping all prior systems working",
-        "risks": "contract: new REST endpoints and additive save fields; dependency: stdlib only plus existing web assets; concurrency: AI/depot/message mutations use the engine lock; state: legacy saves bootstrap AI/depots/messages and keep stored systems",
-        "mitigation": "Per-domain regression tests, additive serialization defaults, node syntax check, full suite, and aikit 4/4 gates"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-frontier-command-v1",
-      "phase": "in_progress",
-      "phase_num": 4,
-      "description": "[5/5] Verified: 222/222 tests green (3.0s); node --check app.js OK; compileall OK; aikit check voidfarer 4/4; ADR-017 and README updated; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792371751.5253453,
-      "timestamp_str": "2026-10-19 04:02:31"
-    },
     {
       "task_id": "task-voidfarer-frontier-command-v1",
       "phase": "completed",
@@ -233,6 +208,25 @@
       "status": "in_progress",
       "timestamp": 1792433771.018688,
       "timestamp_str": "2026-10-19 21:16:11"
+    },
+    {
+      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
+      "phase": "verification",
+      "phase_num": 4,
+      "description": "[milestone 4/4] Document ESC menu hotkey, multiple save slots, and full-viewport background NAV-Radar in README.md and complete task; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792433861.8996668,
+      "timestamp_str": "2026-10-19 21:17:41"
+    },
+    {
+      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-esc-saves-bg-radar-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792433862.0156322,
+      "timestamp_str": "2026-10-19 21:17:42"
     }
   ]
 }

@@ -193,6 +193,47 @@ class TestServer(unittest.TestCase):
         json_data = json.loads(data.decode("utf-8"))
         self.assertFalse(json_data["ok"])
 
+    def test_frontier_endpoints(self):
+        status, data = self._get("/api/quests")
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        status, data = self._get("/api/ai")
+        self.assertEqual(status, 200)
+        captain = json.loads(data.decode("utf-8"))["captains"][0]
+        status, data = self._post("/api/ai/interact", {"captain_id": captain["id"], "action": "hail"})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        status, data = self._post("/api/messages/send", {"recipient": captain["name"], "subject": "Hello", "body": "Quantum test"})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+    def test_landing_and_depot_endpoints(self):
+        status, data = self._get("/api/state")
+        state = json.loads(data.decode("utf-8"))["data"]
+        landable = next(b for b in state["current_system"]["bodies"] if b["landable"])
+        self._post("/api/orbit", {"target": landable["id"]})
+        status, data = self._post("/api/land", {"target": landable["id"]})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        self._post("/api/orbit", {"target": "sol_body_1"})
+        status, data = self._post("/api/depot/deposit", {"item_id": "fuel_cells", "quantity": 1})
+        self.assertEqual(status, 200)
+        self.assertIn("Deposited", json.loads(data.decode("utf-8"))["message"])
+
+    def test_save_load_delete_endpoints(self):
+        status, _ = self._post("/api/save", {})
+        self.assertEqual(status, 200)
+        status, data = self._post("/api/delete-save", {})
+        self.assertEqual(status, 200)
+        status, data = self._post("/api/load", {})
+        self.assertEqual(status, 404)
+        status, data = self._post("/api/new-game", {"seed": 7})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

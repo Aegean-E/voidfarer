@@ -2505,3 +2505,87 @@ body.cockpit-theme {
 
 
 
+
+/* --- Frontier UI: main menu, windows, radar overlay, quests, AI, depots, messages --- */
+.main-menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 40%, rgba(0, 240, 255, 0.08), rgba(0, 0, 0, 0.94) 65%), #000;
+    backdrop-filter: blur(10px);
+}
+.main-menu-overlay.hidden { display: none; }
+.main-menu-card {
+    width: min(520px, 92vw);
+    border: 1px solid var(--border-glow);
+    border-radius: 10px;
+    padding: 28px;
+    background: rgba(4, 8, 18, 0.92);
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.18);
+}
+.main-menu-brand h1 { margin: 4px 0; font-size: 2.4rem; letter-spacing: 6px; color: var(--neon-cyan); }
+.main-menu-brand p, .main-menu-kicker { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem; }
+.main-menu-actions { display: grid; gap: 8px; margin-top: 22px; }
+.menu-btn {
+    padding: 11px 14px;
+    background: rgba(0, 240, 255, 0.06);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 4px;
+}
+.menu-btn:hover { background: rgba(0, 240, 255, 0.16); border-color: var(--neon-cyan); }
+.menu-btn.primary { border-color: var(--neon-green); color: var(--neon-green); }
+.menu-btn.danger { border-color: #ff3355; color: #ff6688; }
+.main-menu-status { margin-top: 16px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--neon-cyan); }
+.game-window-overlay {
+    position: fixed; inset: 0; z-index: 5100; display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.78); backdrop-filter: blur(6px);
+}
+.game-window {
+    width: min(760px, 94vw); max-height: 86vh; overflow: auto;
+    background: #050a14; border: 1px solid var(--border-glow); border-radius: 8px;
+    box-shadow: 0 0 40px rgba(0, 240, 255, 0.2);
+}
+.game-window-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); }
+.game-window-header h2 { font-size: 0.92rem; letter-spacing: 1px; color: var(--neon-cyan); }
+.game-window-header .perk-points { margin-left: auto; color: var(--neon-green); font-family: var(--font-mono); font-size: 0.72rem; }
+.window-close { margin-left: auto; background: transparent; border: 0; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+.game-window-body { padding: 16px; display: grid; gap: 10px; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(0, 240, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 4px; font-family: var(--font-mono); font-size: 0.76rem; }
+.setting-row input[type="range"] { width: 180px; }
+.perks-branches { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.perk-branch { border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px; background: rgba(0, 240, 255, 0.03); }
+.perk-branch h4 { color: var(--neon-cyan); font-size: 0.78rem; margin-bottom: 8px; letter-spacing: 1px; }
+.perk-node { border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 4px; padding: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 0.68rem; }
+.perk-node.unlocked { border-color: var(--neon-green); color: var(--neon-green); }
+.perk-node.locked { opacity: 0.55; }
+.perk-node button { margin-top: 6px; width: 100%; }
+.radar-overlay-top { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; gap: 8px; z-index: 3; pointer-events: none; }
+.radar-overlay-top > * { pointer-events: auto; }
+.radar-overlay-settings { display: flex; gap: 4px; }
+.radar-overlay-settings .ctrl-btn { width: auto; padding: 0 8px; font-size: 0.6rem; }
+.canvas-radar-container { background: #000; }
+.target-info-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 8px 0; font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-muted); }
+.target-info-grid strong { display: block; color: var(--text-primary); font-size: 0.72rem; }
+.target-resources { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.target-resources span { border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 3px; padding: 2px 6px; font-family: var(--font-mono); font-size: 0.6rem; color: var(--neon-cyan); }
+.quests-list, .ai-list, .depot-list, .message-list { display: grid; gap: 8px; }
+.quest-card, .ai-card, .depot-card, .message-card { border: 1px solid var(--border-subtle); border-radius: 5px; padding: 10px; background: rgba(0, 240, 255, 0.03); font-family: var(--font-mono); font-size: 0.7rem; }
+.quest-card h4, .ai-card h4, .depot-card h4, .message-card h4 { color: var(--neon-cyan); font-size: 0.78rem; margin-bottom: 4px; }
+.quest-progress { height: 4px; background: rgba(255,255,255,.1); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.quest-progress div { height: 100%; background: var(--neon-green); }
+.ai-actions, .depot-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.ai-actions button, .depot-actions button, .message-card button { padding: 4px 8px; font-size: 0.62rem; }
+.depot-summary { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px; }
+.message-composer { display: grid; gap: 6px; margin-bottom: 10px; }
+.message-composer input, .message-composer textarea { background: rgba(0,0,0,.4); border: 1px solid var(--border-subtle); color: var(--text-primary); padding: 7px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.72rem; }
+.message-composer textarea { min-height: 60px; resize: vertical; }
+.message-card.unread { border-color: var(--neon-amber); }
+@media (max-width: 720px) { .target-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

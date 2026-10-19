@@ -13,6 +13,57 @@
     <div class="stars-layer-2"></div>
     <div class="scanline-overlay"></div>
 
+    <!-- Main Menu Overlay -->
+    <div class="main-menu-overlay" id="mainMenuOverlay">
+        <div class="main-menu-card">
+            <div class="main-menu-brand">
+                <span class="main-menu-kicker">DEEP-SPACE COMMAND</span>
+                <h1>VOIDFARER</h1>
+                <p>Autonomous galaxy simulation // tactical cockpit</p>
+            </div>
+            <div class="main-menu-actions">
+                <button class="menu-btn" id="btnMenuResume">CONTINUE FLIGHT</button>
+                <button class="menu-btn" id="btnMenuSave">SAVE GAME</button>
+                <button class="menu-btn" id="btnMenuLoad">LOAD GAME</button>
+                <button class="menu-btn danger" id="btnMenuDelete">DELETE SAVE</button>
+                <button class="menu-btn primary" id="btnMenuNew">START NEW GAME</button>
+                <button class="menu-btn" id="btnMenuSettings">SETTINGS</button>
+            </div>
+            <div class="main-menu-status" id="mainMenuStatus">QUANTUM LINK ESTABLISHED</div>
+        </div>
+    </div>
+
+    <!-- Settings Window -->
+    <div class="game-window-overlay" id="settingsOverlay" style="display: none;">
+        <div class="game-window">
+            <div class="game-window-header">
+                <h2>SETTINGS</h2>
+                <button class="window-close" id="btnCloseSettings">×</button>
+            </div>
+            <div class="game-window-body">
+                <label class="setting-row"><span>Sound effects</span><input type="checkbox" id="settingSound" checked></label>
+                <label class="setting-row"><span>Radar grid</span><input type="checkbox" id="settingGrid" checked></label>
+                <label class="setting-row"><span>Orbit labels</span><input type="checkbox" id="settingLabels" checked></label>
+                <label class="setting-row"><span>Travel animation</span><input type="checkbox" id="settingAnimation" checked></label>
+                <label class="setting-row"><span>Starfield density</span><input type="range" id="settingStarDensity" min="40" max="240" value="140"></label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Perks Window (branching talent tree) -->
+    <div class="game-window-overlay" id="perksOverlay" style="display: none;">
+        <div class="game-window perks-window">
+            <div class="game-window-header">
+                <h2>PILOT PERKS // BRANCHING SPECIALIZATIONS</h2>
+                <span class="perk-points" id="perksWindowPoints">0 POINTS</span>
+                <button class="window-close" id="btnClosePerks">×</button>
+            </div>
+            <div class="game-window-body">
+                <div class="perks-branches" id="perksBranches"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Cockpit Frame -->
     <div class="cockpit-frame" id="cockpitContainer">
         
@@ -84,8 +135,10 @@
                     <span class="icon" id="audioIcon">🔊</span> SOUND FX
                 </button>
                 <button class="btn-hud btn-cyan" id="quickScanBtn">
-                    <span class="icon">📡</span> SENSOR SCAN
+                    <span class="icon">ğŸ“¡</span> SENSOR SCAN
                 </button>
+                <button class="btn-hud" id="btnMainMenu" title="Open Main Menu">MENU</button>
+                <button class="btn-hud btn-cyan" id="btnOpenPerks" title="Open Pilot Perks">PERKS</button>
             </div>
 
             <!-- Cosmic Chronometer & Time Controls -->
@@ -146,7 +199,11 @@
                     <button class="deck-tab-btn" id="tabBtnArsenal">ARSENAL</button>
                     <button class="deck-tab-btn" id="tabBtnFleet">FLEET</button>
                     <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
-                    <button class="deck-tab-btn" id="tabBtnMastery">MASTERY & RELICS</button>
+                    <button class="deck-tab-btn" id="tabBtnMastery">PILOT PERKS</button>
+                    <button class="deck-tab-btn" id="tabBtnQuests">QUESTS</button>
+                    <button class="deck-tab-btn" id="tabBtnAI">AI COMMAND</button>
+                    <button class="deck-tab-btn" id="tabBtnDepot">DEPOT</button>
+                    <button class="deck-tab-btn" id="tabBtnMessages">MESSAGES <span class="tab-badge" id="messagesBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnStory">COMMS LOG <span class="tab-badge" id="storyBadge" style="display: none;">!</span></button>
                     <button class="deck-tab-btn" id="tabBtnFactions">FACTIONS & CORPS</button>
                 </nav>
@@ -236,6 +293,8 @@
                             <!-- Populated dynamically -->
                         </div>
 
+                        <div class="mercenary-roster" id="mercenaryRoster"></div>
+
                         <!-- Commission New Drone -->
                         <div class="commission-drone-box">
                             <h4 class="commission-title">COMMISSION FLEET ASSET</h4>
@@ -266,6 +325,49 @@
                         <div class="contracts-list" id="contractsList">
                             <!-- Populated dynamically -->
                         </div>
+                    </div>
+
+                    <!-- Tab 4b: Unified Quest Panel -->
+                    <div class="quests-panel tab-content" id="tabContentQuests" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-amber"></span> MISSION CONTROL</div>
+                            <h2 class="panel-title">QUEST PANEL</h2>
+                        </div>
+                        <div class="quests-list" id="questsList"></div>
+                    </div>
+
+                    <!-- Tab 4c: AI Captain Command -->
+                    <div class="ai-panel tab-content" id="tabContentAI" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-purple"></span> QUANTUM DIPLOMACY</div>
+                            <h2 class="panel-title">AI CAPTAINS</h2>
+                        </div>
+                        <div class="ai-list" id="aiList"></div>
+                    </div>
+
+                    <!-- Tab 4d: System Depot -->
+                    <div class="depot-panel tab-content" id="tabContentDepot" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-green"></span> LOGISTICS</div>
+                            <h2 class="panel-title">CARGO DEPOT</h2>
+                        </div>
+                        <div class="depot-summary" id="depotSummary"></div>
+                        <div class="depot-list" id="depotList"></div>
+                    </div>
+
+                    <!-- Tab 4e: Quantum Messages -->
+                    <div class="messages-panel tab-content" id="tabContentMessages" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-cyan"></span> QUANTUM RELAY</div>
+                            <h2 class="panel-title">INTERGALACTIC MESSAGES</h2>
+                        </div>
+                        <div class="message-composer">
+                            <input id="messageRecipient" placeholder="Recipient" aria-label="Message recipient">
+                            <input id="messageSubject" placeholder="Subject" aria-label="Message subject">
+                            <textarea id="messageBody" placeholder="Encrypted message body..." aria-label="Message body"></textarea>
+                            <button class="btn-hud btn-cyan" id="btnSendMessage">SEND QUANTUM MESSAGE</button>
+                        </div>
+                        <div class="message-list" id="messageList"></div>
                     </div>
 
                     <!-- Tab 5: Pilot Mastery Tree & Precursor Relics -->
@@ -433,10 +535,6 @@
                     <div class="panel-header">
                         <div class="panel-tag"><span class="badge-dot"></span> NAV-RADAR</div>
                         <h2 class="panel-title" id="radarTitle">SOL SYSTEM ORBITS</h2>
-                        <div class="view-toggle-group">
-                            <button class="tab-btn active" id="viewOrbitBtn">ORBITS</button>
-                            <button class="tab-btn" id="viewGalaxyBtn">GALAXY MAP</button>
-                        </div>
                     </div>
 
                     <!-- Canvas Radar Display -->
@@ -444,6 +542,16 @@
                         <canvas id="radarCanvas" width="560" height="420"></canvas>
                         <div class="radar-crosshair"></div>
                         <div class="radar-sweep"></div>
+                        <div class="radar-overlay-top" id="radarOverlayTop">
+                            <div class="view-toggle-group">
+                                <button class="tab-btn active" id="viewOrbitBtn">ORBITS</button>
+                                <button class="tab-btn" id="viewGalaxyBtn">GALAXY MAP</button>
+                            </div>
+                            <div class="radar-overlay-settings">
+                                <button class="ctrl-btn" id="btnToggleGrid" title="Toggle Radar Grid">GRID</button>
+                                <button class="ctrl-btn" id="btnToggleLabels" title="Toggle Orbit Labels">LABELS</button>
+                            </div>
+                        </div>
                         <div class="radar-coords" id="radarCoords">COORDS: [0.00, 0.00] // SECTOR 01</div>
                         <div class="radar-controls">
                             <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
@@ -460,8 +568,16 @@
                             <span class="target-dist" id="targetDist">-- AU</span>
                         </div>
                         <p class="target-desc" id="targetDesc">Click on any celestial planet, orbital station, or star in the radar to plot trajectory.</p>
+                        <div class="target-info-grid" id="targetInfoGrid">
+                            <span>GRAVITY <strong id="targetGravity">--</strong></span>
+                            <span>ATMOSPHERE <strong id="targetAtmosphere">--</strong></span>
+                            <span>TEMP <strong id="targetTemp">--</strong></span>
+                            <span>MOONS <strong id="targetMoons">--</strong></span>
+                        </div>
+                        <div class="target-resources" id="targetResources"></div>
                         <div class="target-actions" id="targetActions">
                             <button class="btn-action btn-cyan" id="btnOrbitTarget" disabled>ENTER ORBIT</button>
+                            <button class="btn-action btn-green" id="btnLandTarget" style="display:none;" disabled>LAND ON SURFACE</button>
                             <button class="btn-action btn-purple" id="btnJumpTarget" style="display:none;" disabled>HYPERSPACE JUMP</button>
                         </div>
                     </div>

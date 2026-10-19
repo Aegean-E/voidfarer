@@ -59,6 +59,7 @@ voidfarer/
 │   ├── story.py              <- cadet academy & precursor cipher campaign
 │   ├── upgrades.py           <- hardware upgrades catalog & drone templates
 │   ├── economy.py            <- dynamic galactic economy, stockpiles & trade routes
+│   ├── frontier.py           <- AI captains, depots, mercenaries & quantum messages
 │   ├── inventory.py          <- item catalog, consumables & cargo manifest
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
@@ -67,7 +68,7 @@ voidfarer/
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       └── app.js            <- radar math, Web Audio synth & REST link
-└── tests/                    <- 196-test unit & integration suite (about 2.7s)
+└── tests/                    <- 222-test unit & integration suite (about 3.1s)
     ├── __init__.py
     ├── test_models.py        <- model immutability & serialization tests
     ├── test_galaxy.py        <- procedural generator & market tests
@@ -75,6 +76,7 @@ voidfarer/
     ├── test_engine.py        <- state transitions, fleet & combat mechanics
     ├── test_engine_hardening.py <- audit regressions: service guards, relic stats & cargo invariants
     ├── test_ai_and_calendar.py <- adaptive enemy AI, expanded systems & DD.MM.YYYY calendar
+    ├── test_frontier_systems.py <- AI trade, depots, messages, landing, fleets & moons
     ├── test_inventory.py     <- item catalog, manifest & consumable tests
     ├── test_factions_and_enemies.py <- faction geopolitics & tactical combat tests
     ├── test_storage.py       <- power-loss safety & corruption quarantine
@@ -267,13 +269,21 @@ python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Cosmic Chronometer & Time Control Deck**: Top-of-HUD cybernetic panel featuring live in-game date (`DD.MM.YYYY`, starting 01.01.3042), tick badge (`TICK #N`), 1-click Pause/Resume button (`Spacebar`), 1x-10x speed multiplier toggles (`1-4`), and step advance button (`T`).
+- **Main Menu & Save Management**: Opening window with Continue, Save Game, Load Game, Delete Save, Start New Game, and Settings (sound, radar grid, orbit labels, travel animation, starfield density).
+- **Centered NAV-Radar**: Black-background orbit/galaxy canvas with ORBITS/GALAXY and GRID/LABELS controls overlaid directly on the map, plus drag-pan and wheel zoom.
+- **Quest, AI, Depot & Quantum Message Panels**: Unified mission control, AI captain diplomacy/trade/hire/ally actions, per-system cargo depots with direct selling, and an intergalactic quantum inbox/composer.
+- **Pilot Perks Window**: The former Mastery page is now an open/close in-game window with four branching perk trees (Exploration, Combat, Fleet, Trade) and tier-2 prerequisites.
+- **Planet & System Inspector**: Gravity, atmosphere, temperature, moons, resources, spectral class, faction, security, and jump links for selected targets.
+- **Surface Landing**: Land on habitable planets from orbit for survey rewards, and watch the flagship animate between orbital bodies.
+- **Mercenary & Fleet Command**: Per-unit level, efficiency, integrity, sorties, refit/dismiss controls, and hireable mercenary specialists (assault, evasion, repair).
+- **Expanded Procedural Galaxy**: 15 star systems, 5-6 planets each, additional star types (B/O/red giant/binary), savanna/tundra/toxic/barren/super-Earth/ice-giant worlds, moons, and asteroid belts.
+- **Dynamic AI Economy**: Autonomous trader captains move between systems and buy/sell commodities each tick, changing stockpiles and prices alongside the player's trades.
 - **Cadet Flight Academy Ribbon**: Persistent top-of-HUD progressive instruction banner with milestone progress, step hints, rewards, and one-click dismiss.
 - **COMMS LOG Subspace Radio Tab**: Subspace transmissions stream with animated character avatars (Admiral Vance, Cipher, Archon Prime), faction alignment chips, and interactive moral choice cards.
 - **Factions & Megacorporations Tab**: Live diplomatic standings (-100 to +100), territorial headquarters, tariff discounts, and corporate specialty trade margins.
 - **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom, synchronized with simulated tick angular progression.
 - **Galaxy Sector Chart**: Hyperlane corridor network visualization and jump routing.
 - **Contracts & Bounties Tab**: Active operational task cards with live progress bars, Zeigarnik task renewal, and reward claim buttons.
-- **Mastery & Relics Tab**: Pilot rank progression, talent perk allocation grid, and ancient Precursor Relic vault.
 - **Expedition Streak Multiplier**: Real-time loss aversion flame badge scaling all trade and scan yields.
 - **Station Arsenal Tab**: Modular hardware upgrades shop with real-time stat bonuses.
 - **Fleet Command Tab**: Roster of autonomous mining/scout drones with live harvest buttons.
@@ -287,7 +297,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 196-test suite runs in about 2.7 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 222-test suite runs in about 3.1 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
 

@@ -17,6 +17,7 @@ from typing import Any
 
 from voidfarer.economy import get_galactic_trade_routes
 from voidfarer.engine import SimulationEngine
+from voidfarer.frontier import MERCENARY_CATALOG
 from voidfarer.inventory import get_inventory_manifest
 from voidfarer.storage import StorageManager
 from voidfarer.upgrades import (
@@ -180,6 +181,42 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": True, "economy": econ_data, "trade_routes": routes})
             return
 
+        if path == "/api/quests":
+            with self.engine.lock:
+                quests = self.engine.get_quests()
+            self._send_json({"ok": True, "quests": quests})
+            return
+
+        if path == "/api/ai":
+            with self.engine.lock:
+                captains = [c.to_dict() for c in self.engine.state.ai_captains]
+            self._send_json({"ok": True, "captains": captains})
+            return
+
+        if path == "/api/messages":
+            with self.engine.lock:
+                messages = [m.to_dict() for m in self.engine.state.messages]
+            self._send_json({"ok": True, "messages": messages})
+            return
+
+        if path == "/api/depots":
+            with self.engine.lock:
+                depots = [d.to_dict() for d in self.engine.state.depots]
+            self._send_json({"ok": True, "depots": depots})
+            return
+
+        if path == "/api/fleet":
+            with self.engine.lock:
+                fleet = [
+                    {
+                        **d.to_dict(),
+                        "yield_rate": round(d.efficiency * (0.5 + d.integrity / 200.0), 2),
+                    }
+                    for d in self.engine.state.ship.fleet_drones
+                ]
+            self._send_json({"ok": True, "fleet": fleet, "mercenaries": MERCENARY_CATALOG})
+            return
+
         if path == "/api/inventory":
             with self.engine.lock:
                 manifest = get_inventory_manifest(self.engine.state.ship.cargo)
@@ -252,6 +289,118 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
     def _do_post(self) -> None:
         path = self.path.split("?")[0]
         body = self._read_body_json()
+
+        if path == "/api/save":
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": True, "message": "Game saved."})
+            return
+
+        if path == "/api/load":
+            loaded = self.storage.load()
+            if loaded is None:
+                self._send_error_json("No save file is available.", status=HTTPStatus.NOT_FOUND)
+                return
+            ok, msg = self.engine.load_state(loaded)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/delete-save":
+            self.storage.clear()
+            self._send_json({"ok": True, "message": "Save deleted."})
+            return
+
+        if path == "/api/new-game":
+            seed = _int_field(body, "seed", 42, minimum=0)
+            ok, msg = self.engine.reset(seed)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/land":
+            target = str(body.get("target", ""))
+            ok, msg = self.engine.land_on_body(target)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/ai/interact":
+            captain_id = str(body.get("captain_id", ""))
+            action = str(body.get("action", "hail"))
+            commodity_id = body.get("commodity_id")
+            commodity_id = str(commodity_id) if commodity_id is not None else None
+            quantity = _int_field(body, "quantity", 1, minimum=1)
+            ok, msg = self.engine.interact_ai(captain_id, action, commodity_id, quantity)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/messages/send":
+            recipient = str(body.get("recipient", ""))
+            subject = str(body.get("subject", ""))
+            message_body = str(body.get("body", ""))
+            ok, msg = self.engine.send_quantum_message(recipient, subject, message_body)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/messages/read":
+            message_id = str(body.get("message_id", ""))
+            ok, msg = self.engine.mark_message_read(message_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/depot/deposit":
+            item_id = str(body.get("item_id", ""))
+            quantity = _int_field(body, "quantity", 1, minimum=1)
+            ok, msg = self.engine.deposit_cargo(item_id, quantity)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/depot/withdraw":
+            item_id = str(body.get("item_id", ""))
+            quantity = _int_field(body, "quantity", 1, minimum=1)
+            ok, msg = self.engine.withdraw_cargo(item_id, quantity)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/depot/sell":
+            item_id = str(body.get("item_id", ""))
+            quantity = _int_field(body, "quantity", 1, minimum=1)
+            ok, msg = self.engine.sell_from_depot(item_id, quantity)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/mercenary/hire":
+            merc_id = str(body.get("merc_id", ""))
+            ok, msg = self.engine.hire_mercenary(merc_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/fleet/dismiss":
+            drone_id = str(body.get("drone_id", ""))
+            ok, msg = self.engine.dismiss_fleet_unit(drone_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/fleet/refit":
+            drone_id = str(body.get("drone_id", ""))
+            ok, msg = self.engine.refit_fleet_unit(drone_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/ally/form":
+            captain_id = str(body.get("captain_id", ""))
+            ok, msg = self.engine.form_alliance(captain_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
 
         if path == "/api/jump":
             target = body.get("target")

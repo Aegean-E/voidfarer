@@ -1,34 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-ai-galaxy-calendar-v1",
+    "task_id": "task-voidfarer-frontier-command-v1",
     "last_phase": "in_progress",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792367386.2572212,
-    "completed_at": 1792367409.8938484
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792371751.5253453
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-v10-economy-trading-upgrades",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/5] Stabilization of in-flight v10 economy/inventory work: fix combat tick rebuild TypeError, volume-based cargo gate, chassis listing + starter repurchase, sell_upgrade manifest removal, CLI numeric guards; add station consumable purchases; add economy/inventory tests + regressions; clear hygiene findings; align market display with dynamic quotes; update README + ADR-010",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792354428.5636568,
-      "timestamp_str": "2026-10-18 23:13:48"
-    },
-    {
-      "task_id": "task-voidfarer-v10-economy-trading-upgrades",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[5/5] Stabilization verified: 120/120 tests green (2.0s), aikit check voidfarer 4/4 gates (test, hygiene, guidelines, secrets), all 7 hygiene findings cleared, README claims + tree updated, ADR-010 recorded; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792354681.57056,
-      "timestamp_str": "2026-10-18 23:18:01"
-    },
     {
       "task_id": "task-voidfarer-v10-economy-trading-upgrades",
       "phase": "completed",
@@ -238,6 +217,32 @@
       "status": "completed",
       "timestamp": 1792367409.8938498,
       "timestamp_str": "2026-10-19 02:50:09"
+    },
+    {
+      "task_id": "task-voidfarer-frontier-command-v1",
+      "phase": "in_progress",
+      "phase_num": 2,
+      "description": "[1/5] Frontier Command expansion: main menu/save management, centered black NAV-radar overlays, AI captains and dynamic economy, quests/depots/quantum messages, landing/moons/star types, mercenary/fleet/ally systems, transit animation, and branching perks window",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792371744.9232008,
+      "timestamp_str": "2026-10-19 04:02:24",
+      "impact_assessment": {
+        "why": "The requested feature set adds major player-facing surfaces and persistent entities; implementing them without a plan risks breaking save compatibility, the existing 196-test suite, and the cockpit layout rules",
+        "benefits": "One coherent frontier layer ties AI trade to prices, surfaces unit/depot/message state, adds save management and procedural depth, and converts the perks page into a branchable window while keeping all prior systems working",
+        "risks": "contract: new REST endpoints and additive save fields; dependency: stdlib only plus existing web assets; concurrency: AI/depot/message mutations use the engine lock; state: legacy saves bootstrap AI/depots/messages and keep stored systems",
+        "mitigation": "Per-domain regression tests, additive serialization defaults, node syntax check, full suite, and aikit 4/4 gates"
+      }
+    },
+    {
+      "task_id": "task-voidfarer-frontier-command-v1",
+      "phase": "in_progress",
+      "phase_num": 4,
+      "description": "[5/5] Verified: 222/222 tests green (3.0s); node --check app.js OK; compileall OK; aikit check voidfarer 4/4; ADR-017 and README updated; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792371751.5253453,
+      "timestamp_str": "2026-10-19 04:02:31"
     }
   ]
 }

@@ -281,3 +281,25 @@ class TestCockpitRuntimeContracts(unittest.TestCase):
     def test_chrono_displays_calendar_date(self):
         self.assertIn("DATE ${t.date", self.js)
         self.assertIn("DATE 01.01.3042", INDEX_HTML.read_text(encoding="utf-8"))
+
+class TestFrontierCockpitUI(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.html = INDEX_HTML.read_text(encoding="utf-8")
+        cls.js = APP_JS.read_text(encoding="utf-8")
+        cls.css = STYLE_CSS.read_text(encoding="utf-8")
+
+    def test_main_menu_and_windows_exist(self):
+        for marker in ("mainMenuOverlay", "settingsOverlay", "perksOverlay", "btnMenuSave", "btnMenuLoad", "btnMenuDelete", "btnMenuNew"):
+            self.assertIn(f'id="{marker}"', self.html)
+
+    def test_frontier_tabs_and_radar_overlay_exist(self):
+        for marker in ("tabBtnQuests", "tabBtnAI", "tabBtnDepot", "tabBtnMessages", "radarOverlayTop", "btnToggleGrid", "btnToggleLabels", "btnLandTarget", "targetGravity"):
+            self.assertIn(f'id="{marker}"', self.html)
+
+    def test_frontier_renderers_are_wired(self):
+        for method in ("renderQuests", "renderAICaptains", "renderDepots", "renderMessages", "openPerksWindow", "renderPerksWindow", "startTravelAnimation", "menuAction", "handleLandAction"):
+            self.assertIn(method, self.js)
+
+    def test_radar_background_is_black(self):
+        self.assertIn(".canvas-radar-container { background: #000; }", self.css)

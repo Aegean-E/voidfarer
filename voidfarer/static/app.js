@@ -248,6 +248,11 @@ class CockpitApp {
         this.dragStartX = 0;
         this.dragStartY = 0;
         this.hoveredItem = null;
+        this.radarGrid = true;
+        this.radarLabels = true;
+        this.travelAnimationEnabled = true;
+        this.travelAnimation = null;
+        this.loadSettings();
 
         this.initDOMElements();
         this.bindEvents();
@@ -299,7 +304,13 @@ class CockpitApp {
         this.targetDist = document.getElementById("targetDist");
         this.targetDesc = document.getElementById("targetDesc");
         this.btnOrbitTarget = document.getElementById("btnOrbitTarget");
+        this.btnLandTarget = document.getElementById("btnLandTarget");
         this.btnJumpTarget = document.getElementById("btnJumpTarget");
+        this.targetGravity = document.getElementById("targetGravity");
+        this.targetAtmosphere = document.getElementById("targetAtmosphere");
+        this.targetTemp = document.getElementById("targetTemp");
+        this.targetMoons = document.getElementById("targetMoons");
+        this.targetResources = document.getElementById("targetResources");
 
         // Power Matrix
         this.sliderEng = document.getElementById("sliderEng");
@@ -373,8 +384,13 @@ class CockpitApp {
         this.tabBtnMastery = document.getElementById("tabBtnMastery");
         this.tabBtnStory = document.getElementById("tabBtnStory");
         this.tabBtnFactions = document.getElementById("tabBtnFactions");
+        this.tabBtnQuests = document.getElementById("tabBtnQuests");
+        this.tabBtnAI = document.getElementById("tabBtnAI");
+        this.tabBtnDepot = document.getElementById("tabBtnDepot");
+        this.tabBtnMessages = document.getElementById("tabBtnMessages");
         this.contractsBadge = document.getElementById("contractsBadge");
         this.storyBadge = document.getElementById("storyBadge");
+        this.messagesBadge = document.getElementById("messagesBadge");
 
         this.tabContentMarket = document.getElementById("tabContentMarket");
         this.tabContentArsenal = document.getElementById("tabContentArsenal");
@@ -383,6 +399,15 @@ class CockpitApp {
         this.tabContentMastery = document.getElementById("tabContentMastery");
         this.tabContentStory = document.getElementById("tabContentStory");
         this.tabContentFactions = document.getElementById("tabContentFactions");
+        this.tabContentQuests = document.getElementById("tabContentQuests");
+        this.tabContentAI = document.getElementById("tabContentAI");
+        this.tabContentDepot = document.getElementById("tabContentDepot");
+        this.tabContentMessages = document.getElementById("tabContentMessages");
+        this.questsList = document.getElementById("questsList");
+        this.aiList = document.getElementById("aiList");
+        this.depotSummary = document.getElementById("depotSummary");
+        this.depotList = document.getElementById("depotList");
+        this.messageList = document.getElementById("messageList");
         this.factionsGrid = document.getElementById("factionsGrid");
         this.corpsGrid = document.getElementById("corpsGrid");
 
@@ -417,6 +442,7 @@ class CockpitApp {
         // Arsenal & Fleet containers
         this.arsenalList = document.getElementById("arsenalList");
         this.fleetRoster = document.getElementById("fleetRoster");
+        this.mercenaryRoster = document.getElementById("mercenaryRoster");
         this.btnHarvestFleet = document.getElementById("btnHarvestFleet");
 
         // Footer stats
@@ -517,6 +543,39 @@ class CockpitApp {
         if (this.tabBtnFactions) {
             this.tabBtnFactions.addEventListener("click", () => this.switchRightTab("factions"));
         }
+        if (this.tabBtnQuests) this.tabBtnQuests.addEventListener("click", () => this.switchRightTab("quests"));
+        if (this.tabBtnAI) this.tabBtnAI.addEventListener("click", () => this.switchRightTab("ai"));
+        if (this.tabBtnDepot) this.tabBtnDepot.addEventListener("click", () => this.switchRightTab("depot"));
+        if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => this.switchRightTab("messages"));
+
+        // Main menu, settings, perks, and frontier actions
+        document.getElementById("btnMainMenu")?.addEventListener("click", () => this.openMainMenu());
+        document.getElementById("btnOpenPerks")?.addEventListener("click", () => this.openPerksWindow());
+        document.getElementById("btnClosePerks")?.addEventListener("click", () => this.closePerksWindow());
+        document.getElementById("btnCloseSettings")?.addEventListener("click", () => this.closeSettings());
+        document.getElementById("btnMenuResume")?.addEventListener("click", () => this.closeMainMenu());
+        document.getElementById("btnMenuSave")?.addEventListener("click", () => this.menuAction("/api/save", "Game saved."));
+        document.getElementById("btnMenuLoad")?.addEventListener("click", () => this.menuAction("/api/load", "Game loaded."));
+        document.getElementById("btnMenuDelete")?.addEventListener("click", () => {
+            if (window.confirm("Delete the current save permanently?")) this.menuAction("/api/delete-save", "Save deleted.");
+        });
+        document.getElementById("btnMenuNew")?.addEventListener("click", () => {
+            if (window.confirm("Start a new game? The current save will be replaced.")) this.menuAction("/api/new-game", "New game started.");
+        });
+        document.getElementById("btnMenuSettings")?.addEventListener("click", () => this.openSettings());
+        document.getElementById("btnSendMessage")?.addEventListener("click", () => this.handleSendMessage());
+        this.btnLandTarget?.addEventListener("click", () => this.handleLandAction());
+        document.getElementById("btnToggleGrid")?.addEventListener("click", () => {
+            this.radarGrid = !this.radarGrid;
+            this.saveSettings();
+        });
+        document.getElementById("btnToggleLabels")?.addEventListener("click", () => {
+            this.radarLabels = !this.radarLabels;
+            this.saveSettings();
+        });
+        ["settingSound", "settingGrid", "settingLabels", "settingAnimation", "settingStarDensity"].forEach(id => {
+            document.getElementById(id)?.addEventListener("input", () => this.applySettingsFromUI());
+        });
         this.btnSkipCadet.addEventListener("click", () => this.handleSkipCadet());
         if (this.btnResetCadetAcademy) {
             this.btnResetCadetAcademy.addEventListener("click", () => this.handleResetCadet());
@@ -639,31 +698,40 @@ class CockpitApp {
 
     switchRightTab(tabName) {
         this.sound.playBeep(750, 0.05);
+        if (tabName === "mastery") {
+            this.openPerksWindow();
+            return;
+        }
         this.activeRightTab = tabName;
 
-        this.tabBtnMarket.classList.toggle("active", tabName === "market");
-        this.tabBtnArsenal.classList.toggle("active", tabName === "arsenal");
-        this.tabBtnFleet.classList.toggle("active", tabName === "fleet");
-        this.tabBtnContracts.classList.toggle("active", tabName === "contracts");
-        this.tabBtnMastery.classList.toggle("active", tabName === "mastery");
-        this.tabBtnStory.classList.toggle("active", tabName === "story");
-        if (this.tabBtnFactions) this.tabBtnFactions.classList.toggle("active", tabName === "factions");
+        const tabButtons = {
+            market: this.tabBtnMarket, arsenal: this.tabBtnArsenal, fleet: this.tabBtnFleet,
+            contracts: this.tabBtnContracts, story: this.tabBtnStory, factions: this.tabBtnFactions,
+            quests: this.tabBtnQuests, ai: this.tabBtnAI, depot: this.tabBtnDepot, messages: this.tabBtnMessages,
+        };
+        Object.entries(tabButtons).forEach(([name, button]) => {
+            if (button) button.classList.toggle("active", tabName === name);
+        });
 
-        this.tabContentMarket.style.display = (tabName === "market") ? "flex" : "none";
-        this.tabContentArsenal.style.display = (tabName === "arsenal") ? "flex" : "none";
-        this.tabContentFleet.style.display = (tabName === "fleet") ? "flex" : "none";
-        this.tabContentContracts.style.display = (tabName === "contracts") ? "flex" : "none";
-        this.tabContentMastery.style.display = (tabName === "mastery") ? "flex" : "none";
-        this.tabContentStory.style.display = (tabName === "story") ? "flex" : "none";
-        if (this.tabContentFactions) this.tabContentFactions.style.display = (tabName === "factions") ? "flex" : "none";
+        const tabContents = {
+            market: this.tabContentMarket, arsenal: this.tabContentArsenal, fleet: this.tabContentFleet,
+            contracts: this.tabContentContracts, story: this.tabContentStory, factions: this.tabContentFactions,
+            quests: this.tabContentQuests, ai: this.tabContentAI, depot: this.tabContentDepot, messages: this.tabContentMessages,
+        };
+        Object.entries(tabContents).forEach(([name, content]) => {
+            if (content) content.style.display = (tabName === name) ? "flex" : "none";
+        });
 
         if (tabName === "market") this.renderMarketTable();
         if (tabName === "arsenal") this.renderArsenal();
         if (tabName === "fleet") this.renderFleet();
         if (tabName === "contracts") this.renderContracts();
-        if (tabName === "mastery") this.renderMastery();
         if (tabName === "story") this.renderStory();
         if (tabName === "factions") this.renderFactions();
+        if (tabName === "quests") this.renderQuests();
+        if (tabName === "ai") this.renderAICaptains();
+        if (tabName === "depot") this.renderDepots();
+        if (tabName === "messages") this.renderMessages();
     }
 
     setPowerSliders(e, sh, se, w) {
@@ -949,6 +1017,12 @@ class CockpitApp {
             }
         }
 
+        if (this.messagesBadge) {
+            const unread = (this.state.messages || []).filter(m => !m.read).length;
+            this.messagesBadge.textContent = String(unread);
+            this.messagesBadge.style.display = unread > 0 ? "inline-block" : "none";
+        }
+
         // Render Active Tab Content
         if (this.activeRightTab === "market") {
             if (orbBody && orbBody.station_dockable) {
@@ -974,6 +1048,14 @@ class CockpitApp {
             this.renderStory();
         } else if (this.activeRightTab === "factions") {
             this.renderFactions();
+        } else if (this.activeRightTab === "quests") {
+            this.renderQuests();
+        } else if (this.activeRightTab === "ai") {
+            this.renderAICaptains();
+        } else if (this.activeRightTab === "depot") {
+            this.renderDepots();
+        } else if (this.activeRightTab === "messages") {
+            this.renderMessages();
         }
 
         this.updateTargetCard();
@@ -1228,15 +1310,41 @@ class CockpitApp {
 
             card.innerHTML = `
                 <div class="drone-meta">
-                    <strong class="drone-name">${d.name}</strong>
-                    <span class="drone-sub">${d.drone_type.toUpperCase()} // ${d.assigned_system_id.toUpperCase()} [${d.status.toUpperCase()}]</span>
+                    <strong class="drone-name">${this.escapeHtml(d.name)}</strong>
+                    <span class="drone-sub">${this.escapeHtml(d.drone_type.toUpperCase())} // ${this.escapeHtml(d.assigned_system_id.toUpperCase())} [${this.escapeHtml(d.status.toUpperCase())}]</span>
+                </div>
+                <div class="drone-stats" style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);margin:6px 0;">
+                    LVL ${d.level ?? 1} // EFF ${(d.efficiency ?? 1).toFixed(2)} // INTEGRITY ${d.integrity ?? 100}% // SORTIES ${d.sorties ?? 0}${d.specialty ? " // " + this.escapeHtml(d.specialty.toUpperCase()) : ""}
                 </div>
                 <div class="drone-yield-badge">
                     +${d.cargo_accumulated} Ore / +${d.credits_accumulated} CR
                 </div>
+                <div class="drone-actions" style="display:flex;gap:5px;margin-top:6px;">
+                    <button class="btn-hud" data-refit="${this.escapeHtml(d.id)}">REFIT (300 CR)</button>
+                    <button class="btn-hud" data-dismiss="${this.escapeHtml(d.id)}">DISMISS</button>
+                </div>
             `;
+            card.querySelector("[data-refit]")?.addEventListener("click", () => this.postAction("/api/fleet/refit", { drone_id: d.id }, "fleet"));
+            card.querySelector("[data-dismiss]")?.addEventListener("click", () => this.postAction("/api/fleet/dismiss", { drone_id: d.id }, "fleet"));
             this.fleetRoster.appendChild(card);
         });
+
+        if (this.mercenaryRoster) {
+            const catalog = Object.values(this.state.mercenary_catalog || {});
+            const hired = new Set((this.state.ship.fleet_drones || []).filter(d => d.drone_type === "mercenary").map(d => d.specialty));
+            this.mercenaryRoster.innerHTML = `<h4 class="commission-title">MERCENARY CONTRACTS</h4>` + catalog.map(m => `
+                <div class="depot-card">
+                    <h4>${this.escapeHtml(m.name)} // ${m.cost} CR</h4>
+                    <div>${this.escapeHtml(m.description)}</div>
+                    <div class="depot-actions">
+                        <button class="btn-hud btn-cyan" data-merc="${this.escapeHtml(m.id)}" ${hired.has(m.specialty) ? "disabled" : ""}>${hired.has(m.specialty) ? "CONTRACTED" : "HIRE"}</button>
+                    </div>
+                </div>
+            `).join("");
+            this.mercenaryRoster.querySelectorAll("[data-merc]").forEach(btn => {
+                btn.addEventListener("click", () => this.postAction("/api/mercenary/hire", { merc_id: btn.getAttribute("data-merc") }, "fleet"));
+            });
+        }
     }
 
     renderContracts() {
@@ -1605,6 +1713,8 @@ class CockpitApp {
         if (!this.selectedTarget || this.selectedType !== "body") return;
         this.sound.init();
         this.sound.playBeep(920);
+        const fromBodyId = this.state?.ship?.orbiting_body_id;
+        const toBodyId = this.selectedTarget.id;
         try {
             const res = await fetch("/api/orbit", {
                 method: "POST",
@@ -1615,6 +1725,7 @@ class CockpitApp {
             if (json.ok) {
                 this.appendLog(json.message, "system");
                 this.state = json.state;
+                this.startTravelAnimation(fromBodyId, toBodyId);
                 this.renderHUD();
                 this.updateTargetCard();
             } else {
@@ -1777,6 +1888,12 @@ class CockpitApp {
             this.btnOrbitTarget.style.display = "inline-block";
             this.btnOrbitTarget.disabled = true;
             this.btnJumpTarget.style.display = "none";
+            if (this.btnLandTarget) this.btnLandTarget.style.display = "none";
+            this.targetGravity.textContent = "--";
+            this.targetAtmosphere.textContent = "--";
+            this.targetTemp.textContent = "--";
+            this.targetMoons.textContent = "--";
+            this.targetResources.innerHTML = "";
             return;
         }
 
@@ -1796,6 +1913,18 @@ class CockpitApp {
             this.btnJumpTarget.style.display = "none";
             this.btnOrbitTarget.disabled = (this.state.ship.orbiting_body_id === b.id);
             this.btnOrbitTarget.textContent = (this.state.ship.orbiting_body_id === b.id) ? "ALREADY IN ORBIT" : "ENTER ORBIT";
+
+            this.targetGravity.textContent = `${(b.gravity ?? 1).toFixed(2)} g`;
+            this.targetAtmosphere.textContent = b.atmosphere || "none";
+            this.targetTemp.textContent = `${b.temperature_c ?? 0} C`;
+            this.targetMoons.textContent = `${(b.moons || []).length}`;
+            this.targetResources.innerHTML = (b.resources || []).map(r => `<span>${this.escapeHtml(r)}</span>`).join("");
+            if (this.btnLandTarget) {
+                this.btnLandTarget.style.display = b.landable ? "inline-block" : "none";
+                const canLand = b.landable && this.state.ship.orbiting_body_id === b.id && this.state.ship.landed_body_id !== b.id;
+                this.btnLandTarget.disabled = !canLand;
+                this.btnLandTarget.textContent = this.state.ship.landed_body_id === b.id ? "LANDED" : "LAND ON SURFACE";
+            }
         } else if (this.selectedType === "system") {
             const fresh = this.galaxySystems[this.selectedTarget.id];
             if (!fresh) {
@@ -1811,6 +1940,12 @@ class CockpitApp {
             const dist = Math.hypot(s.x - curSys.x, s.y - curSys.y);
             this.targetDist.textContent = `${dist.toFixed(1)} LY`;
             this.targetDesc.textContent = `Faction: ${s.faction} // Security: ${(s.security * 100).toFixed(0)}% // Linked: ${isConn ? 'YES' : 'NO'}`;
+            this.targetGravity.textContent = `${s.spectral_type}-class`;
+            this.targetAtmosphere.textContent = `${(s.security * 100).toFixed(0)}% sec`;
+            this.targetTemp.textContent = `${s.connections.length} links`;
+            this.targetMoons.textContent = s.faction;
+            this.targetResources.innerHTML = "";
+            if (this.btnLandTarget) this.btnLandTarget.style.display = "none";
             this.btnOrbitTarget.style.display = "none";
             this.btnJumpTarget.style.display = "inline-block";
             this.btnJumpTarget.disabled = (!isConn || s.id === curSys.id);
@@ -1875,6 +2010,22 @@ class CockpitApp {
 
         const auScale = 45 * this.zoom;
 
+        if (this.radarGrid) {
+            ctx.strokeStyle = "rgba(0, 240, 255, 0.06)";
+            ctx.lineWidth = 1;
+            for (let radius = 60; radius < Math.max(this.canvas.width, this.canvas.height); radius += 60) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            for (let x = 0; x < this.canvas.width; x += 60) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, this.canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < this.canvas.height; y += 60) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(this.canvas.width, y); ctx.stroke();
+            }
+        }
+
         bodies.forEach(b => {
             if (b.body_type === "star") {
                 const pulse = 18 + Math.sin(now * 2) * 2.5;
@@ -1938,10 +2089,14 @@ class CockpitApp {
                 ctx.fillText("VF-FLAGSHIP", bx + bodyRadius + 14, by - bodyRadius - 4);
             }
 
-            ctx.font = "10px 'Rajdhani'";
-            ctx.fillStyle = "#e6f1ff";
-            ctx.fillText(b.name, bx + bodyRadius + 6, by + 3);
+            if (this.radarLabels) {
+                ctx.font = "10px 'Rajdhani'";
+                ctx.fillStyle = "#e6f1ff";
+                ctx.fillText(b.name, bx + bodyRadius + 6, by + 3);
+            }
         });
+
+        this.drawTravelAnimation(ctx, cx, cy, auScale);
     }
 
     drawGalaxyView(cx, cy) {
@@ -2143,6 +2298,360 @@ class CockpitApp {
             `;
             this.corpsGrid.appendChild(card);
         });
+    }
+    escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, ch => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        }[ch]));
+    }
+
+    loadSettings() {
+        try {
+            const saved = JSON.parse(localStorage.getItem("voidfarer_settings") || "{}");
+            this.radarGrid = saved.radarGrid !== false;
+            this.radarLabels = saved.radarLabels !== false;
+            this.travelAnimationEnabled = saved.travelAnimation !== false;
+            this.starDensity = Number(saved.starDensity || 140);
+            if (saved.sound === false) {
+                this.sound.enabled = false;
+                const audioIcon = document.getElementById("audioIcon");
+                if (audioIcon) audioIcon.textContent = "MUTED";
+            }
+        } catch (e) {
+            this.radarGrid = true;
+            this.radarLabels = true;
+            this.travelAnimationEnabled = true;
+            this.starDensity = 140;
+        }
+    }
+
+    saveSettings() {
+        const payload = {
+            sound: this.sound.enabled,
+            radarGrid: this.radarGrid,
+            radarLabels: this.radarLabels,
+            travelAnimation: this.travelAnimationEnabled,
+            starDensity: this.starDensity,
+        };
+        try { localStorage.setItem("voidfarer_settings", JSON.stringify(payload)); } catch (e) {}
+    }
+
+    applySettingsFromUI() {
+        this.sound.enabled = document.getElementById("settingSound")?.checked !== false;
+        this.radarGrid = document.getElementById("settingGrid")?.checked !== false;
+        this.radarLabels = document.getElementById("settingLabels")?.checked !== false;
+        this.travelAnimationEnabled = document.getElementById("settingAnimation")?.checked !== false;
+        this.starDensity = Number(document.getElementById("settingStarDensity")?.value || 140);
+        const audioIcon = document.getElementById("audioIcon");
+        if (audioIcon) audioIcon.textContent = this.sound.enabled ? "SFX" : "MUTED";
+        this.saveSettings();
+    }
+
+    openSettings() {
+        const sound = document.getElementById("settingSound");
+        const grid = document.getElementById("settingGrid");
+        const labels = document.getElementById("settingLabels");
+        const animation = document.getElementById("settingAnimation");
+        const density = document.getElementById("settingStarDensity");
+        if (sound) sound.checked = this.sound.enabled;
+        if (grid) grid.checked = this.radarGrid;
+        if (labels) labels.checked = this.radarLabels;
+        if (animation) animation.checked = this.travelAnimationEnabled;
+        if (density) density.value = this.starDensity;
+        const overlay = document.getElementById("settingsOverlay");
+        if (overlay) overlay.style.display = "flex";
+    }
+
+    closeSettings() {
+        const overlay = document.getElementById("settingsOverlay");
+        if (overlay) overlay.style.display = "none";
+    }
+
+    openMainMenu() {
+        const overlay = document.getElementById("mainMenuOverlay");
+        if (overlay) overlay.classList.remove("hidden");
+    }
+
+    closeMainMenu() {
+        const overlay = document.getElementById("mainMenuOverlay");
+        if (overlay) overlay.classList.add("hidden");
+    }
+
+    async menuAction(endpoint, successMessage) {
+        const status = document.getElementById("mainMenuStatus");
+        if (status) status.textContent = "TRANSMITTING...";
+        try {
+            const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+            const json = await res.json();
+            if (json.state) {
+                this.state = json.state;
+                this.renderHUD();
+            }
+            if (status) status.textContent = (json.ok ? "OK: " : "ERROR: ") + (json.message || successMessage);
+            if (json.ok && ["/api/load", "/api/new-game"].includes(endpoint)) {
+                this.closeMainMenu();
+                this.viewMode = "ORBITS";
+                this.selectedTarget = null;
+                this.fetchGalaxy();
+            }
+            if (json.ok) this.sound.playChime();
+        } catch (e) {
+            if (status) status.textContent = `ERROR: ${e.message}`;
+        }
+    }
+
+    openPerksWindow() {
+        this.renderPerksWindow();
+        const overlay = document.getElementById("perksOverlay");
+        if (overlay) overlay.style.display = "flex";
+        this.sound.playBeep(820, 0.05);
+    }
+
+    closePerksWindow() {
+        const overlay = document.getElementById("perksOverlay");
+        if (overlay) overlay.style.display = "none";
+    }
+
+    renderPerksWindow() {
+        if (!this.state) return;
+        const container = document.getElementById("perksBranches");
+        const pointsEl = document.getElementById("perksWindowPoints");
+        if (!container) return;
+        const mastery = this.state.ship.mastery || { talent_points: 0, specializations: [] };
+        const specs = mastery.specializations || [];
+        if (pointsEl) pointsEl.textContent = `${mastery.talent_points || 0} POINTS`;
+
+        const talents = Object.values(this.state.catalog_talents || {});
+        const branches = {};
+        talents.forEach(t => {
+            const branch = t.branch || (t.category || "OTHER").toUpperCase();
+            (branches[branch] = branches[branch] || []).push(t);
+        });
+        container.innerHTML = Object.entries(branches).map(([branch, nodes]) => `
+            <div class="perk-branch">
+                <h4>${this.escapeHtml(branch)}</h4>
+                ${nodes.sort((a, b) => (a.tier || 1) - (b.tier || 1)).map(t => {
+                    const unlocked = specs.includes(t.id);
+                    const requires = t.requires || [];
+                    const requiresMet = requires.every(r => specs.includes(r));
+                    const canUnlock = !unlocked && requiresMet && (mastery.talent_points || 0) > 0;
+                    return `<div class="perk-node ${unlocked ? "unlocked" : "locked"}">
+                        <strong>${this.escapeHtml(t.name)}</strong>
+                        <div>${this.escapeHtml(t.description)}</div>
+                        ${unlocked ? "<div>UNLOCKED</div>" : `<button class="btn-hud" data-talent="${this.escapeHtml(t.id)}" ${canUnlock ? "" : "disabled"}>${requiresMet ? "UNLOCK" : "REQUIRES " + requires.join(", ").toUpperCase()}</button>`}
+                    </div>`;
+                }).join("")}
+            </div>
+        `).join("");
+        container.querySelectorAll("[data-talent]").forEach(btn => {
+            btn.addEventListener("click", () => this.handleUnlockPerk(btn.getAttribute("data-talent")));
+        });
+    }
+
+    async handleUnlockPerk(talentId) {
+        try {
+            const res = await fetch("/api/mastery/unlock", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ talent_id: talentId }),
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.state = json.state;
+                this.renderHUD();
+                this.renderPerksWindow();
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Perk unlock failed: ${e.message}`, "hazard");
+        }
+    }
+
+    renderQuests() {
+        if (!this.state || !this.questsList) return;
+        const quests = this.state.quests || [];
+        this.questsList.innerHTML = quests.length ? quests.map(q => {
+            const pct = q.target_count > 0 ? Math.min(100, Math.round((q.progress / q.target_count) * 100)) : 0;
+            return `<div class="quest-card">
+                <h4>${this.escapeHtml(q.title)}</h4>
+                <div>${this.escapeHtml(q.description)}</div>
+                <div>TYPE: ${this.escapeHtml(q.kind.toUpperCase())} // REWARD: ${this.escapeHtml(q.reward)}</div>
+                <div class="quest-progress"><div style="width:${pct}%"></div></div>
+                <div>${q.progress}/${q.target_count} ${q.completed ? "// COMPLETE" : ""}</div>
+            </div>`;
+        }).join("") : '<div class="quest-card">No active quests.</div>';
+    }
+
+    renderAICaptains() {
+        if (!this.state || !this.aiList) return;
+        const captains = this.state.ai_captains || [];
+        this.aiList.innerHTML = captains.map(c => `
+            <div class="ai-card">
+                <h4>${this.escapeHtml(c.name)} <small>[${this.escapeHtml(c.archetype.toUpperCase())}]</small></h4>
+                <div>${this.escapeHtml(c.description)}</div>
+                <div>SYSTEM: ${this.escapeHtml(c.system_id)} // TRUST: ${c.trust} // STANDING: ${c.standing}</div>
+                <div>CARGO: ${Object.entries(c.cargo || {}).map(([k, v]) => `${this.escapeHtml(k)} x${v}`).join(", ") || "empty"}</div>
+                <div class="ai-actions">
+                    <button class="btn-hud" data-captain="${this.escapeHtml(c.id)}" data-action="hail">HAIL</button>
+                    <button class="btn-hud" data-captain="${this.escapeHtml(c.id)}" data-action="buy">BUY FUEL</button>
+                    <button class="btn-hud" data-captain="${this.escapeHtml(c.id)}" data-action="sell">SELL FUEL</button>
+                    ${c.archetype === "mercenary" ? `<button class="btn-hud btn-cyan" data-captain="${this.escapeHtml(c.id)}" data-action="hire" ${c.hired ? "disabled" : ""}>HIRE</button>` : ""}
+                    <button class="btn-hud btn-green" data-captain="${this.escapeHtml(c.id)}" data-action="ally" ${c.ally ? "disabled" : ""}>ALLY</button>
+                </div>
+            </div>
+        `).join("") || '<div class="ai-card">No AI captains in range.</div>';
+        this.aiList.querySelectorAll("[data-captain]").forEach(btn => {
+            btn.addEventListener("click", () => this.handleAIAction(btn.getAttribute("data-captain"), btn.getAttribute("data-action")));
+        });
+    }
+
+    async handleAIAction(captainId, action) {
+        await this.postAction("/api/ai/interact", { captain_id: captainId, action, commodity_id: "fuel_cells", quantity: 1 }, "ai");
+    }
+
+    renderDepots() {
+        if (!this.state || !this.depotList) return;
+        const sysId = this.state.current_system?.id;
+        const depot = (this.state.depots || []).find(d => d.system_id === sysId);
+        if (!depot) {
+            this.depotSummary.textContent = "No depot registered in this system.";
+            this.depotList.innerHTML = "";
+            return;
+        }
+        const used = Object.values(depot.cargo || {}).reduce((a, b) => a + b, 0);
+        this.depotSummary.textContent = `${depot.name} // STORED UNITS: ${used}/${depot.capacity}`;
+        const depotRows = Object.entries(depot.cargo || {}).map(([item, qty]) => `
+            <div class="depot-card">
+                <h4>${this.escapeHtml(item)} x${qty}</h4>
+                <div class="depot-actions">
+                    <button class="btn-hud" data-action="withdraw" data-item="${this.escapeHtml(item)}">WITHDRAW 1</button>
+                    <button class="btn-hud btn-green" data-action="sell" data-item="${this.escapeHtml(item)}">SELL 1 FROM DEPOT</button>
+                </div>
+            </div>
+        `).join("");
+        const shipRows = (this.state.inventory_manifest || []).map(item => `
+            <div class="depot-card">
+                <h4>SHIP: ${this.escapeHtml(item.name || item.id)} x${item.total_quantity || item.quantity || 0}</h4>
+                <div class="depot-actions">
+                    <button class="btn-hud" data-action="deposit" data-item="${this.escapeHtml(item.id)}">DEPOSIT 1</button>
+                </div>
+            </div>
+        `).join("");
+        this.depotList.innerHTML = depotRows + shipRows || '<div class="depot-card">Depot and hold are empty.</div>';
+        this.depotList.querySelectorAll("[data-action]").forEach(btn => {
+            btn.addEventListener("click", () => this.handleDepotAction(btn.getAttribute("data-action"), btn.getAttribute("data-item")));
+        });
+    }
+
+    async handleDepotAction(action, itemId) {
+        await this.postAction(`/api/depot/${action}`, { item_id: itemId, quantity: 1 }, "depot");
+    }
+
+    renderMessages() {
+        if (!this.state || !this.messageList) return;
+        const messages = this.state.messages || [];
+        this.messageList.innerHTML = messages.slice().reverse().map(m => `
+            <div class="message-card ${m.read ? "" : "unread"}">
+                <h4>${this.escapeHtml(m.subject)}</h4>
+                <div>FROM: ${this.escapeHtml(m.sender)} // TO: ${this.escapeHtml(m.recipient)} // TICK ${m.tick}</div>
+                <div>${this.escapeHtml(m.body)}</div>
+                ${m.read ? "" : `<button class="btn-hud" data-message="${this.escapeHtml(m.id)}">MARK READ</button>`}
+            </div>
+        `).join("") || '<div class="message-card">Inbox is empty.</div>';
+        this.messageList.querySelectorAll("[data-message]").forEach(btn => {
+            btn.addEventListener("click", () => this.postAction("/api/messages/read", { message_id: btn.getAttribute("data-message") }, "messages"));
+        });
+        const unread = messages.filter(m => !m.read).length;
+        if (this.messagesBadge) {
+            this.messagesBadge.textContent = String(unread);
+            this.messagesBadge.style.display = unread > 0 ? "inline-block" : "none";
+        }
+    }
+
+    async handleSendMessage() {
+        const recipient = document.getElementById("messageRecipient")?.value || "";
+        const subject = document.getElementById("messageSubject")?.value || "";
+        const body = document.getElementById("messageBody")?.value || "";
+        await this.postAction("/api/messages/send", { recipient, subject, body }, "messages");
+        ["messageRecipient", "messageSubject", "messageBody"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+    }
+
+    async handleLandAction() {
+        if (!this.selectedTarget || this.selectedType !== "body") return;
+        await this.postAction("/api/land", { target: this.selectedTarget.id });
+    }
+
+    startTravelAnimation(fromBodyId, toBodyId) {
+        if (!this.travelAnimationEnabled || !this.state) return;
+        const bodies = this.state.current_system?.bodies || [];
+        const from = bodies.find(b => b.id === fromBodyId);
+        const to = bodies.find(b => b.id === toBodyId);
+        if (!to) return;
+        this.travelAnimation = {
+            fromAngle: from ? (from.current_angle || 0) : 0,
+            fromRadius: from ? from.orbit_radius : to.orbit_radius,
+            toAngle: to.current_angle || 0,
+            toRadius: to.orbit_radius,
+            start: performance.now(),
+            duration: 1300,
+        };
+    }
+
+    drawTravelAnimation(ctx, cx, cy, auScale) {
+        if (!this.travelAnimation) return;
+        const anim = this.travelAnimation;
+        const progress = Math.min(1, (performance.now() - anim.start) / anim.duration);
+        const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+        let delta = anim.toAngle - anim.fromAngle;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        const angle = anim.fromAngle + delta * eased;
+        const radius = (anim.fromRadius + (anim.toRadius - anim.fromRadius) * eased) * auScale;
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "#00f0ff";
+        ctx.shadowColor = "#00f0ff";
+        ctx.shadowBlur = 18;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.font = "9px 'Share Tech Mono'";
+        ctx.fillStyle = "#00f0ff";
+        ctx.fillText("VF-TRANSIT", x + 8, y - 8);
+        if (progress >= 1) this.travelAnimation = null;
+    }
+
+    async postAction(endpoint, payload, refreshTab = null) {
+        try {
+            const res = await fetch(endpoint, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.appendLog(json.message, "system");
+                this.state = json.state;
+                this.renderHUD();
+                if (refreshTab && this.activeRightTab === refreshTab) {
+                    if (refreshTab === "ai") this.renderAICaptains();
+                    if (refreshTab === "depot") this.renderDepots();
+                    if (refreshTab === "messages") this.renderMessages();
+                }
+                this.sound.playBeep(980, 0.05);
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+            return json;
+        } catch (e) {
+            this.appendLog(`[ERROR] ${e.message}`, "hazard");
+            return { ok: false, message: e.message };
+        }
     }
 }
 

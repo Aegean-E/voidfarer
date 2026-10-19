@@ -8,6 +8,34 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class Moon:
+    """Natural satellite orbiting a planet."""
+
+    id: str
+    name: str
+    orbit_radius: float
+    radius_km: float
+    color: str
+    resource: str = "none"
+    landable: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Moon:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            orbit_radius=float(data.get("orbit_radius", 0.1)),
+            radius_km=float(data.get("radius_km", 1000.0)),
+            color=str(data.get("color", "#c0c0c0")),
+            resource=str(data.get("resource", "none")),
+            landable=bool(data.get("landable", False)),
+        )
+
+
+@dataclass(frozen=True)
 class CelestialBody:
     """Represents a planetary, stellar, or orbital body in a star system."""
 
@@ -24,6 +52,12 @@ class CelestialBody:
     market_archetype: str = "none"  # 'none', 'mining', 'agricultural', 'industrial', 'high_tech', 'black_market'
     scan_completed: bool = False
     scan_discovery: str = ""
+    gravity: float = 1.0
+    atmosphere: str = "none"
+    temperature_c: int = 0
+    resources: tuple[str, ...] = ()
+    moons: tuple[Moon, ...] = ()
+    landable: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -44,6 +78,12 @@ class CelestialBody:
             market_archetype=str(data.get("market_archetype", "none")),
             scan_completed=bool(data.get("scan_completed", False)),
             scan_discovery=str(data.get("scan_discovery", "")),
+            gravity=float(data.get("gravity", 1.0)),
+            atmosphere=str(data.get("atmosphere", "none")),
+            temperature_c=int(data.get("temperature_c", 0)),
+            resources=tuple(data.get("resources", ())),
+            moons=tuple(Moon.from_dict(m) for m in data.get("moons", ())),
+            landable=bool(data.get("landable", str(data.get("body_type", "")) in {"terrestrial", "oceanic", "savanna", "tundra"})),
         )
 
 
@@ -230,6 +270,11 @@ class FleetDrone:
     status: str = "harvesting"  # 'harvesting', 'patrolling', 'idle'
     cargo_accumulated: int = 0
     credits_accumulated: int = 0
+    level: int = 1
+    efficiency: float = 1.0
+    integrity: int = 100
+    sorties: int = 0
+    specialty: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -244,6 +289,105 @@ class FleetDrone:
             status=str(data.get("status", "harvesting")),
             cargo_accumulated=int(data.get("cargo_accumulated", 0)),
             credits_accumulated=int(data.get("credits_accumulated", 0)),
+            level=int(data.get("level", 1)),
+            efficiency=float(data.get("efficiency", 1.0)),
+            integrity=int(data.get("integrity", 100)),
+            sorties=int(data.get("sorties", 0)),
+            specialty=str(data.get("specialty", "")),
+        )
+
+
+@dataclass(frozen=True)
+class AICaptain:
+    """Persistent autonomous captain that trades, hails, allies, or fights."""
+
+    id: str
+    name: str
+    archetype: str  # 'trader', 'mercenary', 'ally', 'pirate'
+    system_id: str
+    credits: int
+    cargo: dict[str, int] = field(default_factory=dict)
+    standing: int = 0
+    trust: int = 0
+    ally: bool = False
+    hired: bool = False
+    hull: int = 100
+    max_hull: int = 100
+    damage: int = 10
+    description: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AICaptain:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            archetype=str(data.get("archetype", "trader")),
+            system_id=str(data.get("system_id", "sol")),
+            credits=int(data.get("credits", 1000)),
+            cargo=dict(data.get("cargo", {})),
+            standing=int(data.get("standing", 0)),
+            trust=int(data.get("trust", 0)),
+            ally=bool(data.get("ally", False)),
+            hired=bool(data.get("hired", False)),
+            hull=int(data.get("hull", 100)),
+            max_hull=int(data.get("max_hull", 100)),
+            damage=int(data.get("damage", 10)),
+            description=str(data.get("description", "")),
+        )
+
+
+@dataclass(frozen=True)
+class Depot:
+    """System-local cargo depot that can hold and sell commodities."""
+
+    id: str
+    name: str
+    system_id: str
+    capacity: int = 200
+    cargo: dict[str, int] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Depot:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            system_id=str(data.get("system_id", "sol")),
+            capacity=int(data.get("capacity", 200)),
+            cargo=dict(data.get("cargo", {})),
+        )
+
+
+@dataclass(frozen=True)
+class QuantumMessage:
+    """Intergalactic quantum-encrypted message stored in the ship inbox."""
+
+    id: str
+    sender: str
+    recipient: str
+    subject: str
+    body: str
+    tick: int = 0
+    read: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> QuantumMessage:
+        return cls(
+            id=str(data["id"]),
+            sender=str(data.get("sender", "Unknown")),
+            recipient=str(data.get("recipient", "Commander")),
+            subject=str(data.get("subject", "")),
+            body=str(data.get("body", "")),
+            tick=int(data.get("tick", 0)),
+            read=bool(data.get("read", False)),
         )
 
 
@@ -737,6 +881,8 @@ class ShipState:
     story: StoryState = field(default_factory=StoryState)
     faction_standings: dict[str, int] = field(default_factory=dict)
     corp_standings: dict[str, int] = field(default_factory=dict)
+    allies: tuple[str, ...] = ()
+    landed_body_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -769,6 +915,8 @@ class ShipState:
             "story": self.story.to_dict(),
             "faction_standings": dict(self.faction_standings),
             "corp_standings": dict(self.corp_standings),
+            "allies": list(self.allies),
+            "landed_body_id": self.landed_body_id,
         }
 
     @classmethod
@@ -823,6 +971,8 @@ class ShipState:
             story=StoryState.from_dict(data.get("story", {})),
             faction_standings=faction_standings,
             corp_standings=corp_standings,
+            allies=tuple(data.get("allies", ())),
+            landed_body_id=data.get("landed_body_id"),
         )
 
 
@@ -980,6 +1130,9 @@ class GameState:
         "credits_earned": 0,
     })
     economy: GlobalEconomyState = field(default_factory=GlobalEconomyState)
+    ai_captains: tuple[AICaptain, ...] = ()
+    depots: tuple[Depot, ...] = ()
+    messages: tuple[QuantumMessage, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -993,6 +1146,9 @@ class GameState:
             "time": self.time.to_dict(),
             "stats": dict(self.stats),
             "economy": self.economy.to_dict(),
+            "ai_captains": [c.to_dict() for c in self.ai_captains],
+            "depots": [d.to_dict() for d in self.depots],
+            "messages": [m.to_dict() for m in self.messages],
         }
 
     @classmethod
@@ -1029,5 +1185,8 @@ class GameState:
                 "credits_earned": 0,
             })),
             economy=GlobalEconomyState.from_dict(data.get("economy", {})),
+            ai_captains=tuple(AICaptain.from_dict(c) for c in data.get("ai_captains", ())),
+            depots=tuple(Depot.from_dict(d) for d in data.get("depots", ())),
+            messages=tuple(QuantumMessage.from_dict(m) for m in data.get("messages", ())),
         )
 

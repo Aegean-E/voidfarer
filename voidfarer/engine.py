@@ -42,9 +42,11 @@ from voidfarer.galaxy import (
     GalaxyGenerator,
 )
 from voidfarer.models import (
+    AICaptain,
     BountyContract,
     CelestialBody,
     CombatEncounter,
+    Depot,
     EconomicEvent,
     FleetDrone,
     GameState,
@@ -52,6 +54,7 @@ from voidfarer.models import (
     MarketQuote,
     PilotMastery,
     PrecursorRelic,
+    QuantumMessage,
     ShipPower,
     ShipState,
     ShipUpgrade,
@@ -64,6 +67,13 @@ from voidfarer.models import (
     TimeState,
     TutorialState,
     TutorialStep,
+)
+from voidfarer.frontier import (
+    MERCENARY_CATALOG,
+    generate_ai_captains,
+    generate_depots,
+    generate_welcome_messages,
+    simulate_ai_trade,
 )
 from voidfarer.retention import (
     CATALOG_RELICS,
@@ -120,6 +130,19 @@ class SimulationEngine:
                 self.state = self._clone_state(ship=new_ship, economy=econ)
         else:
             self.state = self._create_initial_state(seed)
+        self._bootstrap_frontier()
+
+    def _bootstrap_frontier(self) -> None:
+        """Backfill frontier systems for legacy saves without changing the save schema."""
+        updates: dict[str, Any] = {}
+        if not self.state.ai_captains:
+            updates["ai_captains"] = generate_ai_captains(self.state.systems, self.state.galaxy_seed)
+        if not self.state.depots:
+            updates["depots"] = generate_depots(self.state.systems)
+        if not self.state.messages:
+            updates["messages"] = generate_welcome_messages(self.state.time.tick)
+        if updates:
+            self.state = self._clone_state(**updates)
 
     def _clone_ship(self, **kwargs: Any) -> ShipState:
         """Create a new ShipState preserving all unspecified telemetry and inventory attributes."""
@@ -154,6 +177,8 @@ class SimulationEngine:
             story=kwargs.get("story", cur.story),
             faction_standings=kwargs.get("faction_standings", cur.faction_standings),
             corp_standings=kwargs.get("corp_standings", cur.corp_standings),
+            allies=kwargs.get("allies", cur.allies),
+            landed_body_id=kwargs["landed_body_id"] if "landed_body_id" in kwargs else cur.landed_body_id,
         )
 
     def _clone_state(self, **kwargs: Any) -> GameState:
@@ -170,6 +195,9 @@ class SimulationEngine:
             time=kwargs.get("time", cur.time),
             stats=kwargs.get("stats", cur.stats),
             economy=kwargs.get("economy", cur.economy),
+            ai_captains=kwargs.get("ai_captains", cur.ai_captains),
+            depots=kwargs.get("depots", cur.depots),
+            messages=kwargs.get("messages", cur.messages),
         )
 
     def _apply_relic_stat_bonuses(
@@ -314,6 +342,15 @@ class SimulationEngine:
             self.state = self._create_initial_state(self.seed)
             return True, "Simulation reset to factory state."
 
+    def load_state(self, state: GameState) -> tuple[bool, str]:
+        """Replace the live universe with a loaded save and reseed its RNG stream."""
+        with self.lock:
+            self.seed = int(state.galaxy_seed)
+            self.rng = random.Random(self.seed)
+            self.state = state
+            self._bootstrap_frontier()
+            return True, f"Loaded save at {state.time.current_date} (tick #{state.time.tick})."
+
     def _create_initial_state(self, seed: int) -> GameState:
         """Construct a fresh universe state rooted at Sol System."""
         generator = GalaxyGenerator(seed=seed)
@@ -391,6 +428,9 @@ class SimulationEngine:
                 "contracts_completed": 0,
             },
             economy=economy,
+            ai_captains=generate_ai_captains(systems, seed),
+            depots=generate_depots(systems),
+            messages=generate_welcome_messages(0),
         )
 
     @property
@@ -412,29 +452,27 @@ class SimulationEngine:
         updated_drones = []
         for d in ship.fleet_drones:
             if d.drone_type == "mining":
-                new_cargo = d.cargo_accumulated + 2
+                yield_amount = max(1, int(2 * d.efficiency * (0.5 + d.integrity / 200.0)))
                 updated_drones.append(
-                    FleetDrone(
-                        id=d.id,
-                        name=d.name,
-                        drone_type=d.drone_type,
-                        assigned_system_id=d.assigned_system_id,
+                    replace(
+                        d,
                         status="harvesting",
-                        cargo_accumulated=new_cargo,
-                        credits_accumulated=d.credits_accumulated,
+                        cargo_accumulated=d.cargo_accumulated + yield_amount,
+                        sorties=d.sorties + 1,
+                        integrity=max(0, d.integrity - 1),
+                        level=d.level + 1 if (d.sorties + 1) % 10 == 0 else d.level,
                     )
                 )
             elif d.drone_type == "scout":
-                new_credits = d.credits_accumulated + 75
+                yield_amount = max(10, int(75 * d.efficiency * (0.5 + d.integrity / 200.0)))
                 updated_drones.append(
-                    FleetDrone(
-                        id=d.id,
-                        name=d.name,
-                        drone_type=d.drone_type,
-                        assigned_system_id=d.assigned_system_id,
+                    replace(
+                        d,
                         status="patrolling",
-                        cargo_accumulated=d.cargo_accumulated,
-                        credits_accumulated=new_credits,
+                        credits_accumulated=d.credits_accumulated + yield_amount,
+                        sorties=d.sorties + 1,
+                        integrity=max(0, d.integrity - 1),
+                        level=d.level + 1 if (d.sorties + 1) % 10 == 0 else d.level,
                     )
                 )
             else:
@@ -571,6 +609,7 @@ class SimulationEngine:
                 credits=self.state.ship.credits + tut_cr,
                 current_system_id=target_system_id,
                 orbiting_body_id=target_sys.bodies[0].id if target_sys.bodies else None,
+                landed_body_id=None,
                 fleet_drones=updated_drones,
                 flight_log=tuple(new_log[-20:]),
                 streak=new_streak,
@@ -606,21 +645,7 @@ class SimulationEngine:
                 for body in system.bodies:
                     d_angle = body.orbit_speed * 0.05 * 2
                     updated_bodies.append(
-                        CelestialBody(
-                            id=body.id,
-                            name=body.name,
-                            body_type=body.body_type,
-                            orbit_radius=body.orbit_radius,
-                            orbit_speed=body.orbit_speed,
-                            current_angle=(body.current_angle + d_angle) % (2.0 * math.pi),
-                            radius_km=body.radius_km,
-                            color=body.color,
-                            hazards=body.hazards,
-                            station_dockable=body.station_dockable,
-                            market_archetype=body.market_archetype,
-                            scan_completed=body.scan_completed,
-                            scan_discovery=body.scan_discovery,
-                        )
+                        replace(body, current_angle=(body.current_angle + d_angle) % (2.0 * math.pi))
                     )
                 updated_systems[sys_id] = StarSystem(
                     id=system.id,
@@ -710,6 +735,7 @@ class SimulationEngine:
 
             new_ship = self._clone_ship(
                 orbiting_body_id=body_id,
+                landed_body_id=None,
                 credits=self.state.ship.credits + tut_cr,
                 mastery=new_mastery,
                 relics=tuple(list(self.state.ship.relics) + tut_relics),
@@ -740,21 +766,7 @@ class SimulationEngine:
             updated_bodies = []
             for b in self.current_system.bodies:
                 if b.id == body.id:
-                    scanned = CelestialBody(
-                        id=b.id,
-                        name=b.name,
-                        body_type=b.body_type,
-                        orbit_radius=b.orbit_radius,
-                        orbit_speed=b.orbit_speed,
-                        current_angle=b.current_angle,
-                        radius_km=b.radius_km,
-                        color=b.color,
-                        hazards=b.hazards,
-                        station_dockable=b.station_dockable,
-                        market_archetype=b.market_archetype,
-                        scan_completed=True,
-                        scan_discovery=b.scan_discovery,
-                    )
+                    scanned = replace(b, scan_completed=True)
                     updated_bodies.append(scanned)
                 else:
                     updated_bodies.append(b)
@@ -934,7 +946,7 @@ class SimulationEngine:
                 if owned < quantity:
                     return False, f"Insufficient inventory: you have {owned} units, tried to sell {quantity}."
 
-                margin_mult = passives.get("trade_margin", 1.0) * (1.0 + equipment["trade_margin"])
+                margin_mult = passives.get("trade_margin", 1.0) * (1.0 + equipment["trade_margin"] + len(self.state.ship.allies) * 0.05)
                 corp_mult = 1.0
                 corp_note = ""
                 dom_corp_id = self.current_system.dominant_corp
@@ -1389,14 +1401,10 @@ class SimulationEngine:
                 if d.id == drone_id:
                     found = True
                     updated_drones.append(
-                        FleetDrone(
-                            id=d.id,
-                            name=d.name,
-                            drone_type=d.drone_type,
+                        replace(
+                            d,
                             assigned_system_id=target_system_id,
                             status="harvesting" if d.drone_type == "mining" else "patrolling",
-                            cargo_accumulated=d.cargo_accumulated,
-                            credits_accumulated=d.credits_accumulated,
                         )
                     )
                 else:
@@ -1426,15 +1434,7 @@ class SimulationEngine:
                     total_cargo += d.cargo_accumulated
                     total_credits += d.credits_accumulated
                     updated_drones.append(
-                        FleetDrone(
-                            id=d.id,
-                            name=d.name,
-                            drone_type=d.drone_type,
-                            assigned_system_id=d.assigned_system_id,
-                            status=d.status,
-                            cargo_accumulated=0,
-                            credits_accumulated=0,
-                        )
+                        replace(d, cargo_accumulated=0, credits_accumulated=0)
                     )
                 else:
                     updated_drones.append(d)
@@ -1502,6 +1502,16 @@ class SimulationEngine:
             stats = dict(self.state.stats)
             passives = calculate_passive_multipliers(self.state.ship)
             equipment = calculate_equipment_bonuses(self.state.ship)
+            mercenary_damage = sum(
+                14 if d.specialty == "assault" else 8 if d.specialty == "evasion" else 4
+                for d in self.state.ship.fleet_drones
+                if d.drone_type == "mercenary"
+            )
+            mercenary_evasion = 0.10 if any(
+                d.drone_type == "mercenary" and d.specialty == "evasion"
+                for d in self.state.ship.fleet_drones
+            ) else 0.0
+            ally_damage = len(self.state.ship.allies) * 3
 
             new_combo = self.state.ship.tactical_combo
             new_streak = self.state.ship.streak
@@ -1519,7 +1529,7 @@ class SimulationEngine:
             if action == "fire_lasers":
                 wep_power = self.state.ship.power.weapons
                 bonus_wep = int(equipment["combat_damage"])
-                base_dmg = int((20 + int(wep_power * 0.75) + bonus_wep) * passives.get("laser_dmg", 1.0) * enemy_guard)
+                base_dmg = int((20 + int(wep_power * 0.75) + bonus_wep + mercenary_damage + ally_damage) * passives.get("laser_dmg", 1.0) * enemy_guard)
 
                 new_combo += 1
                 crit_text = ""
@@ -1662,6 +1672,8 @@ class SimulationEngine:
                 cargo[combat.salvage_commodity] = cargo.get(combat.salvage_commodity, 0) + 2
                 stats["combat_victories"] += 1
                 stats["credits_earned"] += combat.bounty_credits
+                if any(d.drone_type == "mercenary" and d.specialty == "repair" for d in self.state.ship.fleet_drones):
+                    new_hull = min(self.state.ship.max_hull, new_hull + 8)
 
                 salvage_relic, _ = roll_relic_drop(self.rng, bonus_prob=0.20, current_system=self.current_system.name)
                 new_relics = list(self.state.ship.relics)
@@ -1760,9 +1772,9 @@ class SimulationEngine:
             # Standard counter-battery
             inbound = int(enemy_rem_damage * (1.5 if intent == "execute" else 1.0))
             evasion_note = ""
-            if inbound > 0 and equipment["evasion"] > 0.0 and self.rng.random() < equipment["evasion"]:
+            if inbound > 0 and (equipment["evasion"] + mercenary_evasion) > 0.0 and self.rng.random() < (equipment["evasion"] + mercenary_evasion):
                 inbound = 0
-                evasion_note = " [Ion afterburners evaded incoming fire!]"
+                evasion_note = " [Ion afterburners and ECM escort evaded incoming fire!]"
             if new_shield >= inbound:
                 new_shield -= inbound
             else:
@@ -1958,23 +1970,7 @@ class SimulationEngine:
                 updated_bodies = []
                 for b in sys_obj.bodies:
                     new_angle = (b.current_angle + b.orbit_speed * delta_time) % (2 * math.pi)
-                    updated_bodies.append(
-                        CelestialBody(
-                            id=b.id,
-                            name=b.name,
-                            body_type=b.body_type,
-                            orbit_radius=b.orbit_radius,
-                            orbit_speed=b.orbit_speed,
-                            current_angle=new_angle,
-                            radius_km=b.radius_km,
-                            color=b.color,
-                            hazards=b.hazards,
-                            station_dockable=b.station_dockable,
-                            market_archetype=b.market_archetype,
-                            scan_completed=b.scan_completed,
-                            scan_discovery=b.scan_discovery,
-                        )
-                    )
+                    updated_bodies.append(replace(b, current_angle=new_angle))
                 updated_systems[sys_id] = StarSystem(
                     id=sys_obj.id,
                     name=sys_obj.name,
@@ -2072,6 +2068,11 @@ class SimulationEngine:
 
             if talent_id in mastery.specializations:
                 return False, f"Perk '{talent['name']}' is already unlocked."
+
+            missing = [req for req in talent.get("requires", ()) if req not in mastery.specializations]
+            if missing:
+                names = ", ".join(PILOT_TALENTS[r]["name"] for r in missing if r in PILOT_TALENTS)
+                return False, f"Prerequisite perk(s) required: {names}."
 
             new_specs = tuple(list(mastery.specializations) + [talent_id])
             new_mastery = PilotMastery(
@@ -2303,7 +2304,360 @@ class SimulationEngine:
                 "trade_routes": get_galactic_trade_routes(self.state.systems, self.state.economy),
                 "catalog_chassis": [c.to_dict() for c in CATALOG_CHASSIS],
                 "available_chassis": [c.to_dict() for c in get_available_chassis(self.current_chassis_id)],
+                "ai_captains": [c.to_dict() for c in self.state.ai_captains],
+                "depots": [d.to_dict() for d in self.state.depots],
+                "messages": [m.to_dict() for m in self.state.messages],
+                "allies": list(self.state.ship.allies),
+                "quests": self.get_quests(),
+                "mercenary_catalog": MERCENARY_CATALOG,
+                "fleet_stats": [
+                    {
+                        **d.to_dict(),
+                        "kind": "mercenary" if d.drone_type == "mercenary" else "fleet",
+                        "yield_rate": round(d.efficiency * (0.5 + d.integrity / 200.0), 2),
+                    }
+                    for d in self.state.ship.fleet_drones
+                ],
             }
+
+    def get_quests(self) -> list[dict[str, Any]]:
+        """Return a unified quest panel view of the story chapter and active contracts."""
+        quests: list[dict[str, Any]] = []
+        story = self.state.ship.story
+        if not story.completed and story.current_chapter_index < len(story.chapters):
+            chapter = story.chapters[story.current_chapter_index]
+            quests.append({
+                "id": f"story_{chapter.chapter_index}",
+                "kind": "story",
+                "title": chapter.title,
+                "description": chapter.objective,
+                "target": chapter.target_system_id,
+                "progress": 0,
+                "target_count": 1,
+                "completed": chapter.completed,
+                "reward": "Campaign progression",
+            })
+        for contract in self.state.ship.active_contracts:
+            quests.append({
+                "id": contract.id,
+                "kind": "contract",
+                "title": contract.title,
+                "description": contract.description,
+                "target": "",
+                "progress": contract.current_count,
+                "target_count": contract.target_count,
+                "completed": contract.completed,
+                "reward": f"{contract.reward_credits} cr / {contract.reward_xp} XP",
+            })
+        return quests
+
+    def _find_ai_captain(self, captain_id: str) -> AICaptain | None:
+        return next((c for c in self.state.ai_captains if c.id == captain_id), None)
+
+    def _replace_ai_captain(self, captain: AICaptain) -> tuple[AICaptain, ...]:
+        return tuple(captain if c.id == captain.id else c for c in self.state.ai_captains)
+
+    def interact_ai(
+        self,
+        captain_id: str,
+        action: str,
+        commodity_id: str | None = None,
+        quantity: int = 1,
+    ) -> tuple[bool, str]:
+        """Hail, trade with, hire, or ally with an autonomous captain."""
+        with self.lock:
+            captain = self._find_ai_captain(captain_id)
+            if not captain:
+                return False, f"Unknown AI captain '{captain_id}'."
+            action = action.lower()
+            if action == "hail":
+                updated = replace(captain, trust=min(100, captain.trust + 2), standing=min(100, captain.standing + 1))
+                self.state = self._clone_state(ai_captains=self._replace_ai_captain(updated))
+                return True, f"{captain.name}: '{captain.description}' Quantum link trust increased."
+            if action in ("buy", "sell"):
+                if not commodity_id or commodity_id not in COMMODITY_MAP:
+                    return False, "A valid commodity is required for captain trade."
+                quantity = max(1, int(quantity))
+                price = COMMODITY_MAP[commodity_id].base_price
+                cargo = dict(self.state.ship.cargo)
+                captain_cargo = dict(captain.cargo)
+                if action == "buy":
+                    available = captain_cargo.get(commodity_id, 0)
+                    if available < quantity:
+                        return False, f"{captain.name} has only {available} units of {commodity_id}."
+                    cost = int(price * 1.10) * quantity
+                    if self.state.ship.credits < cost:
+                        return False, f"Insufficient credits: {cost} cr required."
+                    incoming = calculate_cargo_volume({commodity_id: quantity})
+                    if calculate_cargo_volume(cargo) + incoming > self.state.ship.cargo_capacity:
+                        return False, "Cargo hold has insufficient free volume for this purchase."
+                    captain_cargo[commodity_id] = available - quantity
+                    cargo[commodity_id] = cargo.get(commodity_id, 0) + quantity
+                    new_credits = self.state.ship.credits - cost
+                    updated_captain = replace(captain, cargo=captain_cargo, credits=captain.credits + cost, trust=min(100, captain.trust + 1))
+                    message = f"Purchased {quantity}x {commodity_id} from {captain.name} for {cost} cr."
+                else:
+                    available = cargo.get(commodity_id, 0)
+                    if available < quantity:
+                        return False, f"You have only {available} units of {commodity_id}."
+                    revenue = int(price * 0.90) * quantity
+                    cargo[commodity_id] = available - quantity
+                    captain_cargo[commodity_id] = captain_cargo.get(commodity_id, 0) + quantity
+                    new_credits = self.state.ship.credits + revenue
+                    updated_captain = replace(captain, cargo=captain_cargo, credits=max(0, captain.credits - revenue), trust=min(100, captain.trust + 1))
+                    message = f"Sold {quantity}x {commodity_id} to {captain.name} for {revenue} cr."
+                new_ship = self._clone_ship(credits=new_credits, cargo=cargo)
+                self.state = self._clone_state(ship=new_ship, ai_captains=self._replace_ai_captain(updated_captain))
+                return True, message
+            if action == "hire":
+                if captain.archetype != "mercenary":
+                    return False, f"{captain.name} is not a mercenary contractor."
+                if captain.hired:
+                    return False, f"{captain.name} is already under contract."
+                cost = 2500
+                if self.state.ship.credits < cost:
+                    return False, f"Insufficient credits: {cost} cr required to hire {captain.name}."
+                drone = FleetDrone(
+                    id=f"merc_{captain.id}",
+                    name=captain.name,
+                    drone_type="mercenary",
+                    assigned_system_id=self.state.ship.current_system_id,
+                    status="idle",
+                    efficiency=1.0,
+                    integrity=100,
+                    specialty="assault",
+                )
+                new_ship = self._clone_ship(
+                    credits=self.state.ship.credits - cost,
+                    fleet_drones=self.state.ship.fleet_drones + (drone,),
+                )
+                updated = replace(captain, hired=True, trust=min(100, captain.trust + 10))
+                self.state = self._clone_state(ship=new_ship, ai_captains=self._replace_ai_captain(updated))
+                return True, f"{captain.name} joined your fleet as a mercenary (+14 combat damage)."
+            if action == "ally":
+                if captain.ally or captain.id in self.state.ship.allies:
+                    return False, f"{captain.name} is already an ally."
+                if captain.trust < 50:
+                    return False, f"{captain.name} requires 50 trust before an alliance (current: {captain.trust})."
+                updated = replace(captain, ally=True, trust=100)
+                new_ship = self._clone_ship(allies=self.state.ship.allies + (captain.id,))
+                self.state = self._clone_state(ship=new_ship, ai_captains=self._replace_ai_captain(updated))
+                return True, f"Alliance formed with {captain.name}. +5% trade margin and fleet support."
+            return False, "Unknown AI action. Use hail, buy, sell, hire, or ally."
+
+    def send_quantum_message(self, recipient: str, subject: str, body: str) -> tuple[bool, str]:
+        """Send an intergalactic quantum-encrypted message."""
+        with self.lock:
+            if not recipient.strip() or not subject.strip() or not body.strip():
+                return False, "Recipient, subject, and message body are required."
+            message = QuantumMessage(
+                id=f"msg_{self.state.time.tick}_{len(self.state.messages) + 1}",
+                sender=self.state.ship.commander_name,
+                recipient=recipient.strip(),
+                subject=subject.strip()[:120],
+                body=body.strip()[:2000],
+                tick=self.state.time.tick,
+            )
+            self.state = self._clone_state(messages=self.state.messages + (message,))
+            return True, f"Quantum message sent to {message.recipient}."
+
+    def mark_message_read(self, message_id: str) -> tuple[bool, str]:
+        with self.lock:
+            message = next((m for m in self.state.messages if m.id == message_id), None)
+            if not message:
+                return False, f"Unknown message '{message_id}'."
+            updated = tuple(replace(m, read=True) if m.id == message_id else m for m in self.state.messages)
+            self.state = self._clone_state(messages=updated)
+            return True, f"Message '{message.subject}' marked as read."
+
+    def _depot_for_current_system(self) -> Depot | None:
+        return next((d for d in self.state.depots if d.system_id == self.state.ship.current_system_id), None)
+
+    def _require_docked(self) -> tuple[bool, str]:
+        if self.state.active_combat is not None:
+            return False, "Depot operations are unavailable during combat."
+        body = self.orbiting_body
+        if not body or not body.station_dockable:
+            return False, "Dock at an orbital station or colony to access depot services."
+        return True, ""
+
+    def deposit_cargo(self, item_id: str, quantity: int = 1) -> tuple[bool, str]:
+        with self.lock:
+            ok, msg = self._require_docked()
+            if not ok:
+                return False, msg
+            quantity = int(quantity)
+            if quantity <= 0:
+                return False, "Deposit quantity must be positive."
+            depot = self._depot_for_current_system()
+            if not depot:
+                return False, "No depot is registered in this system."
+            cargo = dict(self.state.ship.cargo)
+            if cargo.get(item_id, 0) < quantity:
+                return False, f"Cargo hold contains only {cargo.get(item_id, 0)} units of {item_id}."
+            incoming = calculate_cargo_volume({item_id: quantity})
+            if calculate_cargo_volume(depot.cargo) + incoming > depot.capacity:
+                return False, "Depot capacity exceeded."
+            cargo[item_id] -= quantity
+            if cargo[item_id] <= 0:
+                cargo.pop(item_id, None)
+            depot_cargo = dict(depot.cargo)
+            depot_cargo[item_id] = depot_cargo.get(item_id, 0) + quantity
+            updated_depot = replace(depot, cargo=depot_cargo)
+            depots = tuple(updated_depot if d.id == depot.id else d for d in self.state.depots)
+            self.state = self._clone_state(ship=self._clone_ship(cargo=cargo), depots=depots)
+            return True, f"Deposited {quantity}x {item_id} into {depot.name}."
+
+    def withdraw_cargo(self, item_id: str, quantity: int = 1) -> tuple[bool, str]:
+        with self.lock:
+            ok, msg = self._require_docked()
+            if not ok:
+                return False, msg
+            quantity = int(quantity)
+            if quantity <= 0:
+                return False, "Withdraw quantity must be positive."
+            depot = self._depot_for_current_system()
+            if not depot:
+                return False, "No depot is registered in this system."
+            if depot.cargo.get(item_id, 0) < quantity:
+                return False, f"Depot contains only {depot.cargo.get(item_id, 0)} units of {item_id}."
+            cargo = dict(self.state.ship.cargo)
+            incoming = calculate_cargo_volume({item_id: quantity})
+            if calculate_cargo_volume(cargo) + incoming > self.state.ship.cargo_capacity:
+                return False, "Cargo hold has insufficient free volume."
+            depot_cargo = dict(depot.cargo)
+            depot_cargo[item_id] -= quantity
+            if depot_cargo[item_id] <= 0:
+                depot_cargo.pop(item_id, None)
+            cargo[item_id] = cargo.get(item_id, 0) + quantity
+            updated_depot = replace(depot, cargo=depot_cargo)
+            depots = tuple(updated_depot if d.id == depot.id else d for d in self.state.depots)
+            self.state = self._clone_state(ship=self._clone_ship(cargo=cargo), depots=depots)
+            return True, f"Withdrew {quantity}x {item_id} from {depot.name}."
+
+    def sell_from_depot(self, item_id: str, quantity: int = 1) -> tuple[bool, str]:
+        with self.lock:
+            ok, msg = self._require_docked()
+            if not ok:
+                return False, msg
+            quantity = int(quantity)
+            if quantity <= 0:
+                return False, "Sale quantity must be positive."
+            depot = self._depot_for_current_system()
+            if not depot:
+                return False, "No depot is registered in this system."
+            if depot.cargo.get(item_id, 0) < quantity:
+                return False, f"Depot contains only {depot.cargo.get(item_id, 0)} units of {item_id}."
+            body = self.orbiting_body
+            quotes = GalaxyGenerator.get_market_quotes(self.current_system, body)
+            quote = next((q for q in quotes if q.commodity_id == item_id), None)
+            if not quote:
+                return False, f"No market quote is available for {item_id}."
+            revenue = quote.sell_price * quantity
+            depot_cargo = dict(depot.cargo)
+            depot_cargo[item_id] -= quantity
+            if depot_cargo[item_id] <= 0:
+                depot_cargo.pop(item_id, None)
+            updated_depot = replace(depot, cargo=depot_cargo)
+            depots = tuple(updated_depot if d.id == depot.id else d for d in self.state.depots)
+            stats = dict(self.state.stats)
+            stats["trades"] = stats.get("trades", 0) + 1
+            stats["credits_earned"] = stats.get("credits_earned", 0) + revenue
+            self.state = self._clone_state(
+                ship=self._clone_ship(credits=self.state.ship.credits + revenue),
+                depots=depots,
+                stats=stats,
+            )
+            return True, f"Sold {quantity}x {item_id} from {depot.name} for {revenue} cr."
+
+    def land_on_body(self, body_id: str) -> tuple[bool, str]:
+        """Land on a habitable body and collect surface discovery rewards."""
+        with self.lock:
+            body = next((b for b in self.current_system.bodies if b.id == body_id), None)
+            if not body:
+                return False, f"Unknown body '{body_id}' in {self.current_system.name}."
+            if self.state.ship.orbiting_body_id != body_id:
+                return False, "Establish orbit around the body before landing."
+            if not body.landable:
+                return False, f"{body.name} is not rated for habitable landing operations."
+            if self.state.ship.landed_body_id == body_id:
+                return False, f"Already landed on {body.name}."
+            reward = 150 + int(body.radius_km / 1000) * 5
+            stats = dict(self.state.stats)
+            stats["landings"] = stats.get("landings", 0) + 1
+            stats["credits_earned"] = stats.get("credits_earned", 0) + reward
+            log_entry = f"SURFACE LANDING: Touched down on {body.name}. Survey reward +{reward} cr."
+            new_ship = self._clone_ship(
+                credits=self.state.ship.credits + reward,
+                landed_body_id=body_id,
+                flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [log_entry]),
+            )
+            self.state = self._clone_state(ship=new_ship, stats=stats)
+            return True, log_entry
+
+    def hire_mercenary(self, merc_id: str) -> tuple[bool, str]:
+        with self.lock:
+            merc = MERCENARY_CATALOG.get(merc_id)
+            if not merc:
+                return False, f"Unknown mercenary '{merc_id}'."
+            ok, msg = self._require_docked()
+            if not ok:
+                return False, msg
+            if any(d.specialty == merc["specialty"] and d.drone_type == "mercenary" for d in self.state.ship.fleet_drones):
+                return False, f"A {merc['specialty']} mercenary is already under contract."
+            cost = int(merc["cost"])
+            if self.state.ship.credits < cost:
+                return False, f"Insufficient credits: {cost} cr required."
+            drone = FleetDrone(
+                id=f"merc_{merc_id}_{len(self.state.ship.fleet_drones) + 1}",
+                name=str(merc["name"]),
+                drone_type="mercenary",
+                assigned_system_id=self.state.ship.current_system_id,
+                status="idle",
+                efficiency=1.0,
+                integrity=100,
+                specialty=str(merc["specialty"]),
+            )
+            new_ship = self._clone_ship(
+                credits=self.state.ship.credits - cost,
+                fleet_drones=self.state.ship.fleet_drones + (drone,),
+            )
+            self.state = self._clone_state(ship=new_ship)
+            return True, f"Hired {merc['name']} for {cost} cr ({merc['description']})."
+
+    def dismiss_fleet_unit(self, drone_id: str) -> tuple[bool, str]:
+        with self.lock:
+            drone = next((d for d in self.state.ship.fleet_drones if d.id == drone_id), None)
+            if not drone:
+                return False, f"Unknown fleet unit '{drone_id}'."
+            remaining = tuple(d for d in self.state.ship.fleet_drones if d.id != drone_id)
+            self.state = self._clone_state(ship=self._clone_ship(fleet_drones=remaining))
+            return True, f"Fleet unit '{drone.name}' dismissed."
+
+    def refit_fleet_unit(self, drone_id: str) -> tuple[bool, str]:
+        with self.lock:
+            ok, msg = self._require_docked()
+            if not ok:
+                return False, msg
+            drone = next((d for d in self.state.ship.fleet_drones if d.id == drone_id), None)
+            if not drone:
+                return False, f"Unknown fleet unit '{drone_id}'."
+            cost = 300
+            if self.state.ship.credits < cost:
+                return False, f"Insufficient credits: {cost} cr required for refit."
+            updated = replace(
+                drone,
+                level=drone.level + 1,
+                efficiency=min(1.75, drone.efficiency + 0.10),
+                integrity=100,
+            )
+            drones = tuple(updated if d.id == drone_id else d for d in self.state.ship.fleet_drones)
+            new_ship = self._clone_ship(credits=self.state.ship.credits - cost, fleet_drones=drones)
+            self.state = self._clone_state(ship=new_ship)
+            return True, f"Refit {drone.name} to level {updated.level} (efficiency {updated.efficiency:.2f})."
+
+    def form_alliance(self, captain_id: str) -> tuple[bool, str]:
+        return self.interact_ai(captain_id, "ally")
 
     def tick(self, num_ticks: int = 1) -> dict[str, Any]:
         """Advance the simulation universe by num_ticks."""
@@ -2338,21 +2692,7 @@ class SimulationEngine:
                 for body in system.bodies:
                     d_angle = body.orbit_speed * 0.05 * num_ticks
                     updated_bodies.append(
-                        CelestialBody(
-                            id=body.id,
-                            name=body.name,
-                            body_type=body.body_type,
-                            orbit_radius=body.orbit_radius,
-                            orbit_speed=body.orbit_speed,
-                            current_angle=(body.current_angle + d_angle) % (2.0 * math.pi),
-                            radius_km=body.radius_km,
-                            color=body.color,
-                            hazards=body.hazards,
-                            station_dockable=body.station_dockable,
-                            market_archetype=body.market_archetype,
-                            scan_completed=body.scan_completed,
-                            scan_discovery=body.scan_discovery,
-                        )
+                        replace(body, current_angle=(body.current_angle + d_angle) % (2.0 * math.pi))
                     )
                 updated_systems[sys_id] = StarSystem(
                     id=system.id,
@@ -2401,8 +2741,12 @@ class SimulationEngine:
                 new_cooldown = max(0, new_combat.ability_cooldown - num_ticks)
                 new_combat = replace(new_combat, ability_cooldown=new_cooldown)
 
-            # 5. Advance global economy simulation
+            # 5. Advance global economy simulation and autonomous AI trade flows
             new_econ, econ_logs = tick_global_economy(self.state.economy, num_ticks, self.state.systems, self.rng)
+            new_ai_captains, new_econ, ai_logs = simulate_ai_trade(
+                self.state.ai_captains, new_econ, self.state.systems, self.rng
+            )
+            econ_logs.extend(ai_logs[-5:])
 
             # 6. Automated repair bay module passive hull healing
             new_hull = cur_ship.hull
@@ -2427,6 +2771,7 @@ class SimulationEngine:
                 active_combat=new_combat,
                 time=new_time,
                 economy=new_econ,
+                ai_captains=new_ai_captains,
             )
 
             return {

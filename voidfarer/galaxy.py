@@ -13,6 +13,7 @@ from voidfarer.models import (
     CelestialBody,
     Commodity,
     MarketQuote,
+    Moon,
     StarSystem,
 )
 
@@ -38,6 +39,11 @@ SYSTEM_ARCHETYPES = [
     ("cygnus_x1", "Cygnus Void Gate", 48.0, -35.0, "BlackHole", "#8833ff", 0.15, "Void Corsairs", None),
     ("pulsar_psr", "PSR Core Beacon", -15.0, 52.0, "Neutron", "#33ffff", 0.20, "Precursor Watch", None),
     ("rift_station", "The Dark Abyss", 55.0, 42.0, "M", "#cc2255", 0.05, "Void Corsairs", None),
+    ("orion_belt", "Orion Belt", -58.0, -8.0, "B", "#aabfff", 0.35, "Nebula Collective", "omnicorp_mining"),
+    ("trappist", "TRAPPIST-1", 8.0, 46.0, "M", "#ff7755", 0.30, "Precursor Watch", None),
+    ("wolf_359", "Wolf 359", 30.0, -50.0, "RedGiant", "#ff4400", 0.25, "Free Spacers Syndicate", "vortex_fuel"),
+    ("golconda", "Golconda Rift", 66.0, 8.0, "O", "#9bb0ff", 0.10, "Void Corsairs", None),
+    ("cyclops", "Cyclops Binary", -70.0, 30.0, "Binary", "#ffcc66", 0.45, "Sol Coalition", "hyperion_dynamics"),
 ]
 
 ANOMALIES_CATALOG = [
@@ -233,7 +239,13 @@ class GalaxyGenerator:
         bodies: list[CelestialBody] = []
 
         # Central primary star
-        star_color = "#ffd700" if spectral == "G" else ("#99ccff" if spectral == "A" else "#ff5533")
+        star_colors = {
+            "O": "#9bb0ff", "B": "#aabfff", "A": "#cad7ff", "F": "#f8f7ff",
+            "G": "#ffd700", "K": "#ffaa44", "M": "#ff5533", "BlackHole": "#8833ff",
+            "Neutron": "#33ffff", "WolfRayet": "#ff66cc", "RedGiant": "#ff4400",
+            "Binary": "#ffcc66",
+        }
+        star_color = star_colors.get(spectral, "#ffd700")
         bodies.append(
             CelestialBody(
                 id=f"{sys_id}_star",
@@ -248,7 +260,11 @@ class GalaxyGenerator:
                 station_dockable=False,
                 market_archetype="none",
                 scan_completed=True,
-                scan_discovery="Main-sequence stellar furnace emitting radiant plasma.",
+                scan_discovery=f"{spectral}-class stellar primary emitting radiant plasma.",
+                gravity=28.0,
+                atmosphere="plasma",
+                temperature_c=5500,
+                resources=("helium",),
             )
         )
 
@@ -263,12 +279,49 @@ class GalaxyGenerator:
             ("lava_world", "magma_forge", "industrial", "#e76f51", "Tectonic magma vents powering automated heavy foundries."),
             ("ringed_giant", "helium_harvest", "industrial", "#c9ada7", "Ringed gas envelope mined for helium-3 and exotic isotopes."),
             ("research_outpost", "science", "high_tech", "#b5179e", "Deep-space research campus studying precursor field harmonics."),
+            ("savanna", "fertile_plains", "agricultural", "#90be6d", "Temperate savanna belts ideal for colony agriculture."),
+            ("tundra", "permafrost", "agricultural", "#bde0fe", "Cold tundra biome supporting hardy medicinal flora."),
+            ("toxic", "acid_mists", "industrial", "#b5e48c", "Caustic cloud layers rich in industrial catalysts."),
+            ("barren", "cratered", "mining", "#adb5bd", "Airless crater fields exposing shallow metal deposits."),
+            ("super_earth", "high_gravity", "mining", "#6a994e", "High-gravity world with dense ore-bearing mantle."),
+            ("ice_giant", "methane_storm", "industrial", "#a2d2ff", "Frigid ice giant harvesting volatile methane clathrates."),
         ]
 
         if sys_id in ("betelgeuse", "cygnus_x1", "rift_station"):
             archetype_pool.append(
                 ("volcanic", "dark_market", "black_market", "#e63946", "Unregulated shadow bazaar trafficking illicit xenoliths.")
             )
+
+        habitable_types = {"terrestrial", "oceanic", "savanna", "tundra"}
+        gravity_map = {
+            "terrestrial": 1.0, "oceanic": 1.1, "gas_giant": 2.3, "asteroid_belt": 0.1,
+            "orbital_station": 0.0, "desert_world": 0.8, "ice_world": 0.9, "lava_world": 1.2,
+            "ringed_giant": 2.0, "research_outpost": 0.0, "savanna": 1.05, "tundra": 0.95,
+            "toxic": 1.3, "barren": 0.4, "super_earth": 1.6, "ice_giant": 1.9, "volcanic": 1.4,
+        }
+        atmosphere_map = {
+            "terrestrial": "nitrogen-oxygen", "oceanic": "nitrogen-oxygen", "gas_giant": "hydrogen-helium",
+            "orbital_station": "pressurized", "asteroid_belt": "none", "desert_world": "thin-carbon-dioxide",
+            "ice_world": "methane-nitrogen", "lava_world": "sulfur-dioxide", "ringed_giant": "hydrogen-helium",
+            "research_outpost": "pressurized", "savanna": "nitrogen-oxygen", "tundra": "thin-nitrogen-oxygen",
+            "toxic": "chlorine-methane", "barren": "none", "super_earth": "nitrogen-oxygen", "ice_giant": "methane-hydrogen",
+            "volcanic": "sulfur-dioxide",
+        }
+        temp_map = {
+            "terrestrial": 18, "oceanic": 22, "gas_giant": -110, "asteroid_belt": -80,
+            "orbital_station": 20, "desert_world": 48, "ice_world": -65, "lava_world": 420,
+            "ringed_giant": -140, "research_outpost": 20, "savanna": 26, "tundra": -12,
+            "toxic": 90, "barren": -40, "super_earth": 16, "ice_giant": -180, "volcanic": 310,
+        }
+        resource_map = {
+            "terrestrial": ("titanium",), "oceanic": ("hydroponics",), "gas_giant": ("fuel_cells",),
+            "asteroid_belt": ("titanium", "xenoliths"), "desert_world": ("titanium",), "ice_world": ("hydroponics",),
+            "lava_world": ("microchips",), "ringed_giant": ("fuel_cells",), "research_outpost": ("microchips",),
+            "savanna": ("hydroponics", "medicines"), "tundra": ("medicines",), "toxic": ("medicines",),
+            "barren": ("titanium",), "super_earth": ("titanium", "xenoliths"), "ice_giant": ("fuel_cells",),
+            "volcanic": ("xenoliths",),
+        }
+        moon_colors = ("#c0c0c0", "#9a8c98", "#e0e1dd", "#8ecae6")
 
         num_bodies = 6 if sys_id in ("sol", "betelgeuse") else 5
         for i in range(num_bodies):
@@ -277,12 +330,32 @@ class GalaxyGenerator:
             ]
             orbit_dist = 1.0 + (i + 1) * 1.35
             orbit_speed = 0.08 / (i + 1)
-            is_station = body_type == "orbital_station"
+            is_station = body_type in ("orbital_station", "research_outpost")
+            body_id = f"{sys_id}_body_{i+1}"
+            body_name = f"{sys_name} {chr(65+i)} ({designation.title()})"
+
+            moon_count = 0
+            if body_type in ("gas_giant", "ringed_giant", "ice_giant", "super_earth"):
+                moon_count = 1 + (i % 3)
+            elif body_type in habitable_types:
+                moon_count = 1 + (i % 2)
+            moons = tuple(
+                Moon(
+                    id=f"{body_id}_moon_{j + 1}",
+                    name=f"{body_name} Moon {j + 1}",
+                    orbit_radius=0.10 + 0.07 * j,
+                    radius_km=600.0 + 350.0 * ((i + j) % 5),
+                    color=moon_colors[(i + j) % len(moon_colors)],
+                    resource=("titanium" if j % 2 == 0 else "hydroponics") if body_type in habitable_types else "none",
+                    landable=body_type in habitable_types and j == 0,
+                )
+                for j in range(moon_count)
+            )
 
             bodies.append(
                 CelestialBody(
-                    id=f"{sys_id}_body_{i+1}",
-                    name=f"{sys_name} {chr(65+i)} ({designation.title()})",
+                    id=body_id,
+                    name=body_name,
                     body_type=body_type,
                     orbit_radius=orbit_dist,
                     orbit_speed=orbit_speed,
@@ -290,11 +363,32 @@ class GalaxyGenerator:
                     radius_km=3000.0 + i * 2500.0,
                     color=color,
                     hazards=("pirate_activity",) if market_arch == "black_market" else (),
-                    station_dockable=is_station or (body_type in ("terrestrial", "oceanic")),
+                    station_dockable=is_station or body_type in habitable_types,
                     market_archetype=market_arch,
                     scan_completed=False,
                     scan_discovery=discovery,
+                    gravity=gravity_map.get(body_type, 1.0),
+                    atmosphere=atmosphere_map.get(body_type, "none"),
+                    temperature_c=temp_map.get(body_type, 0),
+                    resources=resource_map.get(body_type, ()),
+                    moons=moons,
+                    landable=body_type in habitable_types,
                 )
+            )
+
+        if not any(b.landable for b in bodies[1:]):
+            landable_index = len(bodies) - 2 if bodies[-1].station_dockable else len(bodies) - 1
+            bodies[landable_index] = replace(
+                bodies[landable_index],
+                body_type="savanna",
+                color="#90be6d",
+                atmosphere="nitrogen-oxygen",
+                temperature_c=24,
+                gravity=1.0,
+                resources=("hydroponics", "medicines"),
+                landable=True,
+                station_dockable=True,
+                scan_discovery="Temperate savanna world with a breathable atmosphere and fertile colony belts.",
             )
 
         if not any(b.station_dockable for b in bodies[1:]):

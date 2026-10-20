@@ -62,6 +62,7 @@ class CelestialBody:
     population: int = 0
     government: str = "None"
     habitability: float = 0.0
+    salvage_claimed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -92,6 +93,31 @@ class CelestialBody:
             population=int(data.get("population", 0)),
             government=str(data.get("government", "None")),
             habitability=float(data.get("habitability", 0.0)),
+            salvage_claimed=bool(data.get("salvage_claimed", False)),
+        )
+
+
+@dataclass(frozen=True)
+class MapModifier:
+    """Persistent environmental condition that reshapes local sector simulation."""
+
+    id: str
+    name: str
+    category: str  # 'hazard', 'anomaly', 'commerce', 'phenomenon'
+    description: str
+    effects: dict[str, float] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MapModifier:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            category=str(data.get("category", "phenomenon")),
+            description=str(data.get("description", "")),
+            effects={str(k): float(v) for k, v in data.get("effects", {}).items()},
         )
 
 
@@ -111,6 +137,7 @@ class StarSystem:
     bodies: tuple[CelestialBody, ...]
     connections: tuple[str, ...] = ()
     dominant_corp: str | None = None
+    modifiers: tuple[MapModifier, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -126,6 +153,7 @@ class StarSystem:
             "bodies": [b.to_dict() for b in self.bodies],
             "connections": list(self.connections),
             "dominant_corp": self.dominant_corp,
+            "modifiers": [m.to_dict() for m in self.modifiers],
         }
 
     @classmethod
@@ -143,6 +171,7 @@ class StarSystem:
             bodies=tuple(CelestialBody.from_dict(b) for b in data.get("bodies", [])),
             connections=tuple(data.get("connections", ())),
             dominant_corp=data.get("dominant_corp"),
+            modifiers=tuple(MapModifier.from_dict(m) for m in data.get("modifiers", ())),
         )
 
 
@@ -372,6 +401,30 @@ class Depot:
 
 
 @dataclass(frozen=True)
+class MessageChoice:
+    """One branch of an interactive message-tree node."""
+
+    id: str
+    label: str
+    description: str = ""
+    outcome: dict[str, Any] = field(default_factory=dict)
+    next_node_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MessageChoice:
+        return cls(
+            id=str(data["id"]),
+            label=str(data.get("label", data["id"])),
+            description=str(data.get("description", "")),
+            outcome={str(k): v for k, v in data.get("outcome", {}).items()},
+            next_node_id=data.get("next_node_id"),
+        )
+
+
+@dataclass(frozen=True)
 class QuantumMessage:
     """Intergalactic quantum-encrypted message stored in the ship inbox."""
 
@@ -382,9 +435,15 @@ class QuantumMessage:
     body: str
     tick: int = 0
     read: bool = False
+    tree_id: str | None = None
+    node_id: str | None = None
+    choices: tuple[MessageChoice, ...] = ()
+    resolved_choice: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        data["choices"] = [c.to_dict() for c in self.choices]
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> QuantumMessage:
@@ -396,6 +455,10 @@ class QuantumMessage:
             body=str(data.get("body", "")),
             tick=int(data.get("tick", 0)),
             read=bool(data.get("read", False)),
+            tree_id=data.get("tree_id"),
+            node_id=data.get("node_id"),
+            choices=tuple(MessageChoice.from_dict(c) for c in data.get("choices", ())),
+            resolved_choice=data.get("resolved_choice"),
         )
 
 
@@ -920,6 +983,291 @@ class GameEvent:
 
 
 @dataclass(frozen=True)
+class ReactorState:
+    """Thermal and structural state of the fusion reactor core."""
+
+    heat: float = 0.0
+    max_heat: float = 100.0
+    integrity: float = 100.0
+    max_integrity: float = 100.0
+    mode: str = "balanced"
+    last_vent_tick: int = -999
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "heat": round(self.heat, 2),
+            "max_heat": self.max_heat,
+            "integrity": round(self.integrity, 2),
+            "max_integrity": self.max_integrity,
+            "mode": self.mode,
+            "last_vent_tick": self.last_vent_tick,
+            "heat_pct": round(min(100.0, max(0.0, self.heat / self.max_heat * 100.0)), 1) if self.max_heat else 0.0,
+            "integrity_pct": round(min(100.0, max(0.0, self.integrity / self.max_integrity * 100.0)), 1) if self.max_integrity else 0.0,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ReactorState:
+        max_heat = max(1.0, float(data.get("max_heat", 100.0)))
+        max_integrity = max(1.0, float(data.get("max_integrity", 100.0)))
+        return cls(
+            heat=max(0.0, min(max_heat, float(data.get("heat", 0.0)))),
+            max_heat=max_heat,
+            integrity=max(0.0, min(max_integrity, float(data.get("integrity", max_integrity)))),
+            max_integrity=max_integrity,
+            mode=str(data.get("mode", "balanced")),
+            last_vent_tick=int(data.get("last_vent_tick", -999)),
+        )
+
+
+@dataclass(frozen=True)
+class PlayerCharacter:
+    """Persistent commander profile with aging, skills, and activatable abilities."""
+
+    name: str = "Astraea"
+    age: int = 31
+    background: str = "Navigator"
+    level: int = 1
+    xp: int = 0
+    next_level_xp: int = 400
+    skill_points: int = 0
+    skills: dict[str, int] = field(default_factory=lambda: {
+        "piloting": 1, "engineering": 1, "science": 1,
+        "combat": 1, "diplomacy": 1, "trade": 1,
+    })
+    abilities: tuple[str, ...] = ("overclock", "emergency_repair", "battle_focus", "science_burst")
+    ability_cooldowns: dict[str, int] = field(default_factory=dict)
+    traits: tuple[str, ...] = ()
+    portrait: str = "commander_01"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "age": self.age,
+            "background": self.background,
+            "level": self.level,
+            "xp": self.xp,
+            "next_level_xp": self.next_level_xp,
+            "skill_points": self.skill_points,
+            "skills": dict(self.skills),
+            "abilities": list(self.abilities),
+            "ability_cooldowns": dict(self.ability_cooldowns),
+            "traits": list(self.traits),
+            "portrait": self.portrait,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> PlayerCharacter:
+        defaults = {"piloting": 1, "engineering": 1, "science": 1, "combat": 1, "diplomacy": 1, "trade": 1}
+        return cls(
+            name=str(data.get("name", "Astraea")),
+            age=max(18, int(data.get("age", 31))),
+            background=str(data.get("background", "Navigator")),
+            level=max(1, int(data.get("level", 1))),
+            xp=max(0, int(data.get("xp", 0))),
+            next_level_xp=max(100, int(data.get("next_level_xp", 400))),
+            skill_points=max(0, int(data.get("skill_points", 0))),
+            skills={**defaults, **{str(k): int(v) for k, v in data.get("skills", {}).items()}},
+            abilities=tuple(data.get("abilities", ("overclock", "emergency_repair", "battle_focus", "science_burst"))),
+            ability_cooldowns={str(k): int(v) for k, v in data.get("ability_cooldowns", {}).items()},
+            traits=tuple(data.get("traits", ())),
+            portrait=str(data.get("portrait", "commander_01")),
+        )
+
+
+@dataclass(frozen=True)
+class ResearchState:
+    """Research progress and completed technology unlocks."""
+
+    points: int = 0
+    progress: int = 0
+    active_project_id: str | None = None
+    completed: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "points": self.points,
+            "progress": self.progress,
+            "active_project_id": self.active_project_id,
+            "completed": list(self.completed),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ResearchState:
+        return cls(
+            points=max(0, int(data.get("points", 0))),
+            progress=max(0, int(data.get("progress", 0))),
+            active_project_id=data.get("active_project_id"),
+            completed=tuple(data.get("completed", ())),
+        )
+
+
+@dataclass(frozen=True)
+class Outpost:
+    """Player-owned planetary or orbital installation that produces value each tick."""
+
+    id: str
+    name: str
+    system_id: str
+    body_id: str
+    outpost_type: str = "mining"
+    level: int = 1
+    population: int = 250
+    modules: dict[str, int] = field(default_factory=lambda: {"extractor": 1})
+    production: dict[str, float] = field(default_factory=lambda: {"credits": 8.0, "research": 1.0})
+    integrity: float = 100.0
+    founded_tick: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Outpost:
+        return cls(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            system_id=str(data["system_id"]),
+            body_id=str(data["body_id"]),
+            outpost_type=str(data.get("outpost_type", "mining")),
+            level=max(1, int(data.get("level", 1))),
+            population=max(0, int(data.get("population", 250))),
+            modules={str(k): int(v) for k, v in data.get("modules", {"extractor": 1}).items()},
+            production={str(k): float(v) for k, v in data.get("production", {}).items()},
+            integrity=float(data.get("integrity", 100.0)),
+            founded_tick=int(data.get("founded_tick", 0)),
+        )
+
+
+@dataclass(frozen=True)
+class FleetShip:
+    """Player-owned escort warship attached to the fleet manager."""
+
+    id: str
+    name: str
+    ship_class: str
+    role: str  # 'escort', 'frigate', 'cruiser', 'carrier'
+    hull: int
+    max_hull: int
+    shield: int
+    max_shield: int
+    damage: int
+    evasion: float = 0.05
+    assigned_system_id: str = "sol"
+    status: str = "escorting"
+    experience: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FleetShip:
+        max_hull = max(1, int(data.get("max_hull", 120)))
+        max_shield = max(0, int(data.get("max_shield", 60)))
+        return cls(
+            id=str(data["id"]),
+            name=str(data.get("name", "Escort")),
+            ship_class=str(data.get("ship_class", "Escort Corvette")),
+            role=str(data.get("role", "escort")),
+            hull=max(0, min(max_hull, int(data.get("hull", max_hull)))),
+            max_hull=max_hull,
+            shield=max(0, min(max_shield, int(data.get("shield", max_shield)))),
+            max_shield=max_shield,
+            damage=max(1, int(data.get("damage", 12))),
+            evasion=max(0.0, min(0.8, float(data.get("evasion", 0.05)))),
+            assigned_system_id=str(data.get("assigned_system_id", "sol")),
+            status=str(data.get("status", "escorting")),
+            experience=max(0, int(data.get("experience", 0))),
+        )
+
+
+@dataclass(frozen=True)
+class FactionLeader:
+    """Individual leader whose behavior drives a faction's simulation policy."""
+
+    id: str
+    faction_id: str
+    name: str
+    title: str
+    behavior: str  # 'militarist', 'merchant', 'isolationist', 'opportunist', 'visionary'
+    aggression: float = 0.5
+    diplomacy: float = 0.5
+    ambition: float = 0.5
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FactionLeader:
+        return cls(
+            id=str(data["id"]),
+            faction_id=str(data["faction_id"]),
+            name=str(data.get("name", "Leader")),
+            title=str(data.get("title", "Sovereign")),
+            behavior=str(data.get("behavior", "opportunist")),
+            aggression=max(0.0, min(1.0, float(data.get("aggression", 0.5)))),
+            diplomacy=max(0.0, min(1.0, float(data.get("diplomacy", 0.5)))),
+            ambition=max(0.0, min(1.0, float(data.get("ambition", 0.5)))),
+        )
+
+
+@dataclass(frozen=True)
+class WarState:
+    """Active or concluded war between two sovereign factions."""
+
+    id: str
+    attacker_id: str
+    defender_id: str
+    started_tick: int
+    war_score: float = 0.0
+    active: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> WarState:
+        return cls(
+            id=str(data["id"]),
+            attacker_id=str(data["attacker_id"]),
+            defender_id=str(data["defender_id"]),
+            started_tick=int(data.get("started_tick", 0)),
+            war_score=float(data.get("war_score", 0.0)),
+            active=bool(data.get("active", True)),
+        )
+
+
+@dataclass(frozen=True)
+class CrewMember:
+    """Recruitable crew specialist with a role, morale, wage, and portrait."""
+
+    id: str
+    name: str
+    role: str
+    skill: int = 2
+    morale: float = 75.0
+    wage: int = 25
+    portrait: str = "crew_01"
+    specialty: str = ""
+    status: str = "active"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CrewMember:
+        return cls(
+            id=str(data["id"]),
+            name=str(data.get("name", "Crew Member")),
+            role=str(data.get("role", "deckhand")),
+            skill=max(1, min(10, int(data.get("skill", 2)))),
+            morale=max(0.0, min(100.0, float(data.get("morale", 75.0)))),
+            wage=max(0, int(data.get("wage", 25))),
+            portrait=str(data.get("portrait", "crew_01")),
+            specialty=str(data.get("specialty", "")),
+            status=str(data.get("status", "active")),
+        )
+
+
+@dataclass(frozen=True)
 class ShipState:
     """Complete telemetry, resource inventory, and status of the player's flagship."""
 
@@ -938,9 +1286,17 @@ class ShipState:
     current_system_id: str
     orbiting_body_id: str | None
     power: ShipPower = field(default_factory=ShipPower)
+    reactor: ReactorState = field(default_factory=ReactorState)
     upgrades: tuple[str, ...] = ()
     equipped_upgrades: dict[str, str] = field(default_factory=dict)
+    ship_mods: dict[str, str] = field(default_factory=dict)
     fleet_drones: tuple[FleetDrone, ...] = ()
+    fleet_ships: tuple[FleetShip, ...] = ()
+    battle_stance: str = "balanced"
+    crew: tuple[CrewMember, ...] = ()
+    weapons: tuple[str, ...] = ("pulse_laser",)
+    primary_weapon: str = "pulse_laser"
+    message_bonuses: dict[str, float] = field(default_factory=dict)
     flight_log: tuple[str, ...] = ()
     streak: int = 1
     relics: tuple[PrecursorRelic, ...] = ()
@@ -973,9 +1329,17 @@ class ShipState:
             "current_system_id": self.current_system_id,
             "orbiting_body_id": self.orbiting_body_id,
             "power": self.power.to_dict(),
+            "reactor": self.reactor.to_dict(),
             "upgrades": list(self.upgrades),
             "equipped_upgrades": dict(self.equipped_upgrades),
+            "ship_mods": dict(self.ship_mods),
             "fleet_drones": [d.to_dict() for d in self.fleet_drones],
+            "fleet_ships": [s.to_dict() for s in self.fleet_ships],
+            "battle_stance": self.battle_stance,
+            "crew": [c.to_dict() for c in self.crew],
+            "weapons": list(self.weapons),
+            "primary_weapon": self.primary_weapon,
+            "message_bonuses": dict(self.message_bonuses),
             "flight_log": list(self.flight_log),
             "streak": self.streak,
             "relics": [r.to_dict() for r in self.relics],
@@ -1030,9 +1394,17 @@ class ShipState:
             current_system_id=str(data.get("current_system_id", "sol")),
             orbiting_body_id=data.get("orbiting_body_id"),
             power=ShipPower.from_dict(data.get("power", {})),
+            reactor=ReactorState.from_dict(data.get("reactor", {})),
             upgrades=tuple(data.get("upgrades", ())),
             equipped_upgrades=dict(data.get("equipped_upgrades", {})),
+            ship_mods={str(k): str(v) for k, v in data.get("ship_mods", {}).items()},
             fleet_drones=tuple(FleetDrone.from_dict(d) for d in data.get("fleet_drones", [])),
+            fleet_ships=tuple(FleetShip.from_dict(s) for s in data.get("fleet_ships", [])),
+            battle_stance=str(data.get("battle_stance", "balanced")),
+            crew=tuple(CrewMember.from_dict(c) for c in data.get("crew", ())),
+            weapons=tuple(data.get("weapons", ("pulse_laser",))),
+            primary_weapon=str(data.get("primary_weapon", "pulse_laser")),
+            message_bonuses={str(k): float(v) for k, v in data.get("message_bonuses", {}).items()},
             flight_log=tuple(data.get("flight_log", ())),
             streak=int(data.get("streak", 1)),
             relics=tuple(PrecursorRelic.from_dict(r) for r in data.get("relics", [])),
@@ -1062,6 +1434,10 @@ class TimeState:
     elapsed_days: float = 0.0
 
     @property
+    def era(self) -> str:
+        return "Quantum Age (31st Century)"
+
+    @property
     def current_date(self) -> str:
         """In-game calendar date (DD.MM.YYYY), starting 01.01.3042 at tick zero."""
         start = date(3042, 1, 1)
@@ -1072,6 +1448,7 @@ class TimeState:
             "tick": self.tick,
             "stardate": round(self.stardate, 2),
             "date": self.current_date,
+            "era": self.era,
             "speed": self.speed,
             "is_paused": self.is_paused,
             "time_scale": self.time_scale,
@@ -1208,6 +1585,12 @@ class GameState:
     depots: tuple[Depot, ...] = ()
     messages: tuple[QuantumMessage, ...] = ()
     events: tuple[GameEvent, ...] = ()
+    character: PlayerCharacter = field(default_factory=PlayerCharacter)
+    research: ResearchState = field(default_factory=ResearchState)
+    outposts: tuple[Outpost, ...] = ()
+    faction_leaders: tuple[FactionLeader, ...] = ()
+    wars: tuple[WarState, ...] = ()
+    eliminated_factions: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1225,6 +1608,12 @@ class GameState:
             "depots": [d.to_dict() for d in self.depots],
             "messages": [m.to_dict() for m in self.messages],
             "events": [e.to_dict() for e in self.events],
+            "character": self.character.to_dict(),
+            "research": self.research.to_dict(),
+            "outposts": [o.to_dict() for o in self.outposts],
+            "faction_leaders": [l.to_dict() for l in self.faction_leaders],
+            "wars": [w.to_dict() for w in self.wars],
+            "eliminated_factions": list(self.eliminated_factions),
         }
 
     @classmethod
@@ -1265,5 +1654,11 @@ class GameState:
             depots=tuple(Depot.from_dict(d) for d in data.get("depots", ())),
             messages=tuple(QuantumMessage.from_dict(m) for m in data.get("messages", ())),
             events=tuple(GameEvent.from_dict(e) for e in data.get("events", ())),
+            character=PlayerCharacter.from_dict(data.get("character", {})),
+            research=ResearchState.from_dict(data.get("research", {})),
+            outposts=tuple(Outpost.from_dict(o) for o in data.get("outposts", ())),
+            faction_leaders=tuple(FactionLeader.from_dict(l) for l in data.get("faction_leaders", ())),
+            wars=tuple(WarState.from_dict(w) for w in data.get("wars", ())),
+            eliminated_factions=tuple(data.get("eliminated_factions", ())),
         )
 

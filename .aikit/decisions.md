@@ -316,3 +316,55 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
 
 
 
+
+### ADR-026: Reactor Thermal Simulation, Procedural Sector Map Modifiers, and Structural Ship Modification Section
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: The user asked to make VoidFarer more simulation-like, add more game functions, add map modifiers, revamp reactor mechanics, and add a ship modification section. The existing reactor was a static four-slider allocation with no thermal state, star systems had no persistent environmental conditions, and ship progression was limited to catalog upgrades and chassis purchases.
+- **Decision**:
+  1. Add `ReactorState` (`heat`, `max_heat`, `integrity`, `max_integrity`, `mode`, `last_vent_tick`) and `voidfarer/reactor.py` with `balanced`, `economy`, `overdrive`, and `silent` doctrines, heat generation proportional to allocation, sector/cooling modifiers, thermal derating above 70 heat, critical hull/core damage above 92 heat, an emergency coolant purge with cooldown, and drydock repair. Apply reactor output efficiency to engines, shields, sensors, weapons, anomaly checks, and telemetry while preserving the existing `ShipPower` 100% allocation contract.
+  2. Add `MapModifier` and `StarSystem.modifiers` plus `voidfarer/mapmods.py` with deterministic per-system generation (independent RNG stream), ten environmental conditions, and aggregated effects on jump fuel, scan yield, sensor range, encounter risk, trade margin, evasion, relic discovery, hull hazard, and reactor heat/cooling.
+  3. Add `ShipState.ship_mods` and `voidfarer/shipmods.py` with five structural slots (`frame`, `reactor_core`, `thermal`, `drive`, `ops`) and twelve trade-off refits. Installing/removing refits recomputes max hull, shields, cargo, and fuel through the shared `_recompute_caps` helper, so later upgrade or chassis purchases preserve structural bonuses and maluses.
+  4. Add CLI commands `reactor`, `mapmods`, `refit`, and `simulation`; REST endpoints under `/api/reactor*`, `/api/mapmods`, `/api/shipmods*`, `/api/simulation`; and cockpit controls for heat, doctrine, coolant purge, sector modifier chips, and the SHIP MODS terminal section.
+- **Consequences**: Reactor management becomes an active thermal trade-off, star systems gain persistent environmental identities that alter route planning and economy choices, and ship building gains a second structural progression layer. Legacy saves backfill map modifiers deterministically and default to a cold balanced reactor without changing existing RNG streams or save compatibility.
+
+### ADR-027: Commander, Empire, Faction, Fleet, and Travel Systems Expansion
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: The user requested a more simulation-like game with a player character (age, skills, abilities), research and outpost mechanics, faction leaders and behaviors, diplomacy and war elimination, a fleet manager with escort ships and battle mechanics, improved travel, smaller ship stat boxes, fading orbital trajectories, black holes, solar panels, and ring worlds.
+- **Decision**:
+  1. Add `PlayerCharacter`, `ResearchState`, `Outpost`, `FleetShip`, `FactionLeader`, and `WarState` models. Legacy saves receive defaults without changing RNG streams.
+  2. Add `character.py` (six skills, six cooldown abilities, aging and XP), `research.py` (prerequisite projects with aggregated bonuses), and `outposts.py` (five outpost types, module production, upgrades).
+  3. Add `faction_state.py` with deterministic leaders, behavior archetypes, war declaration/resolution, territory capture, and faction elimination. Player diplomacy supports improve, aid, alliance, ceasefire, and war declaration.
+  4. Add `fleet.py` and `navigation.py` for escort classes, formation damage/screening, casualty distribution, BFS multi-jump routing, and black-hole hazard fuel costs. Integrate escorts into combat volleys, damage absorption, evasion, and battle stances.
+  5. Add black-hole bodies and ring worlds to galaxy generation, a solar-panel ship upgrade and outpost type, a 44px compact vital-card layout, and radial alpha fade for orbital rings toward the black void.
+  6. Surface everything through CLI commands (`character`, `research`, `outpost`, `diplomacy`, `fleet ships`, `route`, `navigate`, `combat stance`), REST endpoints, and cockpit COMMANDER/EMPIRE/fleet-manager panels.
+- **Consequences**: The game gains a persistent character/empire layer, dynamic NPC faction wars that can erase factions, escorted fleet combat, and navigation planning. Save-size and per-tick work grow modestly; all new state remains stdlib-only and backward compatible.
+
+### ADR-028: Branching Messages, Quantum Tech, Crew, Weapons, and Megastructures
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: The user requested a messaging revamp with branching message trees whose branches produce different outcomes, Dyson spheres, quantum technologies, varied weapons, crew recruiting with character images, a fitting in-game date, and more themed objects.
+- **Decision**:
+  1. Add `MessageChoice` and tree metadata (`tree_id`, `node_id`, `choices`, `resolved_choice`) to `QuantumMessage`, with `messaging.py` providing three multi-node trees and persistent outcomes (credits, research, crew, standings, weapons, reactor, fuel, cargo).
+  2. Add `CrewMember` and `crew.py` with six roles, recruiting, wages, morale, skill-derived bonuses, and procedural SVG portrait IDs. Crew upkeep and morale are simulated each tick.
+  3. Add `weapons.py` with laser, kinetic, missile, plasma, ion, quantum, and drone weapons. Combat now uses the selected primary weapon's damage, shield/hull multipliers, and accuracy.
+  4. Add quantum research projects (`quantum_entanglement`, `quantum_drive`, `quantum_shielding`, `quantum_weapons`).
+  5. Add Dyson spheres, quantum relays, solar-collector swarms, and wormholes as generated celestial objects with science properties, scanning, landing/docking rules, and radar rendering.
+  6. Formalize the setting date as 01.01.3042, era "Quantum Age (31st Century)", matching Dyson-scale engineering, quantum drives, ring worlds, and black-hole navigation.
+  7. Expose message branching, crew, and weapon management through CLI (`messages tree|choose`, `crew`, `weapons`), REST endpoints, and cockpit message/crew/portrait UI.
+- **Consequences**: Messages become a decision system with persistent consequences; crew and weapons add build depth; megastructures and quantum objects give the galaxy a coherent late-quantum-age identity. Legacy saves backfill crew and default weapons without RNG drift.
+
+### ADR-029: Resolution-Adaptive Cockpit, DPR-Correct Radar, Derelict Salvage, Fuel Scooping, and Crew Drills
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: The user asked for a VoidFarer UI that adapts to the screen resolution, more mechanics, and bug fixes/improvements. The cockpit used a single 1200px breakpoint, fixed minimum canvas dimensions, no device-pixel-ratio backing store, mouse-only radar input, an unguarded 1s polling loop, and hotkeys that fired behind overlays. Exploration also lacked a high-risk salvage loop, fuel recovery from gas giants/stars, and crew progression beyond recruiting.
+- **Decision**:
+  1. Add a viewport profile layer (`data-density`, `--ui-scale`) with ultrawide (2200px+), desktop, tablet (1200px), phone (760px/480px), short-height (720px), reduced-motion, and safe-area rules. Base G-001..G-010 rules remain untouched; media queries only adapt spacing and overflow. Settings gain automatic/compact/standard/comfortable density, 85-125% HUD scale, and a live viewport readout.
+  2. Make the radar DPR-correct: size the backing store from the CSS rect times `devicePixelRatio`, draw in CSS-pixel coordinates via `setTransform`, debounce resize through `ResizeObserver`/rotation, pause the render loop while hidden, and add one-finger pan plus two-finger pinch zoom with pointer coordinates divided by DPR.
+  3. Add `voidfarer/exploration.py` and `CelestialBody.salvage_claimed`, generating one deterministic salvage site per eligible body. `salvage_derelict()` applies sensor/crew-modified risk, credits, cargo, hull damage, reactor heat, and pilot XP, and marks the site stripped permanently.
+  4. Add `scoop_fuel()` profiles for stars, gas giants, ringed giants, and ice bodies. Scooping converts sensor power and science skill into fuel while adding reactor heat, creating a thermal-vs-range trade-off.
+  5. Add `train_crew_member()` drills with escalating credit cost, skill cap 10, and morale recovery.
+  6. Expose all three mechanics through CLI (`salvage`, `scoop`, `crew train`), REST (`/api/salvage`, `/api/scoop`, `/api/crew/train`), and cockpit actions (BOARD DERELICT, SCOOP FUEL, crew DRILL).
+  7. Harden client runtime behavior: single-flight 1s state polling, skip polling when hidden, hotkey suppression while overlays/typing targets are active, and modifier-key guards.
+- **Consequences**: The cockpit remains usable from small phones to 4K/ultrawide displays with crisp radar rendering and touch input, exploration gains a repeatable risk/reward loop, fuel has an in-space recovery path with reactor heat pressure, crew gain a credit sink and skill progression, and several runtime bugs are removed. Legacy saves default `salvage_claimed=False`; no RNG stream is consumed during model backfill.

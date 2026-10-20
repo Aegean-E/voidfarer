@@ -78,6 +78,57 @@ class TestServer(unittest.TestCase):
         self.assertTrue(json_data["ok"])
         self.assertIn("sol", json_data["systems"])
 
+    def test_reactor_map_and_shipmod_endpoints(self):
+        for path in ("/api/reactor", "/api/mapmods", "/api/shipmods", "/api/simulation"):
+            status, data = self._get(path)
+            self.assertEqual(status, 200)
+            self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        status, data = self._post("/api/reactor/mode", {"mode": "economy"})
+        self.assertEqual(status, 200)
+        payload = json.loads(data.decode("utf-8"))
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["state"]["ship"]["reactor"]["mode"], "economy")
+
+        status, data = self._post("/api/reactor/vent", {})
+        self.assertEqual(status, 200)
+
+        status, data = self._post("/api/shipmods/install", {"mod_id": "reinforced_spine"})
+        self.assertEqual(status, 200)
+        status, data = self._post("/api/shipmods/remove", {"slot": "frame"})
+        self.assertEqual(status, 200)
+
+    def test_character_research_fleet_diplomacy_endpoints(self):
+        for path in ("/api/character", "/api/research", "/api/outposts", "/api/diplomacy", "/api/fleet/ships"):
+            status, data = self._get(path)
+            self.assertEqual(status, 200)
+            self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        status, data = self._post("/api/research/start", {"project_id": "advanced_cooling"})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        status, data = self._post("/api/diplomacy", {"faction_id": "vanguard_syndicate", "action": "improve"})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        status, data = self._post("/api/route", {"system_id": "alpha_centauri"})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+    def test_crew_weapon_and_message_tree_endpoints(self):
+        for path in ("/api/crew", "/api/weapons", "/api/messages/trees"):
+            status, data = self._get(path)
+            self.assertEqual(status, 200)
+            self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
+        status, data = self._get("/api/messages")
+        messages = json.loads(data.decode("utf-8"))["messages"]
+        root = next(m for m in messages if m.get("tree_id") == "precursor_signal")
+        status, data = self._post("/api/messages/choose", {"message_id": root["id"], "choice_id": "decode"})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data.decode("utf-8"))["ok"])
+
     def test_post_power(self):
         status, data = self._post("/api/power", {"engines": 35, "shields": 25, "sensors": 20, "weapons": 20})
         self.assertEqual(status, 200)

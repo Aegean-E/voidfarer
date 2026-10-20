@@ -2,7 +2,7 @@
 
 > **Autonomous Deep-Space Fleet, Procedural Galaxy & Holographic Cockpit Simulator.**
 
-VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits around exotic planets, route reactor power, commission autonomous mining and escort drones, purchase modular hardware upgrades, engage in tactical combat with adaptive hostile AI, trade dynamic commodities across orbital stations, and pilot your flagship using either an ANSI terminal REPL or an HTML5 Canvas holographic cockpit Web HUD.
+VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits, route reactor power, board derelicts, scoop fuel, drill crew, commission autonomous drones, purchase hardware upgrades, fight adaptive hostile AI, trade commodities, and pilot your flagship via an ANSI REPL or a resolution-adaptive HTML5 Canvas cockpit.
 
 ---
 
@@ -57,11 +57,24 @@ voidfarer/
 │   ├── enemies.py            <- tactical enemy archetypes, abilities & generator
 │   ├── galaxy.py             <- procedural star system & hyperlane generator
 │   ├── engine.py             <- deterministic state machine & coordinator
+│   ├── reactor.py            <- reactor modes, heat, cooling & derating
+│   ├── mapmods.py            <- procedural sector map modifiers
+│   ├── shipmods.py           <- structural ship modification catalog
+│   ├── character.py          <- commander age, skills & abilities
+│   ├── research.py           <- research projects & technology bonuses
+│   ├── outposts.py           <- outpost catalogs & tick production
+│   ├── faction_state.py      <- faction leaders, behaviors, wars & elimination
+│   ├── fleet.py              <- escort warships, formations & battle support
+│   ├── navigation.py         <- multi-jump routing & black-hole hazards
+│   ├── messaging.py          <- branching quantum message trees
+│   ├── crew.py               <- crew roles, recruiting & portraits
+│   ├── weapons.py            <- weapon types & combat modifiers
 │   ├── retention.py          <- relics, dynamic contracts & pilot mastery
 │   ├── story.py              <- cadet academy & precursor cipher campaign
 │   ├── upgrades.py           <- hardware upgrades catalog & drone templates
 │   ├── economy.py            <- dynamic galactic economy, stockpiles & trade routes
 │   ├── frontier.py           <- AI captains, depots, mercenaries & quantum messages
+│   ├── exploration.py        <- derelict salvage, fuel scooping & crew drills
 │   ├── inventory.py          <- item catalog, consumables & cargo manifest
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
@@ -72,25 +85,29 @@ voidfarer/
 │       └── app.js            <- radar math, Web Audio synth & REST link
 └── tests/                    <- unit & integration test suite
     ├── __init__.py
-    ├── test_models.py        <- model immutability & serialization tests
-    ├── test_galaxy.py        <- procedural generator & market tests
-    ├── test_economy.py       <- galactic market simulation & trade route tests
-    ├── test_engine.py        <- state transitions, fleet & combat mechanics
-    ├── test_engine_hardening.py <- audit regressions: service guards, relic stats & cargo invariants
-    ├── test_ai_and_calendar.py <- adaptive enemy AI, expanded systems & DD.MM.YYYY calendar
-    ├── test_frontier_systems.py <- AI trade, depots, messages, landing, fleets & moons
-    ├── test_inventory.py     <- item catalog, manifest & consumable tests
-    ├── test_factions_and_enemies.py <- faction geopolitics & tactical combat tests
-    ├── test_perks_relics_rep.py <- faction service perks, multi-stat relics & reputation rewards
-    ├── test_storage.py       <- power-loss safety & corruption quarantine
-    ├── test_server.py        <- REST API request/response contracts
-    ├── test_cli.py           <- command dispatch & argument parsing
-    ├── test_story.py         <- academy onboarding & story campaign tests
-    ├── test_batch_launchers.py <- Windows batch launcher menu & CRLF regression tests
-    ├── test_cockpit_layout.py <- cockpit layout-rule DOM/CSS regression tests
-    ├── test_equipment_bonuses.py <- module stat_bonus & chassis perk regression tests
-    ├── test_time_and_ticks.py <- cosmic calendar, tick simulation & time controls
-    └── test_transit_civ_events.py <- in-system transit, planetary civilization & cockpit popup events
+    ├── test_adaptive_ui_salvage.py
+    ├── test_ai_and_calendar.py
+    ├── test_batch_launchers.py
+    ├── test_cli.py
+    ├── test_cockpit_layout.py
+    ├── test_economy.py
+    ├── test_empire_character_fleet.py
+    ├── test_engine.py
+    ├── test_engine_hardening.py
+    ├── test_equipment_bonuses.py
+    ├── test_factions_and_enemies.py
+    ├── test_frontier_systems.py
+    ├── test_galaxy.py
+    ├── test_inventory.py
+    ├── test_messaging_crew_quantum.py
+    ├── test_models.py
+    ├── test_perks_relics_rep.py
+    ├── test_reactor_map_shipmods.py
+    ├── test_server.py
+    ├── test_storage.py
+    ├── test_story.py
+    ├── test_time_and_ticks.py
+    └── test_transit_civ_events.py
 ```
 
 ---
@@ -129,6 +146,12 @@ python -m voidfarer.cli scan
 
 # Hyperspace jump to an adjacent star system
 python -m voidfarer.cli jump alpha_centauri
+
+# Strip the deterministic derelict at the current body (risk/reward boarding)
+python -m voidfarer.cli salvage
+
+# Recover fuel from a star, gas giant, or ice body (adds reactor heat)
+python -m voidfarer.cli scoop
 ```
 
 ### 4. Hardware Upgrades & Station Arsenal
@@ -294,37 +317,84 @@ python -m voidfarer.cli saves save slot_1
 python -m voidfarer.cli saves load slot_1
 ```
 
-### 17. Holographic Web Cockpit Interface
+### 17. Reactor, Map Modifiers & Ship Modifications
+```bash
+# Reactor thermal simulation: heat, cooling, integrity and operating doctrine
+python -m voidfarer.cli reactor status
+python -m voidfarer.cli reactor mode overdrive
+python -m voidfarer.cli reactor vent
+python -m voidfarer.cli reactor repair
+
+# Active sector map modifiers and their economy/combat/thermal effects
+python -m voidfarer.cli mapmods
+
+# Structural refit bay: install with credits, remove for salvage value
+python -m voidfarer.cli refit list
+python -m voidfarer.cli refit install overcharged_core
+python -m voidfarer.cli refit remove thermal
+
+# Unified simulation telemetry report
+python -m voidfarer.cli simulation
+```
+Reactor modes trade output against heat: `balanced`, `economy`, `overdrive`, and `silent`.
+Heat above 70% derates subsystem power; critical heat damages hull and core integrity.
+Sector modifiers (`ion_storm`, `nebula_drift`, `quantum_tide`, etc.) alter jump fuel,
+scan yield, encounter risk, trade margins and reactor cooling. Structural refits use five
+slots (`frame`, `reactor_core`, `thermal`, `drive`, `ops`) and apply explicit trade-offs.
+
+### 18. Commander, Empire, Diplomacy & Fleet Manager
+```bash
+python -m voidfarer.cli character status
+python -m voidfarer.cli character train science
+python -m voidfarer.cli character use emergency_repair
+
+python -m voidfarer.cli research start advanced_cooling
+python -m voidfarer.cli outpost list
+python -m voidfarer.cli outpost build solar sol_ring_world
+
+python -m voidfarer.cli diplomacy list
+python -m voidfarer.cli fleet ships
+python -m voidfarer.cli fleet buy_escort frigate
+python -m voidfarer.cli route alpha_centauri
+python -m voidfarer.cli navigate alpha_centauri
+python -m voidfarer.cli combat stance aggressive
+python -m voidfarer.cli messages tree
+python -m voidfarer.cli messages choose <message_id> <choice_id>
+python -m voidfarer.cli crew recruit scientist
+python -m voidfarer.cli crew train <crew_id>
+python -m voidfarer.cli weapons install railgun
+```
+The commander ages, earns XP/skill points, and trains six skills. Abilities include reactor
+overclock, emergency repair, battle focus, science burst, trade instinct, and diplomacy. Research
+unlocks reactor, scan, combat, outpost, repair, and fuel technologies. Outposts produce credits,
+research, and commodities each tick. Faction leaders use behaviors to declare and resolve wars;
+factions can capture systems and be eliminated without territory. Escort corvettes, frigates,
+cruisers, and carriers add coordinated volleys, take incoming fire, and use battle stances.
+Route planning supports multi-jump paths and black-hole hazards; solar panels, ring worlds, and
+black holes are present as ship upgrades, outposts, and celestial bodies. Message trees branch into credits, research, crew, standing, weapons, or reactor effects. Crew
+have roles, morale, wages, skill bonuses, and SVG portraits; weapons cover laser, kinetic, missile,
+plasma, ion, quantum, and drone types. The game begins 01.01.3042 in the Quantum Age with Dyson
+spheres, quantum relays, solar collectors, wormholes, ring worlds, and black holes.
+
+### 19. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 ```bash
 python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
-- **Single-Line Top Status Bar & Cosmic Chronometer (`G-007`)**: Unwrapped single-line HUD topbar featuring equal-height 52px vital cards (Hull, Shields, Fuel, Credits, Fleet) and the Cosmic Chronometer time deck (date `DD.MM.YYYY`, tick badge, 1-click Pause/Resume, 1x-10x speed, step advance).
-- **Main Menu (`ESC`) & Multi-Slot Save Management**: Toggle the Main Menu or close active modal windows anytime with `ESC`, and create, inspect, load, or delete multiple named save slots (`default`, `slot_1`..`slot_3`, or custom slot names) alongside Settings.
-- **Sleek Decluttered Background Radar HUD (`G-004`, `G-005`)**: Full-screen black-background orbital/galaxy canvas (`100vw x 100vh`) serving as the unobstructed live backdrop with a floating semi-transparent watermark title, an on-demand right-expanding collapsible terminal drawer on the left (`COMMERCE`, `ARSENAL`, `FLEET`, etc.), and a boxless Tactical Flight Log rendered directly over space in the lower-right corner.
-- **Quest, AI, Depot & Quantum Message Panels**: Unified mission control, AI captain diplomacy/trade/hire/ally actions, per-system cargo depots with direct selling, and an intergalactic quantum inbox/composer.
-- **Pilot Perks Window**: The former Mastery page is now an open/close in-game window with four branching perk trees (Exploration, Combat, Fleet, Trade) and tier-2 prerequisites.
-- **Planet & System Inspector & Dynamic Population (`G-007`)**: Scientifically accurate surface gravity ($g = (R/R_\oplus)(\rho/\rho_\oplus)$), chemical atmosphere (`atm`), equilibrium temperature, Earth Similarity habitability index (`%`), 2D Euclidean orbital distance parity across orbit capture and transit (`AU`), moons, resources, faction, government, and dynamic demographic population growth with colony tiers (`Outpost` to `Mega-Ecumenopolis`).
-- **Tick-Synchronized Transit & Surface Landing**: Initiate sublight or quantum transit with 2D Euclidean distance and engine-scaled tick durations while the flagship animates continuously across the radar until orbital capture, or land on habitable worlds for survey rewards.
-- **Mercenary & Fleet Command**: Per-unit level, efficiency, integrity, sorties, refit/dismiss controls, and hireable mercenary specialists (assault, evasion, repair).
-- **Expanded Procedural Galaxy**: 15 star systems, 5-6 planets each, additional star types (B/O/red giant/binary), savanna/tundra/toxic/barren/super-Earth/ice-giant worlds, moons, and asteroid belts.
-- **Dynamic AI Economy**: Autonomous trader captains move between systems and buy/sell commodities each tick, changing stockpiles and prices alongside the player's trades.
-- **Concrete Faction Perks & Reputation Rewards**: Friendly repair discounts, allied free refuel and naval escort evasion, Syndicate sale margins, Precursor scan XP, and Nebula drone yields are applied in the simulation; enemy archetypes now use their catalog `rep_rewards` for faction and corporate standings.
-- **Multi-Stat Relics & Hardened Cockpit Rendering**: Relics support secondary bonus maps (hull + shields, fuel + lasers, laser + research) and all dynamic cockpit text/colors are escaped or whitelisted before interpolation.
-- **REPL Web Server Lifecycle**: `serve` starts a concurrent HTTP server plus simulation ticker, reports the actual bound port, and `serve stop` or REPL exit shuts it down with a final save.
-- **Cadet Flight Academy Ribbon**: Persistent top-of-HUD progressive instruction banner with milestone progress, step hints, rewards, and one-click dismiss.
-- **COMMS LOG Subspace Radio Tab**: Subspace transmissions stream with animated character avatars (Admiral Vance, Cipher, Archon Prime), faction alignment chips, and interactive moral choice cards.
-- **Factions & Megacorporations Tab**: Live diplomatic standings (-100 to +100), territorial headquarters, tariff discounts, and corporate specialty trade margins.
-- **Interactive Orbit Radar**: Real-time animated orbiting planets, solar corona flare effects, clickable orbital bodies, drag-to-pan, and wheel zoom, synchronized with simulated tick angular progression.
-- **Galaxy Sector Chart**: Hyperlane corridor network visualization and jump routing.
-- **Contracts & Bounties Tab**: Active operational task cards with live progress bars, Zeigarnik task renewal, and reward claim buttons.
-- **Expedition Streak Multiplier**: Real-time loss aversion flame badge scaling all trade and scan yields.
-- **Station Arsenal Tab**: Modular hardware upgrades shop with real-time stat bonuses.
-- **Fleet Command Tab**: Roster of autonomous mining/scout drones with live harvest buttons.
-- **Tactical Combat Overlay**: Battle HUD with dual-layer deflector shield and hull meters, telegraphed enemy action warning banners, armor-piercing kinetic drone strikes, and subsystem targeting.
-- **Synthesized Web Audio**: Procedural sound effects for radar sweeps, warp jumps, laser fire, level-up arpeggios, bounty chimes, radio dispatches, and alarms.
-- **Reactor Power Matrix (`G-006`)**: Dynamic power allocation sliders with instant subsystem re-routing and an expandable HIDE/SHOW toggle.
+- **Top Status Bar & Chronometer (`G-007`)**: Single-line vitals plus the chrono deck.
+- **Background Radar HUD (`G-004`, `G-005`)**: Full-viewport orbital/galaxy canvas, collapsible right-expanding left terminal, and boxless flight log.
+- **Main Menu & Saves (`ESC`)**: Settings plus create, load, list, and delete named save slots.
+- **Planet Inspector**: Gravity, atmosphere, temperature, habitability, orbit distance, moons, resources, and colony tiers.
+- **Transit, Landing & Fleet**: Tick-synchronized sublight/quantum transit, surface survey rewards, and drone/mercenary commands.
+- **Living Galaxy**: Procedural worlds, AI traders, dynamic markets, faction perks, and reputation.
+- **Mission Panels**: Quests, contracts, diplomacy, depots, messages, COMMS, factions, perks, relics, and combat.
+- **REPL Server Lifecycle**: `serve` runs the HTTP server and simulation ticker; `serve stop` or REPL exit saves and shuts down.
+- **Reactor Power Matrix & Thermal Simulation (`G-006`)**: Allocation sliders, live heat meter, output/cooling/integrity telemetry, four doctrine modes, and an emergency VENT control.
+- **Sector Map Modifiers**: Generated environmental conditions displayed as radar chips and applied to fuel, scans, encounters, trade, and reactor heat.
+- **Ship Modification Section**: Drydock refit bay with five structural slots, trade-off cards, live capacity recomputation, install and salvage-remove controls.
+- **Resolution-Adaptive HUD**: ultrawide/tablet/phone/short-height breakpoints, density and HUD-scale settings, DPR-correct radar, ResizeObserver, touch pan/pinch, reduced motion, and safe-area insets.
+- **Derelict Boarding & Fuel Scooping**: once-per-body salvage risk/reward; star/gas/ice fuel scoops that trade reactor heat for fuel; paid crew training drills.
 
 ---
 
@@ -332,7 +402,6 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 259-test suite runs in about 4 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 342-test suite runs in about 5 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
-

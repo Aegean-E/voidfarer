@@ -427,7 +427,7 @@ class TestExpandableReactorAndVitalsAlignment(unittest.TestCase):
         )
         self.assertRegex(
             self.css,
-            r"\.vital-card\s*\{[^}]*height:\s*52px[^}]*box-sizing:\s*border-box",
+            r"\.vital-card\s*\{[^}]*height:\s*44px[^}]*box-sizing:\s*border-box",
             "vital cards must have equal height and box-sizing",
         )
 
@@ -453,8 +453,8 @@ class TestSingleLineVitalsAndDistanceParity(unittest.TestCase):
     def test_vital_cards_match_chrono_box_height(self):
         self.assertRegex(
             self.css,
-            r"\.hud-time-deck\s*\{[^}]*height:\s*52px[^}]*box-sizing:\s*border-box",
-            "hud-time-deck must match vital card 52px height and border-box sizing",
+            r"\.hud-time-deck\s*\{[^}]*height:\s*44px[^}]*box-sizing:\s*border-box",
+            "hud-time-deck must match vital card 44px height and border-box sizing",
         )
 
     def test_orbit_button_adheres_to_distance_calculation(self):

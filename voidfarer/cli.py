@@ -28,7 +28,13 @@ from voidfarer.factions import (
     get_faction_standing_tier,
 )
 from voidfarer.galaxy import COMMODITY_MAP
+from voidfarer.character import ABILITY_CATALOG, SKILL_CATALOG
+from voidfarer.crew import CREW_ROLES
+from voidfarer.weapons import WEAPON_CATALOG, get_weapon
+from voidfarer.fleet import ESCORT_CATALOG
 from voidfarer.frontier import MERCENARY_CATALOG
+from voidfarer.outposts import OUTPOST_TYPES
+from voidfarer.research import RESEARCH_PROJECTS
 from voidfarer.retention import (
     PILOT_TALENTS,
     calculate_passive_multipliers,
@@ -43,6 +49,13 @@ from voidfarer.inventory import (
     ITEM_CATALOG,
     get_inventory_manifest,
     get_item_info,
+)
+from voidfarer.mapmods import describe_modifier_effects, get_map_modifier
+from voidfarer.reactor import REACTOR_MODES
+from voidfarer.shipmods import (
+    CATALOG_SHIP_MODS,
+    get_ship_mod,
+    slot_label,
 )
 from voidfarer.upgrades import (
     CATALOG_CHASSIS,
@@ -121,6 +134,19 @@ def cmd_status(engine: SimulationEngine) -> int:
     print(f"╠════ REACTOR POWER ROUTING ══════════════════════════════════════════╣{RESET}")
     p = ship.power
     print(f"║ Engines: {CYAN}{p.engines:>3}%{RESET}   Shields: {BLUE}{p.shields:>3}%{RESET}   Sensors: {MAGENTA}{p.sensors:>3}%{RESET}   Weapons: {RED}{p.weapons:>3}%{RESET}  (Total: {p.engines+p.shields+p.sensors+p.weapons:>3}%)║")
+    reactor = engine.get_reactor_report()
+    heat_color = RED if reactor["heat_pct"] >= 70 else (YELLOW if reactor["heat_pct"] >= 40 else GREEN)
+    print(f"║ Core:      {heat_color}Heat {reactor['heat']:.0f}/{reactor['max_heat']:.0f}{RESET}  Integrity {reactor['integrity']:.0f}%  Mode {CYAN}{reactor['mode']}{RESET}  Output {YELLOW}{reactor['efficiency']*100:.0f}%{RESET} ║")
+
+    # Sector map modifiers
+    map_labels = [m.name for m in cur_sys.modifiers] or ["Standard space"]
+    print(f"╠════ SECTOR MAP MODIFIERS ═══════════════════════════════════════════╣{RESET}")
+    print(f"║ {CYAN}{', '.join(map_labels)[:67]:<67}{RESET} ║")
+
+    # Structural modifications
+    mod_labels = [f"{slot}:{mod_id}" for slot, mod_id in ship.ship_mods.items()] or ["No structural refits installed"]
+    print(f"╠════ SHIP MODIFICATIONS ═════════════════════════════════════════════╣{RESET}")
+    print(f"║ {MAGENTA}{', '.join(mod_labels)[:67]:<67}{RESET} ║")
 
     # Hardware upgrades summary
     upg_str = ", ".join(ship.upgrades) if ship.upgrades else "Standard Baseline"
@@ -268,9 +294,12 @@ def cmd_chart(engine: SimulationEngine) -> int:
         marker = f"{YELLOW}▶ [FLAGSHIP]{RESET}" if sid == cur_sys.id else ("  [VISITED] " if sid in engine.state.visited_systems else "  [UNSEEN]  ")
         conns = ", ".join(s.connections)
         sec = f"{GREEN}SEC {s.security:.1f}{RESET}" if s.security > 0.5 else f"{RED}SEC {s.security:.1f}{RESET}"
-        print(f"{marker} {BOLD}{s.name:<18}{RESET} ({sid}) | {sec} | Links: {conns}")
+        mods = f" | {CYAN}{', '.join(m.name for m in s.modifiers)}{RESET}" if s.modifiers else ""
+        print(f"{marker} {BOLD}{s.name:<18}{RESET} ({sid}) | {sec} | Links: {conns}{mods}")
 
     print(f"\n{BOLD}{CYAN}=== CELESTIAL BODIES IN {cur_sys.name.upper()} ==={RESET}")
+    if cur_sys.modifiers:
+        print(f"{DIM}Sector modifiers:{RESET} {CYAN}{', '.join(m.name for m in cur_sys.modifiers)}{RESET}")
     for b in cur_sys.bodies:
         is_orb = " [IN ORBIT]" if engine.state.ship.orbiting_body_id == b.id else ""
         dock = f"{GREEN}[DOCKABLE]{RESET}" if b.station_dockable else f"{DIM}[NO DOCK]{RESET}"
@@ -490,6 +519,55 @@ def cmd_fleet(engine: SimulationEngine, storage: StorageManager, parts: list[str
         return 0
 
     sub = parts[1].lower()
+    if sub in ("ships", "escorts", "manager"):
+        report = engine.get_fleet_manager_report()
+        print(f"\n{BOLD}{CYAN}=== FLEET MANAGER: ESCORT WING ==={RESET}")
+        if not report["ships"]:
+            print(f"{DIM}No escort warships commissioned. Buy at a drydock: fleet buy_escort <type>{RESET}")
+        for ship in report["ships"]:
+            status_color = GREEN if ship["status"] == "escorting" else (YELLOW if ship["status"] == "damaged" else RED)
+            print(
+                f"{ship['id']:<16} {BOLD}{ship['name']:<28}{RESET} {ship['role']:<9} "
+                f"HULL {ship['hull']}/{ship['max_hull']} SHIELD {ship['shield']}/{ship['max_shield']} "
+                f"DMG {ship['damage']} {status_color}{ship['status']:<10}{RESET} SYS {ship['assigned_system_id']}"
+            )
+        print(f"\nFormation damage: {report['total_damage']} | Screen evasion: +{report['evasion_bonus']*100:.0f}%")
+        print(f"{DIM}Catalog: {', '.join(ESCORT_CATALOG)}. Commands: fleet buy_escort <type> | fleet assign <id> <system> | fleet repair_escorts | fleet dismiss_escort <id>{RESET}")
+        return 0
+    if sub in ("buy_escort", "recruit_escort"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} fleet buy_escort <{'|'.join(ESCORT_CATALOG)}> [system]")
+            return 1
+        ok, msg = engine.buy_escort(parts[2], parts[3] if len(parts) > 3 else None)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub == "assign":
+        if len(parts) < 4:
+            print(f"{RED}Usage:{RESET} fleet assign <escort_id> <system_id>")
+            return 1
+        ok, msg = engine.assign_escort(parts[2], parts[3])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub in ("repair_escorts", "repair_ships"):
+        amount = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 60
+        ok, msg = engine.repair_escorts(amount)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub in ("dismiss_escort", "decommission"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} fleet dismiss_escort <escort_id>")
+            return 1
+        ok, msg = engine.dismiss_escort(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
     if sub in ("harvest", "collect"):
         drone_id = parts[2] if len(parts) > 2 else None
         ok, msg, _ = engine.collect_drone_yield(drone_id)
@@ -559,7 +637,9 @@ def cmd_messages(engine: SimulationEngine, storage: StorageManager, parts: list[
         print(f"\n{BOLD}{CYAN}=== QUANTUM INBOX ==={RESET}")
         for m in engine.state.messages:
             marker = " " if m.read else "*"
-            print(f"{marker} {m.id:<24} {m.sender:<18} {m.subject}")
+            tree_mark = f" {MAGENTA}[TREE {m.tree_id}]{RESET}" if m.tree_id else ""
+            resolved = f" {DIM}(resolved: {m.resolved_choice}){RESET}" if m.resolved_choice else ""
+            print(f"{marker} {m.id:<24} {m.sender:<18} {m.subject}{tree_mark}{resolved}")
         return 0
     if action == "send":
         if len(parts) < 5:
@@ -575,7 +655,31 @@ def cmd_messages(engine: SimulationEngine, storage: StorageManager, parts: list[
             return 1
         ok, msg = engine.mark_message_read(parts[2])
         print((GREEN if ok else RED) + msg + RESET)
+        message = next((m for m in engine.state.messages if m.id == parts[2]), None)
+        if message:
+            print(f"\n{BOLD}{message.subject}{RESET}\n{message.body}")
+            for choice in message.choices:
+                print(f"  [{choice.id}] {choice.label} - {DIM}{choice.description}{RESET}")
+            if message.choices:
+                print(f"{DIM}Choose: messages choose {message.id} <choice_id>{RESET}")
         storage.save(engine.state)
+        return 0 if ok else 1
+    if action in ("tree", "trees"):
+        report = engine.get_message_tree_report()
+        print(f"\n{BOLD}{CYAN}=== MESSAGE TREE CATALOG ==={RESET}")
+        for tree in report["trees"]:
+            print(f"{BOLD}{tree['name']}{RESET} ({tree['id']})")
+            for node in tree["nodes"]:
+                print(f"  node {node['id']}: {node['subject']} -> {', '.join(c['id'] for c in node['choices'])}")
+        return 0
+    if action == "choose":
+        if len(parts) < 4:
+            print(f"{RED}Usage:{RESET} messages choose <message_id> <choice_id>")
+            return 1
+        ok, msg = engine.resolve_message_choice(parts[2], parts[3])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
         return 0 if ok else 1
     print(f"{RED}Unknown messages action '{action}'.{RESET}")
     return 1
@@ -735,6 +839,16 @@ def cmd_upgrades(engine: SimulationEngine, storage: StorageManager, parts: list[
 
 def cmd_combat(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
     """Execute tactical combat maneuvers during hostile intercepts."""
+    if len(parts) > 1 and parts[1].lower() in ("stance", "formation"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} combat stance <balanced|aggressive|defensive>")
+            return 1
+        ok, msg = engine.set_battle_stance(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
     if not engine.state.active_combat:
         print(f"{YELLOW}No active combat intercept detected in this sector.{RESET}")
         return 0
@@ -1061,6 +1175,387 @@ def cmd_story(engine: SimulationEngine, storage: StorageManager, parts: list[str
     return 0
 
 
+def cmd_reactor(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Inspect reactor telemetry and manage thermal doctrine."""
+    sub = parts[1].lower() if len(parts) > 1 else "status"
+    reactor = engine.get_reactor_report()
+    if sub in ("status", "list", "report"):
+        print(f"\n{BOLD}{CYAN}=== REACTOR CORE SIMULATION ==={RESET}")
+        print(f"Mode:        {YELLOW}{reactor['mode_name']}{RESET} ({reactor['mode']})")
+        print(f"Core Heat:   {_bar(int(reactor['heat']), int(reactor['max_heat']), 24, RED if reactor['heat_pct'] >= 70 else YELLOW)}")
+        print(f"Integrity:   {_bar(int(reactor['integrity']), int(reactor['max_integrity']), 24, GREEN)}")
+        print(f"Output:      {YELLOW}{reactor['efficiency'] * 100:.0f}%{RESET} effective power")
+        print(f"Cooling:     {CYAN}{reactor['cooling']:.1f}{RESET} heat/tick  |  Generation: {YELLOW}{reactor['heat_generation']:.1f}{RESET} heat/tick")
+        print(f"Sector:      heat x{reactor['map_heat_mult']:.2f}, cooling {reactor['map_cooling_bonus']:+.1f}")
+        print(f"\n{DIM}Modes:{RESET}")
+        for mode_id, profile in REACTOR_MODES.items():
+            marker = f"{GREEN}▶{RESET}" if mode_id == reactor["mode"] else " "
+            print(f"  {marker} {BOLD}{mode_id:<10}{RESET} {profile['description']}")
+        print(f"\n{DIM}Commands:{RESET} reactor mode <balanced|economy|overdrive|silent> | reactor vent | reactor repair")
+        return 0
+
+    if sub in ("mode", "set"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} reactor mode <balanced|economy|overdrive|silent>")
+            return 1
+        ok, msg = engine.set_reactor_mode(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    if sub in ("vent", "purge", "cool"):
+        ok, msg = engine.vent_reactor_coolant()
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    if sub in ("repair", "service"):
+        ok, msg = engine.repair_reactor()
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    print(f"{RED}Unknown reactor command '{sub}'. Options: status, mode, vent, repair.{RESET}")
+    return 1
+
+
+def cmd_mapmods(engine: SimulationEngine) -> int:
+    """Display active sector map modifiers and their simulation effects."""
+    system = engine.current_system
+    print(f"\n{BOLD}{CYAN}=== SECTOR MAP MODIFIERS: {system.name.upper()} ==={RESET}")
+    if not system.modifiers:
+        print(f"{DIM}Standard space: no environmental modifiers active in this system.{RESET}")
+    for modifier in system.modifiers:
+        print(f"• {BOLD}{modifier.name}{RESET} [{modifier.category.upper()}] ({modifier.id})")
+        print(f"  {DIM}{modifier.description}{RESET}")
+        print(f"  Effects: {CYAN}{', '.join(describe_modifier_effects(modifier.effects)) or 'None'}{RESET}\n")
+    print(f"{DIM}Other charted systems:{RESET}")
+    for sid, candidate in engine.state.systems.items():
+        if sid == system.id or not candidate.modifiers:
+            continue
+        print(f"  {candidate.name:<24} {', '.join(m.name for m in candidate.modifiers)}")
+    return 0
+
+
+def _describe_ship_mod_effects(effects: dict[str, float]) -> list[str]:
+    labels = {
+        "max_hull": ("Hull", 1.0),
+        "max_shield": ("Shield", 1.0),
+        "cargo_capacity": ("Cargo", 1.0),
+        "reactor_output": ("Reactor output", 100.0),
+        "reactor_cooling": ("Cooling", 1.0),
+        "heat_capacity": ("Heat cap", 1.0),
+        "heat_generation": ("Heat gen", 100.0),
+        "reactor_integrity": ("Core integrity", 1.0),
+        "combat_damage": ("Damage", 1.0),
+        "drone_yield": ("Drone yield", 100.0),
+    }
+    out: list[str] = []
+    for key, value in effects.items():
+        if key == "fuel_efficiency":
+            out.append(f"Fuel burn {int(-value * 100):+d}%")
+        elif key == "scan_mult":
+            out.append(f"Scan yield {int(round((value - 1.0) * 100)):+d}%")
+        elif key in ("evasion", "relic_find", "trade_margin"):
+            out.append(f"{key.replace('_', ' ').title()} {int(value * 100):+d}%")
+        else:
+            label, scale = labels.get(key, (key.replace("_", " ").title(), 1.0))
+            out.append(f"{label} {int(round(value * scale)):+d}")
+    return out
+
+
+def cmd_refit(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Ship modification section: inspect, install, or remove structural refits."""
+    sub = parts[1].lower() if len(parts) > 1 else "list"
+    if sub in ("list", "status", "catalog"):
+        report = engine.get_ship_mod_report()
+        print(f"\n{BOLD}{CYAN}=== SHIP MODIFICATION SECTION ==={RESET}")
+        print(f"{DIM}Structural refits are permanent until removed at a drydock. Each slot holds one modification.{RESET}\n")
+        for slot in report["slots"]:
+            installed_id = report["installed"].get(slot)
+            installed = get_ship_mod(installed_id) if installed_id else None
+            status = f"{GREEN}{installed.name}{RESET}" if installed else f"{DIM}empty{RESET}"
+            print(f"{BOLD}{slot_label(slot):<20}{RESET} [{status}]")
+        print(f"\n{BOLD}Available modifications:{RESET}")
+        installed_ids = set(report["installed"].values())
+        for mod in CATALOG_SHIP_MODS:
+            if mod.id in installed_ids:
+                continue
+            print(f"  • {BOLD}{mod.name}{RESET} ({mod.id}) [{slot_label(mod.slot)}] - {YELLOW}{mod.cost} cr{RESET}")
+            print(f"    {DIM}{mod.description}{RESET}")
+        print(f"\n{DIM}Install:{RESET} refit install <mod_id>   {DIM}Remove:{RESET} refit remove <slot>")
+        return 0
+
+    if sub in ("install", "buy"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} refit install <mod_id>")
+            return 1
+        ok, msg = engine.install_ship_mod(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    if sub in ("remove", "sell", "uninstall"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} refit remove <slot>")
+            return 1
+        ok, msg = engine.remove_ship_mod(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    if sub in ("info", "show"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} refit info <mod_id>")
+            return 1
+        mod = get_ship_mod(parts[2])
+        if not mod:
+            print(f"{RED}Unknown ship modification '{parts[2]}'.{RESET}")
+            return 1
+        print(f"\n{BOLD}{mod.name}{RESET} ({mod.id}) [{slot_label(mod.slot)}] {YELLOW}{mod.cost} cr{RESET}")
+        print(mod.description)
+        print(f"Effects: {CYAN}{_describe_ship_mod_effects(mod.effects)}{RESET}")
+        return 0
+
+    print(f"{RED}Unknown refit command '{sub}'. Options: list, install, remove, info.{RESET}")
+    return 1
+
+
+def cmd_character(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    sub = parts[1].lower() if len(parts) > 1 else "status"
+    if sub in ("status", "sheet", "list"):
+        report = engine.get_character_report()
+        ch = report["character"]
+        print(f"\n{BOLD}{CYAN}=== COMMANDER PROFILE ==={RESET}")
+        print(f"{BOLD}{ch['name']}{RESET} | Age {YELLOW}{ch['age']}{RESET} | Background {ch['background']} | Level {GREEN}{ch['level']}{RESET}")
+        print(f"XP {ch['xp']}/{ch['next_level_xp']} | Skill points {YELLOW}{ch['skill_points']}{RESET}")
+        print(f"{BOLD}Skills:{RESET}")
+        for sid, info in report["skills"].items():
+            print(f"  {info['name']:<14} R{info['level']}  {DIM}{info['description']}{RESET}")
+        print(f"{BOLD}Abilities:{RESET}")
+        for aid, info in report["abilities"].items():
+            state = f"{GREEN}READY{RESET}" if info["unlocked"] and info["cooldown"] <= 0 else (f"{YELLOW}CD {info['cooldown']}{RESET}" if info["unlocked"] else f"{DIM}LOCKED{RESET}")
+            print(f"  {aid:<20} {info['name']:<24} {state} {DIM}{info['description']}{RESET}")
+        print(f"\n{DIM}Train: character train <skill> | Ability: character use <ability> [faction]{RESET}")
+        return 0
+    if sub in ("train", "learn"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} character train <{'|'.join(SKILL_CATALOG)}>")
+            return 1
+        ok, msg = engine.train_character_skill(parts[2].lower())
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub in ("use", "ability"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} character use <{'|'.join(ABILITY_CATALOG)}> [faction_id]")
+            return 1
+        ok, msg = engine.use_character_ability(parts[2].lower(), parts[3] if len(parts) > 3 else None)
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    print(f"{RED}Unknown character command '{sub}'. Options: status, train, use.{RESET}")
+    return 1
+
+
+def cmd_research(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    sub = parts[1].lower() if len(parts) > 1 else "status"
+    report = engine.get_research_report()
+    if sub in ("status", "list"):
+        print(f"\n{BOLD}{CYAN}=== RESEARCH DIRECTORATE ==={RESET}")
+        print(f"Banked points: {YELLOW}{report['points']}{RESET}")
+        print(f"Active project: {CYAN}{report['active_project_id'] or 'none'}{RESET}")
+        if report["active_project"]:
+            p = report["active_project"]
+            print(f"  {p['name']}: {_bar(report['progress'], p['cost'], 24, CYAN)}")
+        print(f"Completed: {', '.join(report['completed']) or 'none'}")
+        print(f"{BOLD}Available projects:{RESET}")
+        for p in report["available"]:
+            print(f"  {p['id']:<26} {p['name']:<30} {YELLOW}{p['cost']} pts{RESET} {DIM}{p['description']}{RESET}")
+        print(f"\n{DIM}Start: research start <project_id>{RESET}")
+        return 0
+    if sub in ("start", "choose"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} research start <project_id>")
+            return 1
+        ok, msg = engine.choose_research(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    print(f"{RED}Unknown research command '{sub}'. Options: status, start.{RESET}")
+    return 1
+
+
+def cmd_outpost(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    sub = parts[1].lower() if len(parts) > 1 else "list"
+    report = engine.get_outpost_report()
+    if sub in ("list", "status"):
+        print(f"\n{BOLD}{CYAN}=== OUTPOST COMMAND ==={RESET}")
+        if not report["outposts"]:
+            print(f"{DIM}No outposts founded. Orbit a body and use: outpost build <type> [body_id]{RESET}")
+        for o in report["outposts"]:
+            print(f"{o['id']:<34} {BOLD}{o['name']:<34}{RESET} LVL {o['level']} POP {o['population']:,} [{o['system_id']}]")
+            print(f"  Production/tick: {CYAN}{o['production_effective']}{RESET}")
+        print(f"{BOLD}Available outpost types:{RESET}")
+        for t in OUTPOST_TYPES:
+            print(f"  {t.id:<10} {t.name:<26} {YELLOW}{t.cost} cr{RESET} {DIM}{t.description}{RESET}")
+        return 0
+    if sub in ("build", "found"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} outpost build <type> [body_id]")
+            return 1
+        body_id = parts[3] if len(parts) > 3 else (engine.state.ship.orbiting_body_id or "")
+        ok, msg = engine.build_outpost(body_id, parts[2].lower())
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub in ("upgrade", "up"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} outpost upgrade <outpost_id>")
+            return 1
+        ok, msg = engine.upgrade_outpost(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    print(f"{RED}Unknown outpost command '{sub}'. Options: list, build, upgrade.{RESET}")
+    return 1
+
+
+def cmd_diplomacy(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    sub = parts[1].lower() if len(parts) > 1 else "list"
+    if sub in ("list", "status"):
+        print(f"\n{BOLD}{CYAN}=== FACTION DIPLOMACY ==={RESET}")
+        for leader in engine.state.faction_leaders:
+            faction = CANONICAL_FACTIONS.get(leader.faction_id)
+            standing = engine.state.ship.faction_standings.get(leader.faction_id, 0)
+            eliminated = leader.faction_id in engine.state.eliminated_factions
+            print(
+                f"{leader.faction_id:<20} {BOLD}{leader.name:<18}{RESET} {leader.title:<18} "
+                f"{CYAN}{leader.behavior:<13}{RESET} standing {standing:+4d}"
+                + (f" {RED}[ELIMINATED]{RESET}" if eliminated else "")
+            )
+        active_wars = [w for w in engine.state.wars if w.active]
+        print(f"\nActive wars: {len(active_wars)}")
+        for war in active_wars:
+            print(f"  {war.attacker_id} vs {war.defender_id} | score {war.war_score:+.1f} | since tick {war.started_tick}")
+        print(f"\n{DIM}Actions: diplomacy improve|gift|alliance|declare_war|peace <faction_id> [amount]{RESET}")
+        return 0
+    if len(parts) < 3:
+        print(f"{RED}Usage:{RESET} diplomacy <improve|gift|alliance|declare_war|peace> <faction_id> [amount]")
+        return 1
+    amount = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
+    ok, msg = engine.faction_diplomacy(parts[2].lower(), sub, amount)
+    print((GREEN if ok else RED) + msg + RESET)
+    if ok:
+        storage.save(engine.state)
+    return 0 if ok else 1
+
+
+def cmd_route(engine: SimulationEngine, target: str) -> int:
+    plan = engine.plan_route(target)
+    if not plan["reachable"]:
+        print(f"{RED}No hyperlane route to '{target}'.{RESET}")
+        return 1
+    print(f"\n{BOLD}{CYAN}=== NAVIGATION PLOT: {target.upper()} ==={RESET}")
+    print(f"Route: {YELLOW}{' -> '.join(plan['path'])}{RESET}")
+    print(f"Jumps: {plan['jumps']} | Distance: {plan['distance_ly']} ly | Fuel estimate: {plan['fuel_estimate']}")
+    if plan["black_hole_hazard"]:
+        print(f"{RED}WARNING: black-hole hazard on route (+fuel demand).{RESET}")
+    print(f"{DIM}Execute auto-route: navigate {target}{RESET}")
+    return 0
+
+
+def cmd_crew(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    sub = parts[1].lower() if len(parts) > 1 else "list"
+    report = engine.get_crew_report()
+    if sub in ("list", "status", "roster"):
+        print(f"\n{BOLD}{CYAN}=== CREW ROSTER ==={RESET}")
+        print(f"Active {report['active']}/{report['capacity']} | Upkeep {report['upkeep']} cr/tick")
+        for member in report["crew"]:
+            print(
+                f"{member['id']:<18} {BOLD}{member['name']:<18}{RESET} {member['role']:<12} "
+                f"SKILL {member['skill']} MORALE {member['morale']:.0f} WAGE {member['wage']} PORTRAIT {member['portrait']}"
+            )
+        print(f"\n{DIM}Recruit: crew recruit <{'|'.join(r.id for r in CREW_ROLES)}> | Drill: crew train <id> | Dismiss: crew dismiss <id>{RESET}")
+        return 0
+    if sub in ("recruit", "hire"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} crew recruit <{'|'.join(r.id for r in CREW_ROLES)}>")
+            return 1
+        ok, msg = engine.recruit_crew(parts[2].lower())
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub in ("train", "drill"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} crew train <crew_id>")
+            return 1
+        ok, msg = engine.train_crew_member(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub in ("dismiss", "fire"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} crew dismiss <crew_id>")
+            return 1
+        ok, msg = engine.dismiss_crew(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    print(f"{RED}Unknown crew command '{sub}'. Options: list, recruit, train, dismiss.{RESET}")
+    return 1
+
+
+def cmd_weapons(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    sub = parts[1].lower() if len(parts) > 1 else "list"
+    report = engine.get_weapon_report()
+    if sub in ("list", "status", "catalog"):
+        print(f"\n{BOLD}{CYAN}=== WEAPON SYSTEMS ==={RESET}")
+        print(f"Primary: {YELLOW}{report['primary']}{RESET} | Installed: {', '.join(report['installed'])}")
+        for weapon in report["catalog"]:
+            marker = f"{GREEN}*{RESET}" if weapon["id"] in report["installed"] else " "
+            print(
+                f"{marker} {weapon['id']:<20} {BOLD}{weapon['name']:<26}{RESET} {weapon['weapon_type']:<9} "
+                f"DMG {weapon['damage']:<3} SHD x{weapon['shield_mult']:.2f} HULL x{weapon['hull_mult']:.2f} "
+                f"ACC {weapon['accuracy']*100:.0f}% {YELLOW}{weapon['cost']} cr{RESET}"
+            )
+        print(f"\n{DIM}Install/select: weapons install <weapon_id> | set <weapon_id>{RESET}")
+        return 0
+    if sub in ("install", "buy"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} weapons install <weapon_id>")
+            return 1
+        ok, msg = engine.install_weapon(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    if sub in ("set", "select"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} weapons set <weapon_id>")
+            return 1
+        ok, msg = engine.set_primary_weapon(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+    print(f"{RED}Unknown weapons command '{sub}'. Options: list, install, set.{RESET}")
+    return 1
+
+
 def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
     """Launch interactive terminal command session."""
     # Print status upon entry
@@ -1097,8 +1592,41 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             break
         elif cmd == "status":
             cmd_status(engine)
-        elif cmd in ("chart", "map"):
+        elif cmd in ("chart",):
             cmd_chart(engine)
+        elif cmd in ("map", "mapmods", "sector"):
+            if len(parts) > 1 and parts[1].lower() in ("mods", "modifiers", "effects"):
+                cmd_mapmods(engine)
+            else:
+                cmd_chart(engine)
+        elif cmd in ("crew", "roster"):
+            cmd_crew(engine, storage, parts)
+        elif cmd in ("weapons", "weapon"):
+            cmd_weapons(engine, storage, parts)
+        elif cmd in ("reactor", "core", "thermal"):
+            cmd_reactor(engine, storage, parts)
+        elif cmd in ("character", "commander", "profile", "skills"):
+            cmd_character(engine, storage, parts)
+        elif cmd in ("research", "tech", "science"):
+            cmd_research(engine, storage, parts)
+        elif cmd in ("outpost", "outposts", "colony"):
+            cmd_outpost(engine, storage, parts)
+        elif cmd in ("diplomacy", "diplo", "leaders"):
+            cmd_diplomacy(engine, storage, parts)
+        elif cmd in ("route", "plot"):
+            if len(parts) < 2:
+                print(f"{RED}Usage:{RESET} route <system_id>")
+            else:
+                cmd_route(engine, parts[1])
+        elif cmd in ("navigate", "autoroute"):
+            if len(parts) < 2:
+                print(f"{RED}Usage:{RESET} navigate <system_id>")
+            else:
+                ok, msg = engine.navigate_to(parts[1])
+                print((GREEN if ok else RED) + msg + RESET)
+                storage.save(engine.state)
+        elif cmd in ("refit", "mods", "shipmods", "shipmod"):
+            cmd_refit(engine, storage, parts)
         elif cmd == "market":
             cmd_market(engine)
         elif cmd == "fleet":
@@ -1363,7 +1891,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers.add_parser("repl", help="Launch interactive terminal cockpit")
 
     fleet_p = subparsers.add_parser("fleet", help="Autonomous fleet and drone operations")
-    fleet_p.add_argument("action", nargs="?", default="list", choices=["list", "harvest", "buy", "deploy"])
+    fleet_p.add_argument("action", nargs="?", default="list", choices=["list", "harvest", "buy", "deploy", "ships", "buy_escort", "assign", "repair_escorts", "dismiss_escort"])
     fleet_p.add_argument("arg1", nargs="?", help="Drone type or drone ID")
     fleet_p.add_argument("arg2", nargs="?", help="Target star system ID")
 
@@ -1376,7 +1904,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ai_p.add_argument("quantity", nargs="?", type=int, default=1)
 
     msg_p = subparsers.add_parser("messages", help="Intergalactic quantum messaging")
-    msg_p.add_argument("action", nargs="?", default="list", choices=["list", "send", "read"])
+    msg_p.add_argument("action", nargs="?", default="list", choices=["list", "send", "read", "tree", "trees", "choose"])
     msg_p.add_argument("args", nargs="*", help="Message arguments")
 
     depot_p = subparsers.add_parser("depot", help="System cargo depot operations")
@@ -1477,6 +2005,55 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers.add_parser("corps", help="Inspect interstellar megacorporations and trade perks")
     subparsers.add_parser("corporations", help="Alias for 'corps'")
 
+    crew_p = subparsers.add_parser("crew", help="Crew roster, recruiting, drills, and portraits")
+    crew_p.add_argument("action", nargs="?", default="list", choices=["list", "recruit", "train", "dismiss"])
+    crew_p.add_argument("value", nargs="?", help="Role or crew id")
+
+    subparsers.add_parser("salvage", help="Board the derelict at the current body")
+    subparsers.add_parser("scoop", help="Scoop fuel from a star, gas giant, or ice body")
+
+    weapons_p = subparsers.add_parser("weapons", help="Weapon types, installation, and primary selection")
+    weapons_p.add_argument("action", nargs="?", default="list", choices=["list", "install", "set"])
+    weapons_p.add_argument("weapon_id", nargs="?", help="Weapon id")
+
+    character_p = subparsers.add_parser("character", help="Commander profile, skills, age, and abilities")
+    character_p.add_argument("action", nargs="?", default="status", choices=["status", "train", "use"])
+    character_p.add_argument("value", nargs="?", help="Skill or ability id")
+    character_p.add_argument("target", nargs="?", help="Optional faction target")
+
+    research_p = subparsers.add_parser("research", help="Research projects and technology bonuses")
+    research_p.add_argument("action", nargs="?", default="status", choices=["status", "start"])
+    research_p.add_argument("project_id", nargs="?", help="Research project id")
+
+    outpost_p = subparsers.add_parser("outpost", help="Found and upgrade planetary outposts")
+    outpost_p.add_argument("action", nargs="?", default="list", choices=["list", "build", "upgrade"])
+    outpost_p.add_argument("outpost_type", nargs="?", help="Outpost type or outpost id")
+    outpost_p.add_argument("body_id", nargs="?", help="Body id for construction")
+
+    diplomacy_p = subparsers.add_parser("diplomacy", help="Faction diplomacy, leaders, and wars")
+    diplomacy_p.add_argument("action", nargs="?", default="list", choices=["list", "improve", "gift", "alliance", "declare_war", "peace"])
+    diplomacy_p.add_argument("faction_id", nargs="?", help="Faction id")
+    diplomacy_p.add_argument("amount", nargs="?", type=int, default=0, help="Aid amount")
+
+    route_p = subparsers.add_parser("route", help="Plot a multi-jump hyperlane route")
+    route_p.add_argument("system_id", help="Target star system id")
+
+    nav_p = subparsers.add_parser("navigate", help="Automatically jump along the shortest route")
+    nav_p.add_argument("system_id", help="Target star system id")
+
+    reactor_p = subparsers.add_parser("reactor", help="Inspect reactor heat, integrity, and operating modes")
+    reactor_p.add_argument("action", nargs="?", default="status", choices=["status", "mode", "vent", "repair"])
+    reactor_p.add_argument("value", nargs="?", help="Reactor mode or action value")
+
+    map_p = subparsers.add_parser("mapmods", help="Display active sector map modifiers and effects")
+    map_p.add_argument("action", nargs="?", default="list", choices=["list", "mods"])
+
+    refit_p = subparsers.add_parser("refit", help="Ship modification section: structural refits")
+    refit_p.add_argument("action", nargs="?", default="list", choices=["list", "install", "remove", "info"])
+    refit_p.add_argument("target", nargs="?", help="Modification ID or slot")
+
+    subparsers.add_parser("simulation", help="Print unified simulation telemetry report")
+
     time_p = subparsers.add_parser("time", help="Inspect and control simulation time and ticks")
     time_p.add_argument("action", nargs="?", default="status", choices=["status", "pause", "resume", "play", "speed", "step", "wait", "tick"])
     time_p.add_argument("value", nargs="?", help="Speed multiplier or tick count")
@@ -1491,6 +2068,69 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "status":
         return cmd_status(engine)
+    elif args.command == "crew":
+        parts = ["crew", args.action]
+        if args.value:
+            parts.append(args.value)
+        return cmd_crew(engine, storage, parts)
+    elif args.command == "weapons":
+        parts = ["weapons", args.action]
+        if args.weapon_id:
+            parts.append(args.weapon_id)
+        return cmd_weapons(engine, storage, parts)
+    elif args.command == "character":
+        parts = ["character", args.action]
+        if args.value:
+            parts.append(args.value)
+        if args.target:
+            parts.append(args.target)
+        return cmd_character(engine, storage, parts)
+    elif args.command == "research":
+        parts = ["research", args.action]
+        if args.project_id:
+            parts.append(args.project_id)
+        return cmd_research(engine, storage, parts)
+    elif args.command == "outpost":
+        parts = ["outpost", args.action]
+        if args.outpost_type:
+            parts.append(args.outpost_type)
+        if args.body_id:
+            parts.append(args.body_id)
+        return cmd_outpost(engine, storage, parts)
+    elif args.command == "diplomacy":
+        parts = ["diplomacy", args.action]
+        if args.faction_id:
+            parts.append(args.faction_id)
+        parts.append(str(args.amount))
+        return cmd_diplomacy(engine, storage, parts)
+    elif args.command == "route":
+        return cmd_route(engine, args.system_id)
+    elif args.command == "navigate":
+        ok, msg = engine.navigate_to(args.system_id)
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0 if ok else 1
+    elif args.command == "reactor":
+        parts = ["reactor", args.action]
+        if args.value:
+            parts.append(args.value)
+        return cmd_reactor(engine, storage, parts)
+    elif args.command == "mapmods":
+        return cmd_mapmods(engine)
+    elif args.command == "refit":
+        parts = ["refit", args.action]
+        if args.target:
+            parts.append(args.target)
+        return cmd_refit(engine, storage, parts)
+    elif args.command == "simulation":
+        report = engine.get_simulation_report()
+        print(f"\n{BOLD}{CYAN}=== SIMULATION REPORT ==={RESET}")
+        print(f"Tick {report['tick']} | {report['date']} | {report['system']}")
+        print(f"Map: {', '.join(m['name'] for m in report['map_modifiers']) or 'Standard space'}")
+        print(f"Reactor: {report['reactor']['mode']} | heat {report['reactor']['heat']}/{report['reactor']['max_heat']} | "
+              f"eff {report['reactor']['efficiency']*100:.0f}% | integrity {report['reactor']['integrity']}")
+        print(f"Power efficiency: {report['power_efficiency']*100:.0f}%")
+        return 0
     elif args.command == "time":
         parts = [args.action]
         if args.value:
@@ -1609,6 +2249,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         return cmd_story(engine, storage, parts)
     elif args.command == "scan":
         ok, msg, _ = engine.scan()
+        print((GREEN if ok else RED) + msg + RESET)
+        storage.save(engine.state)
+        return 0 if ok else 1
+    elif args.command == "salvage":
+        ok, msg, report = engine.salvage_derelict()
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok and report.get("site"):
+            site = report["site"]
+            print(f"{DIM}Site: {site['name']} | Risk: {report['danger']*100:.0f}% | Success: {report['success']}{RESET}")
+        storage.save(engine.state)
+        return 0 if ok else 1
+    elif args.command == "scoop":
+        ok, msg = engine.scoop_fuel()
         print((GREEN if ok else RED) + msg + RESET)
         storage.save(engine.state)
         return 0 if ok else 1

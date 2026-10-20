@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `35`
-- **Total Classes**: `92`
-- **Total Top-Level Functions**: `75`
-- **Total Class Methods**: `506`
-- **Total Source Lines**: `14455`
+- **Total Python Modules**: `52`
+- **Total Classes**: `125`
+- **Total Top-Level Functions**: `152`
+- **Total Class Methods**: `666`
+- **Total Source Lines**: `20125`
 
 ---
 
@@ -20,6 +20,40 @@
 > *VoidFarer test suite package.*
 
 **Size**: `1` lines (`36` bytes)
+
+---
+
+### [`tests/test_adaptive_ui_salvage.py`](tests/test_adaptive_ui_salvage.py)
+> *Regression tests for the resolution-adaptive cockpit, derelict salvage,*
+
+**Size**: `198` lines (`8529` bytes)
+
+**Classes:**
+- `class TestAdaptiveCockpitAssets`
+  - Method `.setUpClass()`
+  - Method `.test_css_declares_resolution_profiles()`
+  - Method `.test_settings_expose_density_and_scale()`
+  - Method `.test_radar_is_dpi_aware_and_touch_ready()`
+  - Method `.test_polling_and_hotkeys_are_guarded()`
+- `class TestSalvageModelsAndCatalog`
+  - Method `.test_legacy_body_payload_defaults_salvage_flag()`
+  - Method `.test_derelict_generation_is_deterministic()`
+  - Method `.test_stations_never_generate_derelicts()`
+  - Method `.test_sol_has_at_least_one_salvage_site()`
+- `class TestExplorationMechanics`
+  - Method `.setUp()`
+  - Method `._derelict_body()`
+  - Method `.test_salvage_rewards_cargo_and_claims_site()`
+  - Method `.test_salvage_requires_a_derelict()`
+  - Method `.test_fuel_scoop_refuels_and_heats_reactor()`
+  - Method `.test_fuel_scoop_requires_a_scoopable_body()`
+  - Method `.test_snapshot_exposes_salvage_and_scoop_hints()`
+  - Method `.test_crew_drill_raises_skill_and_spends_credits()`
+  - Method `.test_crew_drill_caps_skill()`
+- `class TestNewMechanicWiring`
+  - Method `.setUpClass()`
+  - Method `.test_api_and_cli_expose_the_new_mechanics()`
+  - Method `.test_cockpit_exposes_new_action_buttons()`
 
 ---
 
@@ -197,6 +231,40 @@
   - Method `.test_quote_has_positive_spread()`
   - Method `.test_events_shift_local_prices()`
   - Method `.test_trade_routes_are_sorted_and_cross_system()`
+
+---
+
+### [`tests/test_empire_character_fleet.py`](tests/test_empire_character_fleet.py)
+> *Regression tests for character, research, outposts, factions, fleet, and travel additions.*
+
+**Size**: `221` lines (`10208` bytes)
+
+**Classes:**
+- `class CharacterResearchOutpostTest`
+  - Method `.setUp()`
+  - Method `.test_character_state_round_trip_and_age()`
+  - Method `.test_train_skill_requires_points_and_valid_skill()`
+  - Method `.test_emergency_repair_ability_heals_and_sets_cooldown()`
+  - Method `.test_research_project_completes_on_tick()`
+  - Method `.test_unknown_research_project_rejected()`
+  - Method `.test_outpost_builds_and_produces_on_tick()`
+  - Method `.test_outpost_requires_orbit()`
+- `class FactionDiplomacyWarTest`
+  - Method `.setUp()`
+  - Method `.test_leaders_generated_deterministically()`
+  - Method `.test_diplomacy_improve_and_declare_war()`
+  - Method `.test_resolve_wars_captures_and_eliminates_faction()`
+- `class FleetAndNavigationTest`
+  - Method `.setUp()`
+  - Method `.test_escort_purchase_requires_credits_and_dock()`
+  - Method `.test_fleet_damage_and_casualties()`
+  - Method `.test_battle_stance_and_solar_panel_upgrade()`
+  - Method `.test_route_planning()`
+  - Method `.test_black_holes_and_ring_worlds_exist()`
+- `class NewSystemsSerializationAndCLITest`
+  - Method `.test_game_state_round_trip_preserves_new_fields()`
+  - Method `.test_new_cli_commands_run()`
+  - Method `.test_cockpit_fleet_character_empire_and_void_fade_wiring()`
 
 ---
 
@@ -387,6 +455,36 @@
 
 ---
 
+### [`tests/test_messaging_crew_quantum.py`](tests/test_messaging_crew_quantum.py)
+> *Regression tests for message trees, crew, portraits, weapons, quantum tech, and megastructures.*
+
+**Size**: `165` lines (`7867` bytes)
+
+**Classes:**
+- `class MessageTreeTest`
+  - Method `.setUp()`
+  - Method `.test_tree_root_is_seeded_and_has_branches()`
+  - Method `.test_decode_branch_grants_research_and_follow_up()`
+  - Method `.test_sell_branch_grants_credits()`
+  - Method `.test_choice_cannot_be_replayed()`
+  - Method `.test_message_model_round_trip_with_choices()`
+  - Method `.test_tree_catalog_has_multiple_trees()`
+- `class CrewWeaponTest`
+  - Method `.setUp()`
+  - Method `.test_starting_crew_and_bonuses()`
+  - Method `.test_recruit_and_dismiss_crew()`
+  - Method `.test_crew_round_trip_and_catalog()`
+  - Method `.test_weapon_variety_and_install()`
+  - Method `.test_weapon_requires_credits()`
+- `class QuantumAndObjectsTest`
+  - Method `.test_quantum_research_projects_exist()`
+  - Method `.test_dyson_sphere_relay_wormhole_and_collector_exist()`
+  - Method `.test_character_portrait_and_era()`
+  - Method `.test_cli_new_systems_commands()`
+  - Method `.test_cockpit_message_choices_crew_portrait_wiring()`
+
+---
+
 ### [`tests/test_models.py`](tests/test_models.py)
 > *Unit tests for domain state models and frozen DTO serialization.*
 
@@ -435,10 +533,48 @@
 
 ---
 
+### [`tests/test_reactor_map_shipmods.py`](tests/test_reactor_map_shipmods.py)
+> *Regression tests for reactor simulation, sector map modifiers, and ship modifications.*
+
+**Size**: `261` lines (`11188` bytes)
+
+**Classes:**
+- `class ReactorSimulationTest`
+  - Method `.setUp()`
+  - Method `.test_reactor_state_round_trip()`
+  - Method `.test_ship_state_round_trip_preserves_reactor_and_mods()`
+  - Method `.test_overdrive_heats_core_and_economy_recovers()`
+  - Method `.test_vent_purges_heat_and_enforces_cooldown()`
+  - Method `.test_heat_derates_effective_subsystem_power()`
+  - Method `.test_reactor_repair_requires_dock()`
+  - Method `.test_reactor_report_exposes_modes_and_cooling()`
+- `class MapModifierTest`
+  - Method `.test_map_modifier_round_trip()`
+  - Method `.test_star_system_round_trip_preserves_modifiers()`
+  - Method `.engine_body()`
+  - Method `.test_generation_is_deterministic_and_non_empty()`
+  - Method `.test_aggregate_combines_multiplicative_and_additive_effects()`
+  - Method `.test_map_modifier_generation_uses_seed()`
+- `class ShipModificationTest`
+  - Method `.setUp()`
+  - Method `.test_catalog_declares_valid_slots_and_effects()`
+  - Method `.test_install_and_remove_mod_recomputes_capacities()`
+  - Method `.test_slot_conflict_rejected()`
+  - Method `.test_overcharged_core_raises_reactor_output()`
+  - Method `.test_ship_mods_require_dock()`
+  - Method `.test_ship_mod_report_lists_catalog_and_bonuses()`
+  - Method `.test_upgrade_recompute_preserves_ship_mod_capacities()`
+  - Method `.test_snapshot_exposes_reactor_map_and_ship_mods()`
+- `class NewCLIAndCockpitWiringTest`
+  - Method `.test_cli_runs_new_simulation_commands()`
+  - Method `.test_cockpit_contains_ship_mod_and_reactor_controls()`
+
+---
+
 ### [`tests/test_server.py`](tests/test_server.py)
 > *Unit and integration tests for embedded HTTP server REST endpoints.*
 
-**Size**: `273` lines (`11495` bytes)
+**Size**: `324` lines (`14043` bytes)
 
 **Classes:**
 - `class TestServer`
@@ -451,6 +587,9 @@
   - Method `.test_get_static_index()`
   - Method `.test_get_api_state()`
   - Method `.test_get_api_galaxy()`
+  - Method `.test_reactor_map_and_shipmod_endpoints()`
+  - Method `.test_character_research_fleet_diplomacy_endpoints()`
+  - Method `.test_crew_weapon_and_message_tree_endpoints()`
   - Method `.test_post_power()`
   - Method `.test_post_orbit_and_scan()`
   - Method `.test_post_drone_and_upgrade_endpoints()`
@@ -585,10 +724,27 @@
 
 ---
 
+### [`voidfarer/character.py`](voidfarer/character.py)
+> *Commander character progression, skills, and activatable abilities.*
+
+**Size**: `126` lines (`4942` bytes)
+
+**Functions:**
+- `def skill_level(character, skill)`
+- `def skill_bonus(character, skill)` - *Percent bonus per skill level above baseline.*
+- `def train_skill(character, skill)`
+- `def award_character_xp(character, amount)`
+- `def advance_age(character, elapsed_days_before, elapsed_days_after)`
+- `def ability_ready(character, ability_id)`
+- `def start_ability_cooldown(character, ability_id)`
+- `def tick_ability_cooldowns(character, num_ticks)`
+
+---
+
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `1679` lines (`85727` bytes)
+**Size**: `2332` lines (`118871` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -619,9 +775,39 @@
 - `def cmd_streak(engine)` - *Display current expedition jump streak and active loss aversion multiplier.*
 - `def cmd_tutorial(engine, storage, parts)` - *Cadet Flight Academy progressive tutorial system.*
 - `def cmd_story(engine, storage, parts)` - *The Precursor Cipher: Branching episodic space opera campaign.*
+- `def cmd_reactor(engine, storage, parts)` - *Inspect reactor telemetry and manage thermal doctrine.*
+- `def cmd_mapmods(engine)` - *Display active sector map modifiers and their simulation effects.*
+- `def _describe_ship_mod_effects(effects)`
+- `def cmd_refit(engine, storage, parts)` - *Ship modification section: inspect, install, or remove structural refits.*
+- `def cmd_character(engine, storage, parts)`
+- `def cmd_research(engine, storage, parts)`
+- `def cmd_outpost(engine, storage, parts)`
+- `def cmd_diplomacy(engine, storage, parts)`
+- `def cmd_route(engine, target)`
+- `def cmd_crew(engine, storage, parts)`
+- `def cmd_weapons(engine, storage, parts)`
 - `def cmd_repl(engine, storage)` - *Launch interactive terminal command session.*
 - `def cmd_events(engine, storage, parts)` - *List or dismiss cockpit popup events.*
 - `def main(argv)` - *Main CLI entrypoint.*
+
+---
+
+### [`voidfarer/crew.py`](voidfarer/crew.py)
+> *Crew roles, recruiting, portraits, and crew-derived ship bonuses.*
+
+**Size**: `139` lines (`4989` bytes)
+
+**Classes:**
+- `class CrewRole`
+  - Method `.to_dict()`
+
+**Functions:**
+- `def get_crew_role(role_id)`
+- `def recruit_crew_member(role_id, seed, current_count)`
+- `def calculate_crew_bonuses(crew)`
+- `def crew_upkeep(crew)`
+- `def tick_crew(crew, num_ticks, credits_available)`
+- `def crew_catalog()`
 
 ---
 
@@ -655,7 +841,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `3113` lines (`151153` bytes)
+**Size**: `4438` lines (`221104` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -663,7 +849,15 @@
   - Method `._bootstrap_frontier()` - *Backfill frontier systems for legacy saves without changing the save schema.*
   - Method `._clone_ship(**kwargs)` - *Create a new ShipState preserving all unspecified telemetry and inventory attributes.*
   - Method `._clone_state(**kwargs)` - *Create a new GameState preserving time, stats, economy, and all unspecified universe fields.*
+  - Method `._research_bonuses()`
+  - Method `._skill(skill)`
+  - Method `._combined_equipment(ship)`
+  - Method `._crew_bonuses(ship)`
+  - Method `._map_effects(system)` - *Aggregate the active map modifiers of a system (defaults to the current one).*
+  - Method `._effective_power(subsystem, ship)` - *Allocated subsystem power after reactor mode, heat, and integrity derating.*
+  - Method `._recompute_caps(ship, equipped, ship_mods)` - *Recompute maximum hull, shield, cargo, and fuel from chassis, modules, and mods.*
   - Method `._grant_cargo(cargo, commodity_id, quantity)` - *Add as many units as the hold allows, returning (granted, overflow).*
+  - Method `._replace_system_body(body_id, **changes)` - *Return a systems map with one body of the current system replaced.*
   - Method `._apply_relic_stat_bonuses(hull, max_hull, shield, max_shield, relics)` - *Raise current and maximum hull/shield for newly acquired permanent relics.*
   - Method `._progress_tutorial(action_type)` - *Advance the Cadet Flight Academy if current step requirement is satisfied.*
   - Method `._award_pilot_xp(amount, current_mastery)` - *Award experience points and compute level promotions and talent points.*
@@ -680,6 +874,38 @@
   - Method `.start_travel(body_id, mode)` - *Initiate sublight or quantum in-system transit toward a celestial body.*
   - Method `.scan()` - *Perform sensor sweep of current body or local space.*
   - Method `.route_power(engines, shields, sensors, weapons)` - *Adjust reactor power distribution across ship subsystems.*
+  - Method `.set_reactor_mode(mode)` - *Select the reactor operating doctrine (balanced, economy, overdrive, silent).*
+  - Method `.vent_reactor_coolant()` - *Purge reactor heat immediately, with a coolant recharge cooldown.*
+  - Method `.repair_reactor()` - *Repair reactor core integrity at an orbital drydock.*
+  - Method `.get_reactor_report()` - *Detailed reactor telemetry derived from current ship and sector conditions.*
+  - Method `.install_ship_mod(mod_id)` - *Install a structural ship modification at an orbital drydock.*
+  - Method `.remove_ship_mod(slot)` - *Remove a structural modification and recover part of its cost.*
+  - Method `.get_ship_mod_report()` - *Serializable structural modification catalog and installed layout.*
+  - Method `.get_simulation_report()` - *Unified simulation telemetry: reactor, environment, and structural refits.*
+  - Method `.train_character_skill(skill)`
+  - Method `.use_character_ability(ability_id, target_faction_id)`
+  - Method `.choose_research(project_id)`
+  - Method `.build_outpost(body_id, outpost_type_id)`
+  - Method `.upgrade_outpost(outpost_id)`
+  - Method `.get_character_report()`
+  - Method `.get_research_report()`
+  - Method `.get_outpost_report()`
+  - Method `.faction_diplomacy(faction_id, action, amount)`
+  - Method `.buy_escort(escort_type, system_id)`
+  - Method `.assign_escort(ship_id, system_id)`
+  - Method `.repair_escorts(amount)`
+  - Method `.dismiss_escort(ship_id)`
+  - Method `.get_fleet_manager_report()`
+  - Method `.plan_route(target_system_id)`
+  - Method `.navigate_to(target_system_id)`
+  - Method `.recruit_crew(role_id)`
+  - Method `.dismiss_crew(crew_id)`
+  - Method `.get_crew_report()`
+  - Method `.install_weapon(weapon_id)`
+  - Method `.set_primary_weapon(weapon_id)`
+  - Method `.get_weapon_report()`
+  - Method `.resolve_message_choice(message_id, choice_id)`
+  - Method `.get_message_tree_report()`
   - Method `.trade(commodity_id, quantity, is_buy)` - *Execute buy or sell commodity order at orbiting market.*
   - Method `.buy_upgrade(upgrade_id)` - *Purchase and install a hardware upgrade module at an orbital station.*
   - Method `.sell_upgrade(slot)` - *Uninstall and sell an equipped hardware module back to shipyard for credits.*
@@ -690,6 +916,7 @@
   - Method `.buy_drone(drone_type, assigned_system_id)` - *Purchase and commission an autonomous fleet drone.*
   - Method `.deploy_drone(drone_id, target_system_id)` - *Redeploy an autonomous fleet asset to a different star system.*
   - Method `.collect_drone_yield(drone_id)` - *Collect accumulated cargo and research credits from fleet drones.*
+  - Method `.set_battle_stance(stance)` - *Set fleet battle doctrine: balanced, aggressive, or defensive.*
   - Method `.combat_action(action)` - *Execute a tactical combat maneuver against an active hostile intercept.*
   - Method `.resolve_anomaly(choice_id)` - *Resolve current deep-space anomaly encounter with power-check validation.*
   - Method `.repair_hull(amount)` - *Repair ship hull integrity at orbital station.*
@@ -714,6 +941,9 @@
   - Method `.withdraw_cargo(item_id, quantity)`
   - Method `.sell_from_depot(item_id, quantity)`
   - Method `.land_on_body(body_id)` - *Land on a habitable body and collect surface discovery rewards.*
+  - Method `.salvage_derelict()` - *Board the current body's derelict hulk for cargo, credits, and hazard risk.*
+  - Method `.scoop_fuel()` - *Recover fuel from a star, gas giant, or ice body currently in orbit.*
+  - Method `.train_crew_member(crew_id)` - *Run a paid training drill that raises one crew member's skill rank.*
   - Method `.hire_mercenary(merc_id)`
   - Method `.dismiss_fleet_unit(drone_id)`
   - Method `.refit_fleet_unit(drone_id)`
@@ -725,6 +955,39 @@
   - Method `.resume_time()` - *Resume simulation temporal clock restoring previous speed multiplier.*
   - Method `.set_time_speed(speed)` - *Set simulation speed multiplier (0.0x to 10.0x).*
   - Method `.step_time(num_ticks)` - *Advance simulation by a discrete number of ticks.*
+
+---
+
+### [`voidfarer/exploration.py`](voidfarer/exploration.py)
+> *Derelict salvage sites, fuel scooping profiles, and crew training drills.*
+
+**Size**: `115` lines (`4169` bytes)
+
+**Classes:**
+- `class DerelictSite` - *A deterministic, once-per-body salvage site with a risk/reward profile.*
+  - Method `.to_dict()`
+
+**Functions:**
+- `def _stable_crc(*parts)`
+- `def derive_derelict(system_id, system_seed, body)` - *Return the body's deterministic salvage site, or None when it has none.*
+- `def scoop_profile(body)` - *Return the fuel-scooping profile for a body, or None when it cannot be scooped.*
+- `def scoop_yield(body, effective_sensor_power, science_skill)` - *Compute fuel recovered by a single scoop pass.*
+- `def crew_training_cost(member)` - *Credits required for the next skill rank of a crew specialist.*
+
+---
+
+### [`voidfarer/faction_state.py`](voidfarer/faction_state.py)
+> *Dynamic faction leaders, behaviors, war resolution, and elimination.*
+
+**Size**: `164` lines (`7241` bytes)
+
+**Functions:**
+- `def generate_faction_leaders(seed)` - *Create one deterministic leader per canonical sovereign faction.*
+- `def _faction_systems(faction_id, systems)`
+- `def faction_strength(faction_id, systems)`
+- `def resolve_wars(wars, systems, rng, current_tick, eliminated)` - *Advance wars, transfer territory, and eliminate factions that lose all systems.*
+- `def simulate_faction_behaviors(leaders, wars, systems, rng, current_tick, eliminated, num_ticks)` - *Apply leader archetypes: declare wars, then resolve active fronts.*
+- `def leader_for(leaders, faction_id)`
 
 ---
 
@@ -751,6 +1014,21 @@
 
 ---
 
+### [`voidfarer/fleet.py`](voidfarer/fleet.py)
+> *Escort warship catalog and fleet-manager behavior.*
+
+**Size**: `149` lines (`4884` bytes)
+
+**Functions:**
+- `def get_escort_template(escort_type)`
+- `def build_fleet_ship(escort_type, system_id, count)`
+- `def fleet_damage(ships, formation)`
+- `def fleet_evasion_bonus(ships, formation)`
+- `def apply_fleet_casualties(ships, damage)` - *Distribute incoming damage across escorts, returning survivors and absorbed damage.*
+- `def repair_fleet_ships(ships, amount)`
+
+---
+
 ### [`voidfarer/frontier.py`](voidfarer/frontier.py)
 > *Frontier systems: autonomous captains, depots, mercenaries, and quantum messages.*
 
@@ -768,7 +1046,7 @@
 ### [`voidfarer/galaxy.py`](voidfarer/galaxy.py)
 > *Procedural galaxy generator, celestial orbital mechanics, and market economy.*
 
-**Size**: `751` lines (`32909` bytes)
+**Size**: `901` lines (`40435` bytes)
 
 **Classes:**
 - `class GalaxyGenerator` - *Generates deterministic star systems, celestial bodies, and hyperlane corridors.*
@@ -803,16 +1081,52 @@
 
 ---
 
+### [`voidfarer/mapmods.py`](voidfarer/mapmods.py)
+> *Sector map modifiers: persistent environmental conditions that reshape simulation.*
+
+**Size**: `208` lines (`7603` bytes)
+
+**Functions:**
+- `def get_map_modifier(modifier_id)`
+- `def generate_map_modifiers(seed, system_id, security, system_index)` - *Generate deterministic per-system modifiers without touching the galaxy RNG stream.*
+- `def aggregate_map_modifiers(system)` - *Fold every active map modifier into one effect dictionary.*
+- `def describe_modifier_effects(effects)` - *Human readable effect labels for CLI and cockpit rendering.*
+- `def system_modifier_summary(system)` - *Serializable modifier summaries for telemetry consumers.*
+- `def filter_catalog(category)`
+
+---
+
+### [`voidfarer/messaging.py`](voidfarer/messaging.py)
+> *Branching quantum message trees and their consequences.*
+
+**Size**: `290` lines (`11940` bytes)
+
+**Classes:**
+- `class MessageNode`
+- `class MessageTree`
+  - Method `.node(node_id)`
+
+**Functions:**
+- `def tree_root_message(tree_id, tick, message_id)`
+- `def follow_up_message(tree_id, node_id, tick, parent_id)`
+- `def choice_by_id(message, choice_id)`
+- `def tree_catalog()`
+
+---
+
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1269` lines (`45158` bytes)
+**Size**: `1664` lines (`60223` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class CelestialBody` - *Represents a planetary, stellar, or orbital body in a star system.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class MapModifier` - *Persistent environmental condition that reshapes local sector simulation.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class StarSystem` - *Represents a star system with celestial bodies and hyperlane links.*
@@ -837,6 +1151,9 @@
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class Depot` - *System-local cargo depot that can hold and sell commodities.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class MessageChoice` - *One branch of an interactive message-tree node.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class QuantumMessage` - *Intergalactic quantum-encrypted message stored in the ship inbox.*
@@ -893,10 +1210,35 @@
 - `class GameEvent` - *Realtime popup event delivered to the cockpit.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
+- `class ReactorState` - *Thermal and structural state of the fusion reactor core.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class PlayerCharacter` - *Persistent commander profile with aging, skills, and activatable abilities.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class ResearchState` - *Research progress and completed technology unlocks.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class Outpost` - *Player-owned planetary or orbital installation that produces value each tick.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class FleetShip` - *Player-owned escort warship attached to the fleet manager.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class FactionLeader` - *Individual leader whose behavior drives a faction's simulation policy.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class WarState` - *Active or concluded war between two sovereign factions.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class CrewMember` - *Recruitable crew specialist with a role, morale, wage, and portrait.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
 - `class ShipState` - *Complete telemetry, resource inventory, and status of the player's flagship.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class TimeState` - *Universal cosmic stardate, simulation ticks, and time control state.*
+  - Property `.era`
   - Property `.current_date` - *In-game calendar date (DD.MM.YYYY), starting 01.01.3042 at tick zero.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
@@ -912,6 +1254,68 @@
 - `class GameState` - *Master simulation universe state container.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
+
+---
+
+### [`voidfarer/navigation.py`](voidfarer/navigation.py)
+> *Navigation routing, jump planning, and black-hole hazard helpers.*
+
+**Size**: `64` lines (`2131` bytes)
+
+**Functions:**
+- `def shortest_route(systems, start_id, target_id)`
+- `def route_plan(systems, start_id, target_id, base_jump_fuel)`
+- `def system_has_black_hole(system)`
+
+---
+
+### [`voidfarer/outposts.py`](voidfarer/outposts.py)
+> *Outpost construction and production catalogs.*
+
+**Size**: `151` lines (`5277` bytes)
+
+**Classes:**
+- `class OutpostType`
+  - Method `.to_dict()`
+
+**Functions:**
+- `def get_outpost_type(outpost_type)`
+- `def can_build_on(body, outpost_type)`
+- `def build_outpost(outpost_type, system_id, body, current_tick, existing_count)`
+- `def outpost_tick_production(outpost, yield_multiplier)`
+- `def upgrade_outpost(outpost, cost_scale)`
+
+---
+
+### [`voidfarer/reactor.py`](voidfarer/reactor.py)
+> *Reactor core simulation: operating modes, thermal load, cooling, and derating.*
+
+**Size**: `156` lines (`6161` bytes)
+
+**Functions:**
+- `def get_reactor_mode(mode)`
+- `def reactor_derating(reactor)` - *Efficiency multiplier from core integrity and thermal saturation.*
+- `def reactor_output_efficiency(reactor, output_bonus)` - *Effective output multiplier applied to every powered subsystem.*
+- `def reactor_cooling_rate(reactor, equipment_bonuses, map_cooling_bonus)`
+- `def reactor_heat_capacity(reactor, equipment_bonuses)`
+- `def simulate_reactor_tick(reactor, total_allocation, num_ticks, equipment_bonuses, map_effects, hull_hazard, output_bonus)` - *Advance reactor heat and integrity for the given number of ticks.*
+- `def vent_reactor(reactor, current_tick, cooldown_ticks)` - *Emergency coolant purge: dump heat anywhere, at a small integrity cost.*
+
+---
+
+### [`voidfarer/research.py`](voidfarer/research.py)
+> *Research projects and technology bonuses.*
+
+**Size**: `179` lines (`5777` bytes)
+
+**Classes:**
+- `class ResearchProject`
+  - Method `.to_dict()`
+
+**Functions:**
+- `def get_research_project(project_id)`
+- `def calculate_research_bonuses(completed)`
+- `def available_projects(completed, active_project_id)`
 
 ---
 
@@ -931,7 +1335,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `850` lines (`34248` bytes)
+**Size**: `1086` lines (`45252` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*
@@ -955,6 +1359,24 @@
 - `def _bool_field(body, key, default)`
 - `def start_background_server(engine, storage, port, host)` - *Launch the cockpit server and simulation ticker without blocking the REPL.*
 - `def run_server(engine, storage, port, host, open_browser, enable_ticker)` - *Start local cockpit HTTP server daemon with background temporal ticker.*
+
+---
+
+### [`voidfarer/shipmods.py`](voidfarer/shipmods.py)
+> *Structural ship modifications: permanent refits with explicit trade-offs.*
+
+**Size**: `193` lines (`6683` bytes)
+
+**Classes:**
+- `class ShipMod` - *A permanent structural refit available at orbital drydocks.*
+  - Method `.to_dict()`
+
+**Functions:**
+- `def get_ship_mod(mod_id)`
+- `def get_available_ship_mods(installed)`
+- `def get_ship_mod_sell_value(mod_id)`
+- `def calculate_ship_mod_bonuses(ship_mods)` - *Aggregate structural modification effects into the common bonus keyspace.*
+- `def slot_label(slot)`
 
 ---
 
@@ -996,7 +1418,7 @@
 ### [`voidfarer/upgrades.py`](voidfarer/upgrades.py)
 > *Hardware upgrade catalog, fleet drone definitions, shipyard chassis, and equipment registry.*
 
-**Size**: `408` lines (`14075` bytes)
+**Size**: `433` lines (`15077` bytes)
 
 **Classes:**
 - `class ShipChassis` - *Pre-configured spacecraft hull chassis available for purchase at orbital shipyards.*
@@ -1011,5 +1433,20 @@
 - `def calculate_equipment_bonuses(ship)` - *Aggregate equipped module and chassis stat bonuses into effective multipliers.*
 - `def get_available_chassis(current_chassis_id)` - *Return ship chassis available for purchase (excluding current ship).*
 - `def get_sell_value(upgrade_id)` - *Calculate credit trade-in value when selling or uninstalling a hardware module (60% of base cost).*
+
+---
+
+### [`voidfarer/weapons.py`](voidfarer/weapons.py)
+> *Weapon catalog and combat modifiers.*
+
+**Size**: `56` lines (`2337` bytes)
+
+**Classes:**
+- `class WeaponSpec`
+  - Method `.to_dict()`
+
+**Functions:**
+- `def get_weapon(weapon_id)`
+- `def weapon_catalog()`
 
 ---

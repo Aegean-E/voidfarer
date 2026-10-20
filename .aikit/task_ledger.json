@@ -1,232 +1,227 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+    "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792439941.7366254,
-    "completed_at": 1792439949.1067476
+    "updated_at": 1792506187.9868574,
+    "completed_at": 1792506203.7357621
   },
   "checkpoints": [
     {
-      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[milestone 3/4] Make NAV-Radar orbital map the full-viewport background layer with floating HUD decks on top (G-004); checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792433771.018688,
-      "timestamp_str": "2026-10-19 21:16:11"
-    },
-    {
-      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[milestone 4/4] Document ESC menu hotkey, multiple save slots, and full-viewport background NAV-Radar in README.md and complete task; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792433861.8996668,
-      "timestamp_str": "2026-10-19 21:17:41"
-    },
-    {
-      "task_id": "task-voidfarer-esc-saves-bg-radar-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-esc-saves-bg-radar-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792433862.0156322,
-      "timestamp_str": "2026-10-19 21:17:42"
-    },
-    {
-      "task_id": "task-voidfarer-accurate-transit-physics-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/3] Scientifically accurate planetary physics (gravity, atmosphere, temperature, habitability), 2D Euclidean sublight transit distance/ticks, and persistent tick-synced radar transit animation",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792434488.0807726,
-      "timestamp_str": "2026-10-19 21:28:08",
-      "impact_assessment": {
-        "why": "User requested that clicking transit does not end the animation early, sublight transit calculates true orbital distance and advances appropriate ticks, and planetary atmosphere, gravity, temperature, and habitability are scientifically accurate.",
-        "benefits": "Continuous tick-synchronized radar transit trajectory until arrival, accurate 2D polar-to-Cartesian Euclidean orbital distance and sublight tick scaling, and astrophysically grounded planetary radius, density, surface gravity, stellar-flux equilibrium temperature, atmospheric composition/pressure, and Earth Similarity habitability index.",
-        "risks": "contract: CelestialBody gains habitability field and updated atmosphere/gravity/temperature values; dependency: none (stdlib math only); concurrency: thread-safe SimulationEngine lock preserved; state: legacy saves need deterministic physics and habitability backfill without altering RNG seed streams.",
-        "mitigation": "Preserve exact RNG call counts in GalaxyGenerator._generate_bodies, backfill legacy saves in SimulationEngine._bootstrap_frontier, and verify with failing-first unit and cockpit tests."
-      }
-    },
-    {
-      "task_id": "task-voidfarer-accurate-transit-physics-v1",
-      "phase": "execution",
-      "phase_num": 3,
-      "description": "[milestone 1/3] Add scientifically accurate planetary physics, atmosphere, gravity, temperature, and habitability index; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792434953.7674563,
-      "timestamp_str": "2026-10-19 21:35:53"
-    },
-    {
-      "task_id": "task-voidfarer-accurate-transit-physics-v1",
-      "phase": "execution",
-      "phase_num": 3,
-      "description": "[milestone 2/3] Add 2D Euclidean sublight transit distance/ticks, persistent tick-synced radar transit animation, and targetHabitability readout; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792435304.310347,
-      "timestamp_str": "2026-10-19 21:41:44"
-    },
-    {
-      "task_id": "task-voidfarer-accurate-transit-physics-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[milestone 3/3] Update living documentation and verify all 4/4 gates for scientific planetary physics and persistent tick-synced transit animation; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792435392.2728512,
-      "timestamp_str": "2026-10-19 21:43:12"
-    },
-    {
-      "task_id": "task-voidfarer-accurate-transit-physics-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-accurate-transit-physics-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792435392.3735232,
-      "timestamp_str": "2026-10-19 21:43:12"
-    },
-    {
-      "task_id": "task-voidfarer-sleek-map-hud-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Declutter cockpit HUD over background radar: transparent on-map radar title, collapsible right-expanding left terminal drawer, boxless on-map tactical flight log, and compact bottom HUD cards",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792435572.1072786,
-      "timestamp_str": "2026-10-19 21:46:12",
-      "impact_assessment": {
-        "why": "User requested removing bulky UI boxes that block the background orbital map: make NAV-RADAR title a subtle transparent label on the map, make left Commerce/Arsenal/etc. tabs expand to the right on click instead of staying open all the time, and render the Tactical Flight Log directly on the map without a box.",
-        "benefits": "Unobstructed full-viewport orbital map with floating transparent radar title, on-demand right-expanding left terminal drawer, boxless lower-right tactical flight log overlay, and compact bottom target/reactor HUD.",
-        "risks": "contract: existing DOM IDs and G-001..G-004 layout tests in test_cockpit_layout.py must remain satisfied; dependency: none; concurrency: none (UI/CSS/JS only); state: left drawer collapse state is view-only.",
-        "mitigation": "Preserve all required DOM hierarchy, class names, and CSS tokens verified by test_cockpit_layout.py while adding failing-first tests for the collapsible left drawer, transparent on-map radar header, and boxless flight log."
-      }
-    },
-    {
-      "task_id": "task-voidfarer-sleek-map-hud-v1",
-      "phase": "execution",
-      "phase_num": 3,
-      "description": "[milestone 1/2] Declutter cockpit HUD over background radar: transparent on-map radar title, collapsible right-expanding left terminal drawer, boxless on-map tactical flight log, and compact bottom HUD cards; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792437549.7388234,
-      "timestamp_str": "2026-10-19 22:19:09"
-    },
-    {
-      "task_id": "task-voidfarer-sleek-map-hud-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[milestone 2/2] Documentation, Final Gate Verification & Push; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792437555.4383903,
-      "timestamp_str": "2026-10-19 22:19:15"
-    },
-    {
-      "task_id": "task-voidfarer-sleek-map-hud-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-sleek-map-hud-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792437560.2938159,
-      "timestamp_str": "2026-10-19 22:19:20"
-    },
-    {
-      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Make reactor panel expandable with HIDE/SHOW toggle, swap top-bar vitals and quick actions positions, and equalize stat card dimensions",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792438550.6610649,
-      "timestamp_str": "2026-10-19 22:35:50",
-      "impact_assessment": {
-        "why": "User requested expandable reactor panel like tactical flight log, swapping vitals row with sound/action settings in the top bar, and making all vital stat cards equal in size",
-        "benefits": "Unobstructed bottom center radar space on demand, intuitive top bar visual order, and clean symmetrical vitals cards",
-        "risks": "contract: DOM layout tests in test_cockpit_layout.py must remain satisfied; dependency: none; concurrency: none; state: view-only collapse state",
-        "mitigation": "Add failing-first tests for reactor HIDE/SHOW toggle, topbar child order, and equal vital card sizing while preserving all existing DOM IDs and layout contracts"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
-      "phase": "execution",
-      "phase_num": 3,
-      "description": "[milestone 1/2] Make reactor panel expandable with HIDE/SHOW toggle, swap top-bar vitals and quick actions positions, and equalize stat card dimensions; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792438795.8560789,
-      "timestamp_str": "2026-10-19 22:39:55"
-    },
-    {
-      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
-      "phase": "verification",
-      "phase_num": 4,
-      "description": "[milestone 2/2] Documentation, regression verification, and clean gate delivery; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792438800.3636346,
-      "timestamp_str": "2026-10-19 22:40:00"
-    },
-    {
-      "task_id": "task-voidfarer-expandable-reactor-vitals-align-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-expandable-reactor-vitals-align-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792438804.4959004,
-      "timestamp_str": "2026-10-19 22:40:04"
-    },
-    {
-      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
-      "phase": "planning",
-      "phase_num": 2,
-      "description": "[1/2] Shared 2D polar distance calculation for orbit and sublight, topbar single-line layout with equal-sized vitals and chrono box",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792439307.7217777,
-      "timestamp_str": "2026-10-19 22:48:27",
-      "impact_assessment": {
-        "why": "User requested orbit and sublight transit adhere to same distance calculation, vital stat cards be the exact same size as the chrono date box on the same line, and adding population mechanics",
-        "benefits": "Consistent orbital navigation distance across UI and engine, unified symmetrical single-line top status bar matching chrono deck, and dynamic demographic population mechanics on ticks",
-        "risks": "contract: existing layout and API contracts must remain satisfied; dependency: none; concurrency: none; state: population advances deterministically on ticks without breaking save schema",
-        "mitigation": "Add regression tests in test_cockpit_layout.py and test_galaxy.py covering distance calculation parity, topbar single-line styling, and tick-based population mechanics"
-      }
-    },
-    {
-      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 1/2] 2D polar distance calculation parity for orbit and sublight transit, single-line nowrap topbar with 52px vital cards matching chronometer deck; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792439935.9261217,
-      "timestamp_str": "2026-10-19 22:58:55"
-    },
-    {
-      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+      "task_id": "task-voidfarer-simulation-reactor-map-shipmods-v1",
       "phase": "phase 4",
       "phase_num": 4,
-      "description": "[milestone 2/2] Dynamic planetary population mechanics, colony tiers (Outpost to Mega-Ecumenopolis), tick-based demographic growth, documentation, and regression verification; checklists: passed",
+      "description": "[milestone 4/4] Living documentation, ADR-026, G-008, codebase map, and 4/4 Phase 4 gates for simulation, reactor, map modifiers, and ship modifications; checklists: passed",
       "files_affected": [],
       "status": "in_progress",
-      "timestamp": 1792439941.7366254,
-      "timestamp_str": "2026-10-19 22:59:01"
+      "timestamp": 1792488127.225871,
+      "timestamp_str": "2026-10-20 12:22:07"
     },
     {
-      "task_id": "task-voidfarer-orbit-distance-topbar-population-v1",
+      "task_id": "task-voidfarer-simulation-reactor-map-shipmods-v1",
       "phase": "completed",
       "phase_num": 5,
-      "description": "Task 'task-voidfarer-orbit-distance-topbar-population-v1' completed successfully.",
+      "description": "Task 'task-voidfarer-simulation-reactor-map-shipmods-v1' completed successfully.",
       "status": "completed",
-      "timestamp": 1792439949.1067493,
-      "timestamp_str": "2026-10-19 22:59:09"
+      "timestamp": 1792488136.181486,
+      "timestamp_str": "2026-10-20 12:22:16"
+    },
+    {
+      "task_id": "task-voidfarer-empire-fleet-character-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/5] Player character (age, skills, abilities), research projects, and planetary outpost construction/production mechanics",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792490504.2301855,
+      "timestamp_str": "2026-10-20 13:01:44",
+      "impact_assessment": {
+        "why": "User requested a deeper simulation with a player character (abilities, age, skills) plus research and outpost mechanics.",
+        "benefits": "Persistent character progression, active abilities with cooldowns, a research tech tree that buffs simulation systems, and outposts that generate resources over ticks.",
+        "risks": "contract: GameState save schema must stay backward compatible; dependency: none (stdlib); concurrency: engine lock preserved; state: legacy saves need deterministic defaults without RNG drift.",
+        "mitigation": "Add defaulted models, engine clone support, and failing-first model/engine tests."
+      }
+    },
+    {
+      "task_id": "task-voidfarer-empire-fleet-character-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 2/5] Character progression, research projects, outpost construction/production, aging, skills, and cooldown abilities; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792493436.458126,
+      "timestamp_str": "2026-10-20 13:50:36"
+    },
+    {
+      "task_id": "task-voidfarer-empire-fleet-character-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 3/5] Faction leaders, behavior archetypes, diplomacy, wars, territory capture, and faction elimination; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792493436.6070797,
+      "timestamp_str": "2026-10-20 13:50:36"
+    },
+    {
+      "task_id": "task-voidfarer-empire-fleet-character-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 4/5] Fleet manager, escort ships, battle stances, combat volleys/screening, multi-jump routing, black holes, solar panels, and ring worlds; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792493436.7603757,
+      "timestamp_str": "2026-10-20 13:50:36"
+    },
+    {
+      "task_id": "task-voidfarer-empire-fleet-character-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 5/5] Compact 44px stat boxes, fading orbit trajectories, COMMANDER/EMPIRE/fleet-manager cockpit panels, README, ADR-027, G-009, 308 tests and 4/4 Phase 4 gates; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792493436.9081047,
+      "timestamp_str": "2026-10-20 13:50:36"
+    },
+    {
+      "task_id": "task-voidfarer-empire-fleet-character-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-empire-fleet-character-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792493441.4603899,
+      "timestamp_str": "2026-10-20 13:50:41"
+    },
+    {
+      "task_id": "task-voidfarer-quantum-messaging-crew-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/5] Branching quantum message trees with per-choice outcomes and follow-up branches; Dyson spheres and additional themed celestial objects",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792498481.068198,
+      "timestamp_str": "2026-10-20 15:14:41",
+      "impact_assessment": {
+        "why": "User requested a messaging revamp with message trees, Dyson spheres, more objects, quantum technologies, weapons, crew, recruiting, portraits, and a fitting in-game date.",
+        "benefits": "Messages become decision trees with persistent consequences; megastructures and themed objects expand exploration and production; later milestones add quantum tech, weapon variety, and crew.",
+        "risks": "contract: QuantumMessage save compatibility; dependency: none; concurrency: engine lock; state: message choices must be deterministic and saved atomically.",
+        "mitigation": "Add defaulted model fields, pure tree catalog, failing-first tests, and backward-compatible serialization."
+      }
+    },
+    {
+      "task_id": "task-voidfarer-quantum-messaging-crew-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 2/5] Branching message trees seeded with three multi-node trees, persist outcomes, follow-up branches, CLI/API/UI choices; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792499934.54708,
+      "timestamp_str": "2026-10-20 15:38:54"
+    },
+    {
+      "task_id": "task-voidfarer-quantum-messaging-crew-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 3/5] Dyson spheres, quantum relays, solar collectors, wormholes, quantum research projects, and themed galaxy objects; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792499934.709189,
+      "timestamp_str": "2026-10-20 15:38:54"
+    },
+    {
+      "task_id": "task-voidfarer-quantum-messaging-crew-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 4/5] Weapon variety (laser/kinetic/missile/plasma/ion/quantum/drone), combat integration, crew roles, recruiting, wages, morale, and procedural portraits; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792499934.8626404,
+      "timestamp_str": "2026-10-20 15:38:54"
+    },
+    {
+      "task_id": "task-voidfarer-quantum-messaging-crew-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 5/5] 01.01.3042 Quantum Age setting, README, ADR-028, G-010, 325 tests, and 4/4 Phase 4 gates; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792499935.037607,
+      "timestamp_str": "2026-10-20 15:38:55"
+    },
+    {
+      "task_id": "task-voidfarer-quantum-messaging-crew-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-quantum-messaging-crew-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792499941.2625186,
+      "timestamp_str": "2026-10-20 15:39:01"
+    },
+    {
+      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/5] Plan: resolution-adaptive cockpit UI and radar, new salvage/scoop/crew-drill mechanics, JS/engine bug fixes, docs and gates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792502107.7173023,
+      "timestamp_str": "2026-10-20 16:15:07",
+      "impact_assessment": {
+        "why": "User asked for a resolution-adaptive VoidFarer UI, more mechanics, and bug fixes/improvements.",
+        "benefits": "Cockpit stays usable from phone to 4K with DPR-crisp radar and touch input; three new risk/reward mechanics deepen exploration and crew play; polling/hotkey/resize bugs are fixed.",
+        "risks": "contract: G-001..G-010 layout rules and save compatibility must hold; dependency: stdlib and vanilla JS only; concurrency: engine lock and server ticker preserved; state: legacy saves need defaulted CelestialBody.salvage_claimed without RNG drift.",
+        "mitigation": "Add defaulted model fields, keep base CSS rules intact and append media queries, add failing-first tests before code, run the full suite plus aikit check."
+      }
+    },
+    {
+      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 2/5] Resolution-adaptive cockpit: density/scale settings, ultrawide/tablet/phone/short-height/reduced-motion/safe-area CSS, settings UI wiring; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792506133.8141296,
+      "timestamp_str": "2026-10-20 17:22:13"
+    },
+    {
+      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[milestone 3/5] DPR-correct radar backing store, ResizeObserver/rotation, touch pan and pinch zoom, hidden-tab RAF pause, single-flight polling, hotkey overlay/typing guards; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792506139.8219688,
+      "timestamp_str": "2026-10-20 17:22:19"
+    },
+    {
+      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 4/5] Derelict salvage, fuel scooping, crew training drills with exploration module, engine methods, CLI/REST/cockpit parity, and 17 new regression tests; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792506171.1809926,
+      "timestamp_str": "2026-10-20 17:22:51"
+    },
+    {
+      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[milestone 5/5] README, ADR-029, G-011/G-012, codebase map, 342-test suite and 4/4 Phase 4 gates; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792506187.9868574,
+      "timestamp_str": "2026-10-20 17:23:07"
+    },
+    {
+      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'task-voidfarer-adaptive-ui-salvage-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792506203.735764,
+      "timestamp_str": "2026-10-20 17:23:23"
     }
   ]
 }

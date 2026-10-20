@@ -237,6 +237,16 @@ class CockpitApp {
         this.activeRightTab = null; // null when collapsed, or "market", "arsenal", etc.
         this.selectedTarget = null; // CelestialBody or StarSystem
         this.selectedType = null; // 'body' or 'system'
+        this.refreshInFlight = false;
+        this.rafId = null;
+        this.dpr = 1;
+        this.viewW = 1280;
+        this.viewH = 720;
+        this.uiDensity = "auto";
+        this.uiScale = 1;
+        this.drawerUserToggled = false;
+        this.touchPan = null;
+        this.pinchStart = null;
 
         // Canvas radar state
         this.canvas = document.getElementById("radarCanvas");
@@ -258,13 +268,16 @@ class CockpitApp {
 
         this.initDOMElements();
         this.bindEvents();
+        this.applyViewportProfile();
         this.startAnimationLoop();
         this.refreshState();
         this.fetchGalaxy();
         this.fetchSaves();
 
         // Polling interval for live sync (1000ms for responsive tick progression)
-        setInterval(() => this.refreshState(true), 1000);
+        setInterval(() => {
+            if (!document.hidden) this.refreshState(true);
+        }, 1000);
     }
 
     initDOMElements() {
@@ -310,6 +323,9 @@ class CockpitApp {
         this.btnSublightTarget = document.getElementById("btnSublightTarget");
         this.btnQuantumTarget = document.getElementById("btnQuantumTarget");
         this.btnLandTarget = document.getElementById("btnLandTarget");
+        this.btnSalvageTarget = document.getElementById("btnSalvageTarget");
+        this.btnScoopFuel = document.getElementById("btnScoopFuel");
+        this.salvageInfo = document.getElementById("salvageInfo");
         this.btnJumpTarget = document.getElementById("btnJumpTarget");
         this.targetGravity = document.getElementById("targetGravity");
         this.targetAtmosphere = document.getElementById("targetAtmosphere");
@@ -392,9 +408,12 @@ class CockpitApp {
         this.panelLeft = document.getElementById("panelLeft");
         this.tabBtnMarket = document.getElementById("tabBtnMarket");
         this.tabBtnArsenal = document.getElementById("tabBtnArsenal");
+        this.tabBtnShipMods = document.getElementById("tabBtnShipMods");
         this.tabBtnFleet = document.getElementById("tabBtnFleet");
         this.tabBtnContracts = document.getElementById("tabBtnContracts");
         this.tabBtnMastery = document.getElementById("tabBtnMastery");
+        this.tabBtnCharacter = document.getElementById("tabBtnCharacter");
+        this.tabBtnEmpire = document.getElementById("tabBtnEmpire");
         this.tabBtnStory = document.getElementById("tabBtnStory");
         this.tabBtnFactions = document.getElementById("tabBtnFactions");
         this.tabBtnQuests = document.getElementById("tabBtnQuests");
@@ -407,9 +426,12 @@ class CockpitApp {
 
         this.tabContentMarket = document.getElementById("tabContentMarket");
         this.tabContentArsenal = document.getElementById("tabContentArsenal");
+        this.tabContentShipMods = document.getElementById("tabContentShipMods");
         this.tabContentFleet = document.getElementById("tabContentFleet");
         this.tabContentContracts = document.getElementById("tabContentContracts");
         this.tabContentMastery = document.getElementById("tabContentMastery");
+        this.tabContentCharacter = document.getElementById("tabContentCharacter");
+        this.tabContentEmpire = document.getElementById("tabContentEmpire");
         this.tabContentStory = document.getElementById("tabContentStory");
         this.tabContentFactions = document.getElementById("tabContentFactions");
         this.tabContentQuests = document.getElementById("tabContentQuests");
@@ -454,7 +476,30 @@ class CockpitApp {
 
         // Arsenal & Fleet containers
         this.arsenalList = document.getElementById("arsenalList");
+        this.shipModsList = document.getElementById("shipModsList");
+        this.shipModSlotGrid = document.getElementById("shipModSlotGrid");
         this.fleetRoster = document.getElementById("fleetRoster");
+        this.fleetShipRoster = document.getElementById("fleetShipRoster");
+        this.escortShopGrid = document.getElementById("escortShopGrid");
+        this.characterSummary = document.getElementById("characterSummary");
+        this.characterSkills = document.getElementById("characterSkills");
+        this.characterAbilities = document.getElementById("characterAbilities");
+        this.researchSummary = document.getElementById("researchSummary");
+        this.researchProjects = document.getElementById("researchProjects");
+        this.outpostSummary = document.getElementById("outpostSummary");
+        this.outpostList = document.getElementById("outpostList");
+        this.diplomacyList = document.getElementById("diplomacyList");
+        this.crewRoster = document.getElementById("crewRoster");
+
+        // Reactor simulation strip
+        this.reactorHeatFill = document.getElementById("reactorHeatFill");
+        this.reactorHeatLabel = document.getElementById("reactorHeatLabel");
+        this.reactorOutputLabel = document.getElementById("reactorOutputLabel");
+        this.reactorCoolingLabel = document.getElementById("reactorCoolingLabel");
+        this.reactorIntegrityLabel = document.getElementById("reactorIntegrityLabel");
+        this.reactorModeRow = document.getElementById("reactorModeRow");
+        this.btnVentReactor = document.getElementById("btnVentReactor");
+        this.sectorModsStrip = document.getElementById("sectorModsStrip");
         this.mercenaryRoster = document.getElementById("mercenaryRoster");
         this.btnHarvestFleet = document.getElementById("btnHarvestFleet");
 
@@ -551,9 +596,22 @@ class CockpitApp {
         // Right Deck Tabs
         this.tabBtnMarket.addEventListener("click", () => this.switchRightTab("market"));
         this.tabBtnArsenal.addEventListener("click", () => this.switchRightTab("arsenal"));
+        if (this.tabBtnShipMods) this.tabBtnShipMods.addEventListener("click", () => this.switchRightTab("shipmods"));
         this.tabBtnFleet.addEventListener("click", () => this.switchRightTab("fleet"));
+
+        // Reactor simulation controls
+        if (this.reactorModeRow) {
+            this.reactorModeRow.querySelectorAll(".reactor-mode-btn").forEach(btn => {
+                btn.addEventListener("click", () => this.handleReactorMode(btn.getAttribute("data-mode")));
+            });
+        }
+        if (this.btnVentReactor) {
+            this.btnVentReactor.addEventListener("click", () => this.handleReactorVent());
+        }
         this.tabBtnContracts.addEventListener("click", () => this.switchRightTab("contracts"));
         this.tabBtnMastery.addEventListener("click", () => this.switchRightTab("mastery"));
+        if (this.tabBtnCharacter) this.tabBtnCharacter.addEventListener("click", () => this.switchRightTab("character"));
+        if (this.tabBtnEmpire) this.tabBtnEmpire.addEventListener("click", () => this.switchRightTab("empire"));
         this.tabBtnStory.addEventListener("click", () => this.switchRightTab("story"));
         if (this.tabBtnFactions) {
             this.tabBtnFactions.addEventListener("click", () => this.switchRightTab("factions"));
@@ -591,6 +649,8 @@ class CockpitApp {
         });
         document.getElementById("btnSendMessage")?.addEventListener("click", () => this.handleSendMessage());
         this.btnLandTarget?.addEventListener("click", () => this.handleLandAction());
+        this.btnSalvageTarget?.addEventListener("click", () => this.handleSalvage());
+        this.btnScoopFuel?.addEventListener("click", () => this.handleScoop());
         document.getElementById("btnToggleGrid")?.addEventListener("click", () => {
             this.radarGrid = !this.radarGrid;
             this.saveSettings();
@@ -599,7 +659,7 @@ class CockpitApp {
             this.radarLabels = !this.radarLabels;
             this.saveSettings();
         });
-        ["settingSound", "settingGrid", "settingLabels", "settingAnimation", "settingStarDensity"].forEach(id => {
+        ["settingSound", "settingGrid", "settingLabels", "settingAnimation", "settingStarDensity", "settingDensity", "settingUiScale"].forEach(id => {
             document.getElementById(id)?.addEventListener("input", () => this.applySettingsFromUI());
         });
         this.btnSkipCadet.addEventListener("click", () => this.handleSkipCadet());
@@ -667,6 +727,45 @@ class CockpitApp {
             this.zoom = Math.max(0.4, Math.min(2.5, this.zoom + delta));
         }, { passive: false });
 
+        // Touch: one-finger pan and two-finger pinch zoom for tablets/phones.
+        this.canvas.addEventListener("touchstart", (e) => {
+            if (e.touches.length === 1) {
+                const point = this.pointerToCanvas(e.touches[0]);
+                this.touchPan = { x: point.x, y: point.y, panX: this.panX, panY: this.panY };
+                this.touchMoved = false;
+            } else if (e.touches.length === 2) {
+                const [a, b] = e.touches;
+                this.pinchStart = {
+                    distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+                    zoom: this.zoom,
+                };
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener("touchmove", (e) => {
+            if (e.touches.length === 1 && this.touchPan) {
+                e.preventDefault();
+                const point = this.pointerToCanvas(e.touches[0]);
+                this.panX = this.touchPan.panX + (point.x - this.touchPan.x);
+                this.panY = this.touchPan.panY + (point.y - this.touchPan.y);
+                this.touchMoved = true;
+            } else if (e.touches.length === 2 && this.pinchStart) {
+                e.preventDefault();
+                const [a, b] = e.touches;
+                const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+                if (this.pinchStart.distance > 8) {
+                    this.zoom = Math.max(0.4, Math.min(2.5, this.pinchStart.zoom * (distance / this.pinchStart.distance)));
+                }
+                this.touchMoved = true;
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener("touchend", () => {
+            if (this.touchMoved) this.suppressClick = true;
+            this.touchPan = null;
+            this.pinchStart = null;
+        });
+
         this.canvas.addEventListener("click", (e) => this.handleCanvasClick(e));
 
         // Clear Log
@@ -731,7 +830,15 @@ class CockpitApp {
                 this.toggleMainMenu();
                 return;
             }
-            if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
+            if (this.isTypingTarget(document.activeElement)) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            const menu = document.getElementById("mainMenuOverlay");
+            const settings = document.getElementById("settingsOverlay");
+            const perks = document.getElementById("perksOverlay");
+            const overlayOpen = (menu && !menu.classList.contains("hidden"))
+                || (settings && settings.style.display !== "none")
+                || (perks && perks.style.display !== "none");
+            if (overlayOpen) return;
             if (e.code === "Space") {
                 e.preventDefault();
                 this.handleToggleTimePause();
@@ -749,7 +856,53 @@ class CockpitApp {
         });
     }
 
+    isTypingTarget(element) {
+        if (!element) return false;
+        const tag = String(element.tagName || "").toUpperCase();
+        return element.isContentEditable === true
+            || ["INPUT", "TEXTAREA", "SELECT"].includes(tag);
+    }
+
+    applyViewportProfile() {
+        const width = window.innerWidth || 1280;
+        const height = window.innerHeight || 720;
+        const scalePercent = Math.max(85, Math.min(120, Number(this.uiScale || 1) * 100));
+        let density = this.uiDensity || "auto";
+        if (density === "auto") {
+            if (width < 760 || height < 720) density = "compact";
+            else if (width >= 2200) density = "comfortable";
+            else density = "standard";
+        }
+        document.documentElement.dataset.density = density;
+        document.documentElement.style.setProperty("--ui-scale", String(scalePercent / 100));
+        const readout = document.getElementById("viewportReadout");
+        if (readout) {
+            readout.textContent = `${width}x${height} @${(window.devicePixelRatio || 1).toFixed(1)}x // ${density.toUpperCase()}`;
+        }
+        if (!this.drawerUserToggled && this.panelLeft) {
+            const shouldCollapse = width < 980;
+            this.panelLeft.classList.toggle("drawer-collapsed", shouldCollapse);
+            if (shouldCollapse) {
+                this.activeRightTab = null;
+                this.panelLeft.querySelectorAll(".deck-tab-btn").forEach(btn => btn.classList.remove("active"));
+                this.panelLeft.querySelectorAll(".tab-content").forEach(content => { content.style.display = "none"; });
+            }
+        }
+        this.resizeRadarCanvas();
+    }
+
+    requestRadarResize() {
+        if (this.radarResizePending) return;
+        this.radarResizePending = true;
+        requestAnimationFrame(() => {
+            this.radarResizePending = false;
+            this.resizeRadarCanvas();
+            this.applyViewportProfile();
+        });
+    }
+
     switchRightTab(tabName) {
+        this.drawerUserToggled = true;
         this.sound.playBeep(750, 0.05);
         if (tabName === "mastery") {
             this.openPerksWindow();
@@ -757,15 +910,17 @@ class CockpitApp {
         }
 
         const tabButtons = {
-            market: this.tabBtnMarket, arsenal: this.tabBtnArsenal, fleet: this.tabBtnFleet,
+            market: this.tabBtnMarket, arsenal: this.tabBtnArsenal, shipmods: this.tabBtnShipMods, fleet: this.tabBtnFleet,
             contracts: this.tabBtnContracts, story: this.tabBtnStory, factions: this.tabBtnFactions,
             quests: this.tabBtnQuests, ai: this.tabBtnAI, depot: this.tabBtnDepot, messages: this.tabBtnMessages,
+            character: this.tabBtnCharacter, empire: this.tabBtnEmpire,
         };
 
         const tabContents = {
-            market: this.tabContentMarket, arsenal: this.tabContentArsenal, fleet: this.tabContentFleet,
+            market: this.tabContentMarket, arsenal: this.tabContentArsenal, shipmods: this.tabContentShipMods, fleet: this.tabContentFleet,
             contracts: this.tabContentContracts, story: this.tabContentStory, factions: this.tabContentFactions,
             quests: this.tabContentQuests, ai: this.tabContentAI, depot: this.tabContentDepot, messages: this.tabContentMessages,
+            character: this.tabContentCharacter, empire: this.tabContentEmpire,
         };
 
         // If clicking the already open tab, toggle the drawer closed
@@ -796,6 +951,9 @@ class CockpitApp {
 
         if (tabName === "market") this.renderMarketTable();
         if (tabName === "arsenal") this.renderArsenal();
+        if (tabName === "shipmods") this.renderShipMods();
+        if (tabName === "character") this.renderCharacter();
+        if (tabName === "empire") this.renderEmpire();
         if (tabName === "fleet") this.renderFleet();
         if (tabName === "contracts") this.renderContracts();
         if (tabName === "story") this.renderStory();
@@ -848,24 +1006,13 @@ class CockpitApp {
     }
 
     async refreshState(silent = false) {
+        if (this.refreshInFlight || document.hidden) return;
+        this.refreshInFlight = true;
         try {
             const res = await fetch("/api/state");
             const json = await res.json();
             if (json.ok && json.data) {
-                const prevTick = this.state?.time?.tick;
                 this.state = json.data;
-                const activeTravel = this.state.ship?.travel || this.state.travel || null;
-                if (activeTravel && !this.state.time?.is_paused && prevTick !== undefined && this.state.time?.tick === prevTick) {
-                    const stepRes = await fetch("/api/time/step", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ ticks: 1 })
-                    });
-                    const stepJson = await stepRes.json();
-                    if (stepJson.ok && stepJson.state) {
-                        this.state = stepJson.state;
-                    }
-                }
                 this.renderHUD();
                 if (!silent) {
                     this.appendLog(`Telemetry synchronized with ${this.state.current_system.name}.`);
@@ -873,6 +1020,8 @@ class CockpitApp {
             }
         } catch (e) {
             console.error("Error refreshing state:", e);
+        } finally {
+            this.refreshInFlight = false;
         }
     }
 
@@ -918,6 +1067,38 @@ class CockpitApp {
         this.cargoMeterFill.style.width = `${Math.min(100, Math.round((totalCargo / ship.cargo_capacity) * 100))}%`;
 
         this.syncPowerSlidersFromState();
+
+        // Reactor thermal telemetry
+        const reactor = this.state.reactor || {};
+        const heatPct = Math.max(0, Math.min(100, Number(reactor.heat_pct || 0)));
+        if (this.reactorHeatFill) {
+            this.reactorHeatFill.style.width = `${heatPct}%`;
+            this.reactorHeatFill.parentElement.parentElement.classList.toggle("reactor-critical", heatPct >= 85);
+        }
+        if (this.reactorHeatLabel) this.reactorHeatLabel.textContent = `${Math.round(reactor.heat || 0)} / ${Math.round(reactor.max_heat || 100)}`;
+        if (this.reactorOutputLabel) this.reactorOutputLabel.textContent = `${Math.round((reactor.efficiency || 1) * 100)}%`;
+        if (this.reactorCoolingLabel) this.reactorCoolingLabel.textContent = `${Number(reactor.cooling || 6).toFixed(1)}`;
+        if (this.reactorIntegrityLabel) this.reactorIntegrityLabel.textContent = `${Math.round(reactor.integrity || 100)}%`;
+        if (this.reactorModeRow) {
+            this.reactorModeRow.querySelectorAll(".reactor-mode-btn").forEach(btn => {
+                btn.classList.toggle("active", btn.getAttribute("data-mode") === (reactor.mode || "balanced"));
+            });
+        }
+        if (this.btnVentReactor) {
+            this.btnVentReactor.disabled = !(reactor.heat > 5);
+        }
+
+        // Sector map modifiers
+        if (this.sectorModsStrip) {
+            const mods = this.state.map_modifiers || [];
+            if (!mods.length) {
+                this.sectorModsStrip.innerHTML = `<span class="sector-mod-chip">STANDARD SPACE</span>`;
+            } else {
+                this.sectorModsStrip.innerHTML = mods.map(m =>
+                    `<span class="sector-mod-chip ${this.escapeHtml(m.category || "")}" title="${this.escapeHtml(m.description || "")}">${this.escapeHtml(m.name)}</span>`
+                ).join("");
+            }
+        }
 
         // Streak render
         const streak = ship.streak || 1;
@@ -1123,6 +1304,12 @@ class CockpitApp {
             }
         } else if (this.activeRightTab === "arsenal") {
             this.renderArsenal();
+        } else if (this.activeRightTab === "shipmods") {
+            this.renderShipMods();
+        } else if (this.activeRightTab === "character") {
+            this.renderCharacter();
+        } else if (this.activeRightTab === "empire") {
+            this.renderEmpire();
         } else if (this.activeRightTab === "fleet") {
             this.renderFleet();
         } else if (this.activeRightTab === "contracts") {
@@ -1380,8 +1567,249 @@ class CockpitApp {
         });
     }
 
+    renderShipMods() {
+        if (!this.state || !this.shipModsList) return;
+        const info = this.state.ship_mods || {};
+        const slots = info.slots || [];
+        const labels = info.slot_labels || {};
+        const installed = info.installed || {};
+        const catalog = info.catalog || [];
+        const docked = !!(this.state.orbiting_body && this.state.orbiting_body.station_dockable);
+        const credits = this.state.ship.credits;
+
+        if (this.shipModSlotGrid) {
+            this.shipModSlotGrid.innerHTML = "";
+            slots.forEach(slot => {
+                const modId = installed[slot];
+                const mod = catalog.find(m => m.id === modId);
+                const card = document.createElement("div");
+                card.className = `shipmod-slot ${mod ? "" : "empty"}`;
+                card.innerHTML = `
+                    <span class="slot-name">${this.escapeHtml(labels[slot] || slot).toUpperCase()}</span>
+                    <span class="slot-mod">${mod ? this.escapeHtml(mod.name) : "EMPTY SLOT"}</span>
+                    ${mod ? `<button class="btn-hud btn-amber mod-remove" data-slot="${this.escapeHtml(slot)}" ${docked ? "" : "disabled"}>REMOVE</button>` : ""}
+                `;
+                const removeBtn = card.querySelector(".mod-remove");
+                if (removeBtn) removeBtn.addEventListener("click", () => this.handleRemoveShipMod(slot));
+                this.shipModSlotGrid.appendChild(card);
+            });
+        }
+
+        this.shipModsList.innerHTML = "";
+        catalog.forEach(mod => {
+            const isInstalled = installed[mod.slot] === mod.id;
+            const slotBusy = installed[mod.slot] && installed[mod.slot] !== mod.id;
+            const card = document.createElement("div");
+            card.className = `shipmod-card ${isInstalled ? "installed" : ""}`;
+            const effects = Object.entries(mod.effects || {}).map(([key, value]) => {
+                const negative = value < 0;
+                return `<span class="shipmod-effect ${negative ? "negative" : ""}">${this.escapeHtml(this.formatEffectLabel(key, value))}</span>`;
+            }).join("");
+            card.innerHTML = `
+                <div class="shipmod-title-row">
+                    <strong class="shipmod-name">${this.escapeHtml(mod.name)}</strong>
+                    <button class="btn-upgrade-buy" ${isInstalled || slotBusy || !docked || credits < mod.cost ? "disabled" : ""} data-id="${this.escapeHtml(mod.id)}">
+                        ${isInstalled ? "INSTALLED" : (slotBusy ? "SLOT OCCUPIED" : `${mod.cost} CR`)}
+                    </button>
+                </div>
+                <p class="shipmod-desc">${this.escapeHtml(mod.description)}</p>
+                <div class="shipmod-effects">${effects}</div>
+            `;
+            if (!isInstalled && !slotBusy) {
+                card.querySelector(".btn-upgrade-buy").addEventListener("click", () => this.handleInstallShipMod(mod.id));
+            }
+            this.shipModsList.appendChild(card);
+        });
+        if (!docked) {
+            const notice = document.createElement("p");
+            notice.className = "panel-intro-text";
+            notice.style.color = "var(--neon-amber)";
+            notice.textContent = "Orbit a station or colony drydock to install or remove structural modifications.";
+            this.shipModsList.prepend(notice);
+        }
+    }
+
+    formatEffectLabel(key, value) {
+        const names = {
+            max_hull: "HULL", max_shield: "SHIELD", cargo_capacity: "CARGO", fuel_efficiency: "FUEL BURN",
+            reactor_output: "REACTOR OUTPUT", reactor_cooling: "COOLING", heat_capacity: "HEAT CAP",
+            heat_generation: "HEAT GEN", reactor_integrity: "CORE INTEGRITY", evasion: "EVASION",
+            combat_damage: "DAMAGE", scan_mult: "SCAN", relic_find: "RELIC", trade_margin: "TRADE",
+            drone_yield: "DRONE YIELD", pirate_evasion: "ECM",
+        };
+        const label = names[key] || key.replace(/_/g, " ").toUpperCase();
+        if (key === "fuel_efficiency") {
+            const pct = Math.round((value > 0 ? -value : -value) * 100);
+            return `${label} ${value > 0 ? "-" : "+"}${Math.abs(pct)}%`;
+        }
+        if (key === "scan_mult") return `${label} ${value >= 1 ? "+" : "-"}${Math.abs(Math.round((value - 1) * 100))}%`;
+        if (["evasion", "relic_find", "trade_margin", "drone_yield"].includes(key)) {
+            return `${label} ${value >= 0 ? "+" : ""}${Math.round(value * 100)}%`;
+        }
+        if (["reactor_output", "heat_generation"].includes(key)) {
+            return `${label} ${value >= 0 ? "+" : ""}${Math.round(value * 100)}%`;
+        }
+        return `${label} ${value >= 0 ? "+" : ""}${Math.round(value)}`;
+    }
+
+    renderCharacter() {
+        if (!this.state || !this.characterSummary) return;
+        const ch = this.state.character || {};
+        const skillPoints = ch.skill_points || 0;
+        this.characterSummary.innerHTML = `
+            <div class="commander-portrait">${this.portraitAvatar(ch.portrait, ch.name || "Commander")}</div>
+            <div>
+                <strong>${this.escapeHtml(ch.name || "Commander")}</strong><br>
+                Age ${ch.age || 31} | Level ${ch.level || 1} | XP ${ch.xp || 0}/${ch.next_level_xp || 400} | Skill points ${skillPoints}
+            </div>
+        `;
+        const skillNames = { piloting: "Piloting", engineering: "Engineering", science: "Science", combat: "Combat", diplomacy: "Diplomacy", trade: "Trade" };
+        this.characterSkills.innerHTML = Object.entries(ch.skills || {}).map(([id, level]) => `
+            <div class="skill-row">
+                <span>${this.escapeHtml(skillNames[id] || id)} <span class="rank">R${level}</span></span>
+                <button class="btn-hud" data-train-skill="${this.escapeHtml(id)}" ${skillPoints <= 0 ? "disabled" : ""}>TRAIN</button>
+            </div>
+        `).join("");
+        this.characterSkills.querySelectorAll("[data-train-skill]").forEach(btn =>
+            btn.addEventListener("click", () => this.postAction("/api/character/train", { skill: btn.getAttribute("data-train-skill") }, "character"))
+        );
+        const abilities = Object.entries(this.state.character_abilities || {});
+        const unlocked = new Set(ch.abilities || []);
+        const cooldowns = ch.ability_cooldowns || {};
+        this.characterAbilities.innerHTML = abilities.map(([id, info]) => {
+            const isUnlocked = unlocked.has(id);
+            const cd = cooldowns[id] || 0;
+            return `<div class="ability-row ${isUnlocked ? "" : "locked"}">
+                <span><strong>${this.escapeHtml(info.name)}</strong><br><small>${this.escapeHtml(info.description)}</small></span>
+                <span class="cooldown">${isUnlocked ? (cd > 0 ? `CD ${cd}` : "READY") : "LOCKED"}</span>
+                <button class="btn-hud btn-amber" data-use-ability="${this.escapeHtml(id)}" ${!isUnlocked || cd > 0 ? "disabled" : ""}>USE</button>
+            </div>`;
+        }).join("");
+        this.characterAbilities.querySelectorAll("[data-use-ability]").forEach(btn =>
+            btn.addEventListener("click", () => this.postAction("/api/character/ability", { ability_id: btn.getAttribute("data-use-ability") }, "character"))
+        );
+        if (this.crewRoster) {
+            const crew = this.state.crew || [];
+            this.crewRoster.innerHTML = crew.length ? crew.map(m => `
+                <div class="crew-row">
+                    <div class="crew-portrait">${this.portraitAvatar(m.portrait, m.name)}</div>
+                    <div><strong>${this.escapeHtml(m.name)}</strong><br><small>${this.escapeHtml(m.role)} | skill ${m.skill} | morale ${Math.round(m.morale)} | wage ${m.wage}</small></div>
+                    <button class="btn-hud btn-amber" data-train-crew="${this.escapeHtml(m.id)}" ${m.skill >= 10 ? "disabled" : ""}>DRILL</button>
+                    <button class="btn-hud" data-dismiss-crew="${this.escapeHtml(m.id)}">DISMISS</button>
+                </div>
+            `).join("") : `<p class="panel-intro-text">No crew aboard. Dock at a station and recruit specialists.</p>`;
+            this.crewRoster.querySelectorAll("[data-train-crew]").forEach(btn =>
+                btn.addEventListener("click", () => this.postAction("/api/crew/train", { crew_id: btn.getAttribute("data-train-crew") }, "character"))
+            );
+            this.crewRoster.querySelectorAll("[data-dismiss-crew]").forEach(btn =>
+                btn.addEventListener("click", () => this.postAction("/api/crew/dismiss", { crew_id: btn.getAttribute("data-dismiss-crew") }, "character"))
+            );
+        }
+    }
+
+    portraitAvatar(portraitId, name) {
+        const palette = ["#00f0ff", "#ffaa00", "#cc66ff", "#00ff99", "#ff6677", "#66aaff"];
+        const key = String(portraitId || name || "crew");
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
+        const color = palette[Math.abs(hash) % palette.length];
+        const initials = String(name || "?").split(/\s+/).map(p => p[0] || "").slice(0, 2).join("").toUpperCase();
+        return `<svg viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="${this.escapeHtml(name || "portrait")}">
+            <circle cx="20" cy="20" r="18" fill="rgba(0,0,0,.55)" stroke="${color}" stroke-width="1.5"></circle>
+            <circle cx="20" cy="15" r="6" fill="${color}" opacity="0.8"></circle>
+            <path d="M8 34 Q20 22 32 34" fill="none" stroke="${color}" stroke-width="2" opacity="0.7"></path>
+            <text x="20" y="26" text-anchor="middle" font-size="8" fill="#fff" font-family="monospace">${initials}</text>
+        </svg>`;
+    }
+
+    renderEmpire() {
+        if (!this.state || !this.researchSummary) return;
+        const research = this.state.research || {};
+        const active = research.active_project;
+        this.researchSummary.innerHTML = active
+            ? `<strong>${this.escapeHtml(active.name)}</strong> — ${research.progress || 0}/${active.cost} points<br>Banked: ${research.points || 0}`
+            : `No active project. Banked points: ${research.points || 0}`;
+        this.researchProjects.innerHTML = (research.available || []).map(p => `
+            <div class="research-row">
+                <span>${this.escapeHtml(p.name)}<br><small>${this.escapeHtml(p.description)}</small></span>
+                <span>${p.cost} pts</span>
+                <button class="btn-hud" data-research="${this.escapeHtml(p.id)}">START</button>
+            </div>
+        `).join("");
+        this.researchProjects.querySelectorAll("[data-research]").forEach(btn =>
+            btn.addEventListener("click", () => this.postAction("/api/research/start", { project_id: btn.getAttribute("data-research") }, "empire"))
+        );
+
+        const outposts = this.state.outposts || [];
+        this.outpostSummary.textContent = outposts.length
+            ? `${outposts.length} outpost(s) producing each tick.`
+            : "No outposts founded. Orbit a body and use the outpost build API/CLI.";
+        this.outpostList.innerHTML = outposts.map(o => `
+            <div class="outpost-row"><span>${this.escapeHtml(o.name)} — LVL ${o.level} — POP ${Number(o.population).toLocaleString()}</span>
+            <button class="btn-hud btn-amber" data-outpost-upgrade="${this.escapeHtml(o.id)}">UPGRADE</button></div>
+        `).join("");
+        this.outpostList.querySelectorAll("[data-outpost-upgrade]").forEach(btn =>
+            btn.addEventListener("click", () => this.postAction("/api/outpost/upgrade", { outpost_id: btn.getAttribute("data-outpost-upgrade") }, "empire"))
+        );
+
+        const leaders = this.state.faction_leaders || [];
+        const wars = this.state.wars || [];
+        const standings = this.state.ship.faction_standings || {};
+        const eliminated = new Set(this.state.eliminated_factions || []);
+        this.diplomacyList.innerHTML = leaders.map(l => {
+            const atWar = wars.some(w => w.active && (w.defender_id === l.faction_id || w.attacker_id === l.faction_id));
+            return `<div class="diplomacy-row ${eliminated.has(l.faction_id) ? "eliminated" : ""}">
+                <span><strong>${this.escapeHtml(l.name)}</strong> (${this.escapeHtml(l.faction_id)})<br>
+                <small>${this.escapeHtml(l.title)} — <span class="leader-behavior">${this.escapeHtml(l.behavior)}</span></small></span>
+                <span>standing ${standings[l.faction_id] || 0}${atWar ? " | WAR" : ""}</span>
+                <button class="btn-hud" data-diplo="${this.escapeHtml(l.faction_id)}">IMPROVE</button>
+            </div>`;
+        }).join("");
+        this.diplomacyList.querySelectorAll("[data-diplo]").forEach(btn =>
+            btn.addEventListener("click", () => this.postAction("/api/diplomacy", { faction_id: btn.getAttribute("data-diplo"), action: "improve", amount: 0 }, "empire"))
+        );
+    }
+
+    renderFleetManager() {
+        if (!this.state || !this.fleetShipRoster) return;
+        const fleet = this.state.fleet_manager || {};
+        const ships = fleet.ships || this.state.ship.fleet_ships || [];
+        if (!ships.length) {
+            this.fleetShipRoster.innerHTML = `<p class="panel-intro-text">No escort warships. Commission one below at a drydock.</p>`;
+        } else {
+            this.fleetShipRoster.innerHTML = ships.map(ship => `
+                <div class="fleet-ship-card">
+                    <div><strong>${this.escapeHtml(ship.name)}</strong> <span class="ship-role">${this.escapeHtml(ship.role.toUpperCase())}</span></div>
+                    <div>HULL ${ship.hull}/${ship.max_hull} | SHIELD ${ship.shield}/${ship.max_shield} | DMG ${ship.damage} | ${this.escapeHtml(ship.status)}</div>
+                    <div class="ship-actions">
+                        <button class="btn-hud btn-amber" data-escort-repair="${this.escapeHtml(ship.id)}">REPAIR</button>
+                        <button class="btn-hud" data-escort-dismiss="${this.escapeHtml(ship.id)}">DISMISS</button>
+                    </div>
+                </div>
+            `).join("");
+            this.fleetShipRoster.querySelectorAll("[data-escort-repair]").forEach(btn =>
+                btn.addEventListener("click", () => this.postAction("/api/fleet/escort/repair", { amount: 60 }, "fleet"))
+            );
+            this.fleetShipRoster.querySelectorAll("[data-escort-dismiss]").forEach(btn =>
+                btn.addEventListener("click", () => this.postAction("/api/fleet/escort/dismiss", { ship_id: btn.getAttribute("data-escort-dismiss") }, "fleet"))
+            );
+        }
+        const catalog = fleet.catalog || {};
+        if (this.escortShopGrid) {
+            this.escortShopGrid.innerHTML = Object.entries(catalog).map(([id, template]) => `
+                <button class="btn-hud btn-amber" data-escort-buy="${this.escapeHtml(id)}" title="${this.escapeHtml(template.description)}">
+                    ${this.escapeHtml(template.name)} // ${template.cost} CR
+                </button>
+            `).join("");
+            this.escortShopGrid.querySelectorAll("[data-escort-buy]").forEach(btn =>
+                btn.addEventListener("click", () => this.postAction("/api/fleet/escort/buy", { escort_type: btn.getAttribute("data-escort-buy") }, "fleet"))
+            );
+        }
+    }
+
     renderFleet() {
         if (!this.state) return;
+        this.renderFleetManager();
         this.fleetRoster.innerHTML = "";
         const drones = this.state.ship.fleet_drones || [];
 
@@ -1655,6 +2083,94 @@ class CockpitApp {
             }
         } catch (e) {
             this.appendLog(`[ERROR] Upgrade install failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleInstallShipMod(modId) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/shipmods/install", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mod_id: modId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Ship modification failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleRemoveShipMod(slot) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/shipmods/remove", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slot })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Ship modification removal failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleReactorMode(mode) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/reactor/mode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.appendLog(json.message);
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Reactor mode change failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleReactorVent() {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/reactor/vent", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({})
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+            if (json.state) {
+                this.state = json.state;
+                this.renderHUD();
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Coolant purge failed: ${e.message}`, "hazard");
         }
     }
 
@@ -1995,6 +2511,9 @@ class CockpitApp {
             }
             this.btnJumpTarget.style.display = "none";
             if (this.btnLandTarget) this.btnLandTarget.style.display = "none";
+            if (this.btnSalvageTarget) this.btnSalvageTarget.style.display = "none";
+            if (this.btnScoopFuel) this.btnScoopFuel.style.display = "none";
+            if (this.salvageInfo) this.salvageInfo.style.display = "none";
             this.targetGravity.textContent = "--";
             this.targetAtmosphere.textContent = "--";
             this.targetTemp.textContent = "--";
@@ -2073,6 +2592,27 @@ class CockpitApp {
                 this.btnLandTarget.disabled = !canLand;
                 this.btnLandTarget.textContent = this.state.ship.landed_body_id === b.id ? "LANDED" : "LAND ON SURFACE";
             }
+            const salvage = inOrbitHere ? this.state.salvage_site : null;
+            if (this.btnSalvageTarget) {
+                this.btnSalvageTarget.style.display = salvage ? "inline-block" : "none";
+                this.btnSalvageTarget.disabled = !salvage;
+                this.btnSalvageTarget.textContent = salvage ? "BOARD DERELICT" : "NO DERELICT";
+            }
+            if (this.salvageInfo) {
+                if (salvage) {
+                    const risk = Math.max(5, Math.round((salvage.danger || 0) * 100));
+                    this.salvageInfo.style.display = "block";
+                    this.salvageInfo.textContent = `DERELICT: ${salvage.name} // RISK ~${risk}% // REWARD ${salvage.credits} CR + ${salvage.cargo_quantity}x ${salvage.cargo_item}`;
+                } else {
+                    this.salvageInfo.style.display = "none";
+                }
+            }
+            const scoop = inOrbitHere && this.state.scoop && this.state.scoop.available ? this.state.scoop : null;
+            if (this.btnScoopFuel) {
+                this.btnScoopFuel.style.display = scoop ? "inline-block" : "none";
+                this.btnScoopFuel.disabled = !scoop;
+                this.btnScoopFuel.textContent = scoop ? "SCOOP FUEL" : "TANKS FULL";
+            }
         } else if (this.selectedType === "system") {
             const fresh = this.galaxySystems[this.selectedTarget.id];
             if (!fresh) {
@@ -2098,6 +2638,9 @@ class CockpitApp {
             if (this.targetGovernment) this.targetGovernment.textContent = "--";
             this.targetResources.innerHTML = "";
             if (this.btnLandTarget) this.btnLandTarget.style.display = "none";
+            if (this.btnSalvageTarget) this.btnSalvageTarget.style.display = "none";
+            if (this.btnScoopFuel) this.btnScoopFuel.style.display = "none";
+            if (this.salvageInfo) this.salvageInfo.style.display = "none";
             if (this.btnSublightTarget) this.btnSublightTarget.style.display = "none";
             if (this.btnQuantumTarget) this.btnQuantumTarget.style.display = "none";
             this.btnOrbitTarget.style.display = "none";
@@ -2111,38 +2654,70 @@ class CockpitApp {
 
     resizeRadarCanvas() {
         if (!this.canvas) return;
-        const w = Math.max(560, window.innerWidth || 1280);
-        const h = Math.max(420, window.innerHeight || 720);
-        if (this.canvas.width !== w || this.canvas.height !== h) {
-            this.canvas.width = w;
-            this.canvas.height = h;
+        const rect = this.canvas.getBoundingClientRect();
+        const width = Math.max(320, Math.round(rect.width || window.innerWidth || 1280));
+        const height = Math.max(240, Math.round(rect.height || window.innerHeight || 720));
+        const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+        const backingWidth = Math.round(width * dpr);
+        const backingHeight = Math.round(height * dpr);
+        if (this.canvas.width !== backingWidth || this.canvas.height !== backingHeight) {
+            this.canvas.width = backingWidth;
+            this.canvas.height = backingHeight;
         }
+        this.dpr = dpr;
+        this.viewW = width;
+        this.viewH = height;
     }
 
     pointerToCanvas(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / Math.max(1, rect.width);
-        const scaleY = this.canvas.height / Math.max(1, rect.height);
+        const dpr = this.dpr || 1;
+        const scaleX = (this.canvas.width / Math.max(1, rect.width)) / dpr;
+        const scaleY = (this.canvas.height / Math.max(1, rect.height)) / dpr;
         return {
             x: (e.clientX - rect.left) * scaleX,
             y: (e.clientY - rect.top) * scaleY,
         };
     }
 
-    startAnimationLoop() {
-        this.resizeRadarCanvas();
-        window.addEventListener("resize", () => this.resizeRadarCanvas());
+    radarScale() {
+        return Math.max(0.55, Math.min(2.4, Math.min(this.viewW, this.viewH) / 820));
+    }
+
+    startRenderLoop() {
+        if (this.rafId !== null) return;
         const render = () => {
             this.drawRadar();
-            requestAnimationFrame(render);
+            this.rafId = requestAnimationFrame(render);
         };
-        requestAnimationFrame(render);
+        this.rafId = requestAnimationFrame(render);
+    }
+
+    startAnimationLoop() {
+        this.resizeRadarCanvas();
+        window.addEventListener("resize", () => this.requestRadarResize());
+        window.addEventListener("orientationchange", () => this.requestRadarResize());
+        if (typeof ResizeObserver !== "undefined") {
+            this.resizeObserver = new ResizeObserver(() => this.requestRadarResize());
+            this.resizeObserver.observe(document.getElementById("radarBackgroundLayer") || this.canvas);
+        }
+        window.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+                this.rafId = null;
+            } else {
+                this.startRenderLoop();
+                this.refreshState(true);
+            }
+        });
+        this.startRenderLoop();
     }
 
     drawRadar() {
         const ctx = this.ctx;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
+        const w = this.viewW;
+        const h = this.viewH;
+        ctx.setTransform(this.dpr || 1, 0, 0, this.dpr || 1, 0, 0);
         ctx.clearRect(0, 0, w, h);
 
         const cx = w / 2 + this.panX;
@@ -2174,21 +2749,21 @@ class CockpitApp {
         const ship = this.state.ship;
         const now = Date.now() * 0.001;
 
-        const auScale = 45 * this.zoom;
+        const auScale = 45 * this.zoom * this.radarScale();
 
         if (this.radarGrid) {
             ctx.strokeStyle = "rgba(0, 240, 255, 0.06)";
             ctx.lineWidth = 1;
-            for (let radius = 60; radius < Math.max(this.canvas.width, this.canvas.height); radius += 60) {
+            for (let radius = 60; radius < Math.max(this.viewW, this.viewH); radius += 60) {
                 ctx.beginPath();
                 ctx.arc(cx, cy, radius, 0, Math.PI * 2);
                 ctx.stroke();
             }
-            for (let x = 0; x < this.canvas.width; x += 60) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, this.canvas.height); ctx.stroke();
+            for (let x = 0; x < this.viewW; x += 60) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, this.viewH); ctx.stroke();
             }
-            for (let y = 0; y < this.canvas.height; y += 60) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(this.canvas.width, y); ctx.stroke();
+            for (let y = 0; y < this.viewH; y += 60) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(this.viewW, y); ctx.stroke();
             }
         }
 
@@ -2212,13 +2787,16 @@ class CockpitApp {
                 return;
             }
 
-            // Orbital Ring
+            // Orbital Ring: fade progressively into the black void at the edge of sensor range.
             const orbitR = b.orbit_radius * auScale;
+            const fadeOuter = Math.max(this.viewW, this.viewH) * 0.72;
+            if (orbitR > fadeOuter * 1.45) return;
+            const orbitFade = Math.max(0.012, 0.16 * (1.0 - Math.pow(orbitR / Math.max(1, fadeOuter), 1.35)));
             ctx.beginPath();
             ctx.arc(cx, cy, orbitR, 0, Math.PI * 2);
-            ctx.strokeStyle = (this.selectedTarget && this.selectedTarget.id === b.id) 
-                ? "rgba(0, 240, 255, 0.5)" 
-                : "rgba(0, 240, 255, 0.12)";
+            ctx.strokeStyle = (this.selectedTarget && this.selectedTarget.id === b.id)
+                ? `rgba(0, 240, 255, ${Math.min(0.85, orbitFade * 4.0).toFixed(3)})`
+                : `rgba(0, 240, 255, ${orbitFade.toFixed(3)})`;
             ctx.lineWidth = 1;
             ctx.setLineDash([4, 4]);
             ctx.stroke();
@@ -2238,6 +2816,25 @@ class CockpitApp {
             ctx.shadowBlur = 8;
             ctx.fill();
             ctx.shadowBlur = 0;
+
+            if (b.body_type === "black_hole") {
+                ctx.beginPath();
+                ctx.arc(bx, by, bodyRadius * 2.2, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(255,170,0,0.55)";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(bx, by, bodyRadius * 3.0, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(180,80,255,0.25)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            } else if (b.body_type === "ring_world") {
+                ctx.beginPath();
+                ctx.ellipse(bx, by, bodyRadius * 2.5, bodyRadius * 0.6, 0.35, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(199,125,255,0.65)";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
 
             if (this.selectedTarget && this.selectedTarget.id === b.id) {
                 ctx.strokeStyle = "#00f0ff";
@@ -2273,7 +2870,7 @@ class CockpitApp {
         const systems = Object.values(this.galaxySystems);
         if (!systems.length) return;
 
-        const scale = 2.8 * this.zoom;
+        const scale = 2.8 * this.zoom * this.radarScale();
 
         ctx.strokeStyle = "rgba(0, 240, 255, 0.25)";
         ctx.lineWidth = 1;
@@ -2338,13 +2935,13 @@ class CockpitApp {
         const point = this.pointerToCanvas(e);
         const mx = point.x;
         const my = point.y;
-        const cx = this.canvas.width / 2 + this.panX;
-        const cy = this.canvas.height / 2 + this.panY;
+        const cx = this.viewW / 2 + this.panX;
+        const cy = this.viewH / 2 + this.panY;
 
         let hit = null;
 
         if (this.viewMode === "ORBITS" && this.state) {
-            const auScale = 45 * this.zoom;
+            const auScale = 45 * this.zoom * this.radarScale();
             for (const b of this.state.current_system.bodies) {
                 if (b.body_type === "star") continue;
                 const orbitR = b.orbit_radius * auScale;
@@ -2358,7 +2955,7 @@ class CockpitApp {
                 }
             }
         } else if (this.viewMode === "GALAXY") {
-            const scale = 2.8 * this.zoom;
+            const scale = 2.8 * this.zoom * this.radarScale();
             for (const s of Object.values(this.galaxySystems)) {
                 const sx = cx + s.x * scale;
                 const sy = cy + s.y * scale;
@@ -2382,11 +2979,11 @@ class CockpitApp {
         const point = this.pointerToCanvas(e);
         const mx = point.x;
         const my = point.y;
-        const cx = this.canvas.width / 2 + this.panX;
-        const cy = this.canvas.height / 2 + this.panY;
+        const cx = this.viewW / 2 + this.panX;
+        const cy = this.viewH / 2 + this.panY;
 
         if (this.viewMode === "ORBITS" && this.state) {
-            const auScale = 45 * this.zoom;
+            const auScale = 45 * this.zoom * this.radarScale();
             for (const b of this.state.current_system.bodies) {
                 if (b.body_type === "star") continue;
                 const orbitR = b.orbit_radius * auScale;
@@ -2402,7 +2999,7 @@ class CockpitApp {
                 }
             }
         } else if (this.viewMode === "GALAXY") {
-            const scale = 2.8 * this.zoom;
+            const scale = 2.8 * this.zoom * this.radarScale();
             for (const s of Object.values(this.galaxySystems)) {
                 const sx = cx + s.x * scale;
                 const sy = cy + s.y * scale;
@@ -2483,6 +3080,8 @@ class CockpitApp {
             this.radarLabels = saved.radarLabels !== false;
             this.travelAnimationEnabled = saved.travelAnimation !== false;
             this.starDensity = Number(saved.starDensity || 140);
+            this.uiDensity = saved.uiDensity || "auto";
+            this.uiScale = Number(saved.uiScale || 1);
             if (saved.sound === false) {
                 this.sound.enabled = false;
                 const audioIcon = document.getElementById("audioIcon");
@@ -2493,6 +3092,8 @@ class CockpitApp {
             this.radarLabels = true;
             this.travelAnimationEnabled = true;
             this.starDensity = 140;
+            this.uiDensity = "auto";
+            this.uiScale = 1;
         }
     }
 
@@ -2503,6 +3104,8 @@ class CockpitApp {
             radarLabels: this.radarLabels,
             travelAnimation: this.travelAnimationEnabled,
             starDensity: this.starDensity,
+            uiDensity: this.uiDensity,
+            uiScale: this.uiScale,
         };
         try { localStorage.setItem("voidfarer_settings", JSON.stringify(payload)); } catch (e) {}
     }
@@ -2513,8 +3116,11 @@ class CockpitApp {
         this.radarLabels = document.getElementById("settingLabels")?.checked !== false;
         this.travelAnimationEnabled = document.getElementById("settingAnimation")?.checked !== false;
         this.starDensity = Number(document.getElementById("settingStarDensity")?.value || 140);
+        this.uiDensity = document.getElementById("settingDensity")?.value || "auto";
+        this.uiScale = Number(document.getElementById("settingUiScale")?.value || 100) / 100;
         const audioIcon = document.getElementById("audioIcon");
         if (audioIcon) audioIcon.textContent = this.sound.enabled ? "SFX" : "MUTED";
+        this.applyViewportProfile();
         this.saveSettings();
     }
 
@@ -2524,11 +3130,16 @@ class CockpitApp {
         const labels = document.getElementById("settingLabels");
         const animation = document.getElementById("settingAnimation");
         const density = document.getElementById("settingStarDensity");
+        const uiDensity = document.getElementById("settingDensity");
+        const uiScale = document.getElementById("settingUiScale");
         if (sound) sound.checked = this.sound.enabled;
         if (grid) grid.checked = this.radarGrid;
         if (labels) labels.checked = this.radarLabels;
         if (animation) animation.checked = this.travelAnimationEnabled;
         if (density) density.value = this.starDensity;
+        if (uiDensity) uiDensity.value = this.uiDensity;
+        if (uiScale) uiScale.value = Math.round((this.uiScale || 1) * 100);
+        this.applyViewportProfile();
         const overlay = document.getElementById("settingsOverlay");
         if (overlay) overlay.style.display = "flex";
     }
@@ -2820,16 +3431,33 @@ class CockpitApp {
     renderMessages() {
         if (!this.state || !this.messageList) return;
         const messages = this.state.messages || [];
-        this.messageList.innerHTML = messages.slice().reverse().map(m => `
-            <div class="message-card ${m.read ? "" : "unread"}">
-                <h4>${this.escapeHtml(m.subject)}</h4>
-                <div>FROM: ${this.escapeHtml(m.sender)} // TO: ${this.escapeHtml(m.recipient)} // TICK ${m.tick}</div>
-                <div>${this.escapeHtml(m.body)}</div>
-                ${m.read ? "" : `<button class="btn-hud" data-message="${this.escapeHtml(m.id)}">MARK READ</button>`}
-            </div>
-        `).join("") || '<div class="message-card">Inbox is empty.</div>';
+        this.messageList.innerHTML = messages.slice().reverse().map(m => {
+            const choices = (m.choices || []).map(choice => `
+                <button class="message-choice-btn" data-msg-choice="${this.escapeHtml(choice.id)}" data-msg-id="${this.escapeHtml(m.id)}"
+                    ${m.resolved_choice ? "disabled" : ""}>
+                    <strong>${this.escapeHtml(choice.label)}</strong>
+                    <span>${this.escapeHtml(choice.description || "")}</span>
+                </button>
+            `).join("");
+            return `
+                <div class="message-card ${m.read ? "" : "unread"}">
+                    <h4>${this.escapeHtml(m.subject)}</h4>
+                    <div>FROM: ${this.escapeHtml(m.sender)} // TO: ${this.escapeHtml(m.recipient)} // TICK ${m.tick}
+                        ${m.tree_id ? ` // TREE ${this.escapeHtml(m.tree_id)}` : ""}${m.resolved_choice ? ` // RESOLVED: ${this.escapeHtml(m.resolved_choice)}` : ""}</div>
+                    <div>${this.escapeHtml(m.body)}</div>
+                    ${choices ? `<div class="message-choices">${choices}</div>` : ""}
+                    ${m.read ? "" : `<button class="btn-hud" data-message="${this.escapeHtml(m.id)}">MARK READ</button>`}
+                </div>
+            `;
+        }).join("") || '<div class="message-card">Inbox is empty.</div>';
         this.messageList.querySelectorAll("[data-message]").forEach(btn => {
             btn.addEventListener("click", () => this.postAction("/api/messages/read", { message_id: btn.getAttribute("data-message") }, "messages"));
+        });
+        this.messageList.querySelectorAll("[data-msg-choice]").forEach(btn => {
+            btn.addEventListener("click", () => this.postAction("/api/messages/choose", {
+                message_id: btn.getAttribute("data-msg-id"),
+                choice_id: btn.getAttribute("data-msg-choice"),
+            }, "messages"));
         });
         const unread = messages.filter(m => !m.read).length;
         if (this.messagesBadge) {
@@ -2852,6 +3480,24 @@ class CockpitApp {
     async handleLandAction() {
         if (!this.selectedTarget || this.selectedType !== "body") return;
         await this.postAction("/api/land", { target: this.selectedTarget.id });
+    }
+
+    async handleSalvage() {
+        this.sound.init();
+        const res = await this.postAction("/api/salvage", {});
+        if (res && res.ok) {
+            this.sound.playBountyChime();
+            this.updateTargetCard();
+        }
+    }
+
+    async handleScoop() {
+        this.sound.init();
+        const res = await this.postAction("/api/scoop", {});
+        if (res && res.ok) {
+            this.sound.playBeep(620, 0.18, "sawtooth");
+            this.updateTargetCard();
+        }
     }
 
     async handleTravelAction(mode = "sublight") {

@@ -19,6 +19,7 @@ from voidfarer.economy import get_galactic_trade_routes
 from voidfarer.engine import SimulationEngine
 from voidfarer.frontier import MERCENARY_CATALOG
 from voidfarer.inventory import get_inventory_manifest
+from voidfarer.mapmods import MAP_MODIFIER_CATALOG, aggregate_map_modifiers, system_modifier_summary
 from voidfarer.storage import StorageManager, resolve_slot_name
 from voidfarer.upgrades import (
     CATALOG_CHASSIS,
@@ -172,6 +173,70 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             with self.engine.lock:
                 time_data = self.engine.state.time.to_dict()
             self._send_json({"ok": True, "time": time_data})
+            return
+
+        if path == "/api/reactor":
+            report = self.engine.get_reactor_report()
+            self._send_json({"ok": True, "reactor": report, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/mapmods":
+            with self.engine.lock:
+                system = self.engine.current_system
+                payload = {
+                    "system_id": system.id,
+                    "system_name": system.name,
+                    "modifiers": system_modifier_summary(system),
+                    "effects": aggregate_map_modifiers(system),
+                    "catalog": [m.to_dict() for m in MAP_MODIFIER_CATALOG],
+                }
+            self._send_json({"ok": True, **payload})
+            return
+
+        if path == "/api/shipmods":
+            report = self.engine.get_ship_mod_report()
+            self._send_json({"ok": True, "ship_mods": report, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/crew":
+            self._send_json({"ok": True, "crew": self.engine.get_crew_report(), "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/weapons":
+            self._send_json({"ok": True, "weapons": self.engine.get_weapon_report(), "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/messages/trees":
+            self._send_json({"ok": True, "trees": self.engine.get_message_tree_report()})
+            return
+
+        if path == "/api/simulation":
+            report = self.engine.get_simulation_report()
+            self._send_json({"ok": True, "simulation": report, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/character":
+            self._send_json({"ok": True, "character": self.engine.get_character_report(), "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/research":
+            self._send_json({"ok": True, "research": self.engine.get_research_report(), "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/outposts":
+            self._send_json({"ok": True, "outposts": self.engine.get_outpost_report(), "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/diplomacy":
+            with self.engine.lock:
+                leaders = [leader.to_dict() for leader in self.engine.state.faction_leaders]
+                wars = [war.to_dict() for war in self.engine.state.wars]
+                eliminated = list(self.engine.state.eliminated_factions)
+            self._send_json({"ok": True, "leaders": leaders, "wars": wars, "eliminated": eliminated})
+            return
+
+        if path == "/api/fleet/ships":
+            self._send_json({"ok": True, "fleet": self.engine.get_fleet_manager_report(), "state": self.engine.get_status_snapshot()})
             return
 
         if path == "/api/economy":
@@ -373,6 +438,45 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/messages/choose":
+            ok, msg = self.engine.resolve_message_choice(
+                str(body.get("message_id", "")),
+                str(body.get("choice_id", "")),
+            )
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/crew/recruit":
+            ok, msg = self.engine.recruit_crew(str(body.get("role_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/crew/train":
+            ok, msg = self.engine.train_crew_member(str(body.get("crew_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/crew/dismiss":
+            ok, msg = self.engine.dismiss_crew(str(body.get("crew_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/weapons/install":
+            ok, msg = self.engine.install_weapon(str(body.get("weapon_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/weapons/set":
+            ok, msg = self.engine.set_primary_weapon(str(body.get("weapon_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/messages/read":
             message_id = str(body.get("message_id", ""))
             ok, msg = self.engine.mark_message_read(message_id)
@@ -458,12 +562,138 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "discovery": info, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/salvage":
+            ok, msg, report = self.engine.salvage_derelict()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "report": report, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/scoop":
+            ok, msg = self.engine.scoop_fuel()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/power":
             eng = _int_field(body, "engines", 25, minimum=0)
             shd = _int_field(body, "shields", 25, minimum=0)
             sen = _int_field(body, "sensors", 25, minimum=0)
             wep = _int_field(body, "weapons", 25, minimum=0)
             ok, msg = self.engine.route_power(eng, shd, sen, wep)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/reactor/mode":
+            mode = str(body.get("mode", ""))
+            ok, msg = self.engine.set_reactor_mode(mode)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/reactor/vent":
+            ok, msg = self.engine.vent_reactor_coolant()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/reactor/repair":
+            ok, msg = self.engine.repair_reactor()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/shipmods/install":
+            mod_id = str(body.get("mod_id", ""))
+            ok, msg = self.engine.install_ship_mod(mod_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/shipmods/remove":
+            slot = str(body.get("slot", ""))
+            ok, msg = self.engine.remove_ship_mod(slot)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/character/train":
+            ok, msg = self.engine.train_character_skill(str(body.get("skill", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/character/ability":
+            ok, msg = self.engine.use_character_ability(
+                str(body.get("ability_id", "")),
+                str(body["faction_id"]) if body.get("faction_id") else None,
+            )
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/research/start":
+            ok, msg = self.engine.choose_research(str(body.get("project_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/outpost/build":
+            ok, msg = self.engine.build_outpost(str(body.get("body_id", "")), str(body.get("outpost_type", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/outpost/upgrade":
+            ok, msg = self.engine.upgrade_outpost(str(body.get("outpost_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/diplomacy":
+            ok, msg = self.engine.faction_diplomacy(
+                str(body.get("faction_id", "")),
+                str(body.get("action", "improve")),
+                _int_field(body, "amount", 0, minimum=0),
+            )
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/fleet/escort/buy":
+            ok, msg = self.engine.buy_escort(
+                str(body.get("escort_type", "corvette")),
+                str(body["system_id"]) if body.get("system_id") else None,
+            )
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/fleet/escort/assign":
+            ok, msg = self.engine.assign_escort(str(body.get("ship_id", "")), str(body.get("system_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/fleet/escort/repair":
+            ok, msg = self.engine.repair_escorts(_int_field(body, "amount", 60, minimum=1))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/fleet/escort/dismiss":
+            ok, msg = self.engine.dismiss_escort(str(body.get("ship_id", "")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/route":
+            plan = self.engine.plan_route(str(body.get("system_id", "")))
+            self._send_json({"ok": plan["reachable"], "route": plan})
+            return
+
+        if path == "/api/navigate":
+            ok, msg = self.engine.navigate_to(str(body.get("system_id", "")))
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
@@ -528,6 +758,12 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             ok, msg, info = self.engine.collect_drone_yield(drone_id)
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "yield": info, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/combat/stance":
+            ok, msg = self.engine.set_battle_stance(str(body.get("stance", "balanced")))
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
         if path == "/api/combat":

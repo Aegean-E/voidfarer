@@ -7,6 +7,7 @@ import random
 from dataclasses import replace
 from typing import Sequence
 
+from voidfarer.mapmods import generate_map_modifiers
 from voidfarer.models import (
     AnomalyChoice,
     AnomalyEncounter,
@@ -221,6 +222,12 @@ SCIENTIFIC_ATMO_MAP: dict[str, str] = {
     "asteroid_belt": "Vacuum (0 atm)",
     "orbital_station": "Regulated N2 79%, O2 21% (1.0 atm)",
     "research_outpost": "Regulated N2 78%, O2 21% (0.95 atm)",
+    "ring_world": "Regulated N2 78%, O2 21% (1.0 atm, megastructure)",
+    "dyson_sphere": "Engineered stellar atmosphere / collected flux",
+    "quantum_relay": "Regulated N2 79%, O2 21% (station habitat)",
+    "solar_collector": "Vacuum / photovoltaic lattice",
+    "wormhole": "Exotic spacetime throat (no atmosphere)",
+    "black_hole": "Event Horizon / Vacuum",
     "star": "Ionized H/He Plasma Corona",
 }
 
@@ -237,6 +244,16 @@ def compute_habitability_index(
         return 0.0
     if body_type in ("orbital_station", "research_outpost"):
         return 82.0
+    if body_type == "ring_world":
+        return 94.0
+    if body_type == "dyson_sphere":
+        return 96.0
+    if body_type in ("quantum_relay",):
+        return 84.0
+    if body_type in ("solar_collector", "wormhole"):
+        return 0.0
+    if body_type == "black_hole":
+        return 0.0
 
     temp_sim = math.exp(-(((temperature_c - 18.0) / 36.0) ** 2)) if -90 <= temperature_c <= 115 else 0.0
     grav_sim = math.exp(-(((gravity - 1.0) / 0.58) ** 2)) if 0.1 <= gravity <= 3.0 else 0.05
@@ -291,6 +308,12 @@ def compute_scientific_planet_properties(
         "asteroid_belt": (420.0, 820.0, 2.10, 2.75, 0.14, 0.0, -205, 65),
         "orbital_station": (12.0, 18.0, 1.0, 1.0, 0.35, 0.0, 20, 22),
         "research_outpost": (10.0, 15.0, 1.0, 1.0, 0.35, 0.0, 20, 22),
+        "ring_world": (14000.0, 16000.0, 5.2, 5.5, 0.32, 34.0, 16, 26),
+        "black_hole": (20.0, 40.0, 900.0, 1200.0, 0.02, 0.0, -270, -270),
+        "dyson_sphere": (80000.0, 95000.0, 2.0, 2.4, 0.04, 12.0, 18, 30),
+        "quantum_relay": (14.0, 22.0, 1.0, 1.0, 0.35, 0.0, 20, 22),
+        "solar_collector": (8.0, 14.0, 1.0, 1.0, 0.10, 0.0, 15, 25),
+        "wormhole": (12.0, 18.0, 1.0, 1.0, 0.01, 0.0, -270, -270),
     }
 
     r_min, r_max, rho_min, rho_max, albedo, gh_k, t_min, t_max = physics_table.get(
@@ -301,6 +324,8 @@ def compute_scientific_planet_properties(
         gravity = 0.50
     elif body_type == "research_outpost":
         gravity = 0.40
+    elif body_type == "black_hole":
+        gravity = 999.0
     else:
         density = rho_min + v * (rho_max - rho_min)
         gravity = round(max(0.02, (radius_km / 6371.0) * (density / 5.514)), 2)
@@ -311,6 +336,10 @@ def compute_scientific_planet_properties(
     raw_temp_c = int(round(t_eq_k + gh_k - 273.15 + temp_jitter))
     if body_type in ("orbital_station", "research_outpost"):
         temperature_c = 21
+    elif body_type in ("black_hole", "wormhole"):
+        temperature_c = -270
+    elif body_type == "dyson_sphere":
+        temperature_c = 22
     elif body_type in ("barren", "asteroid_belt"):
         temperature_c = max(t_min, min(t_max, raw_temp_c))
     else:
@@ -374,7 +403,7 @@ class GalaxyGenerator:
         systems: dict[str, StarSystem] = {}
 
         # 1. Create base systems
-        for (
+        for index, (
             sys_id,
             name,
             x,
@@ -384,7 +413,7 @@ class GalaxyGenerator:
             sec,
             faction,
             dominant_corp,
-        ) in SYSTEM_ARCHETYPES:
+        ) in enumerate(SYSTEM_ARCHETYPES):
             bodies = self._generate_bodies(sys_id, name, spectral, faction)
             systems[sys_id] = StarSystem(
                 id=sys_id,
@@ -399,6 +428,7 @@ class GalaxyGenerator:
                 bodies=tuple(bodies),
                 connections=(),
                 dominant_corp=dominant_corp,
+                modifiers=generate_map_modifiers(self.seed, sys_id, sec, index),
             )
 
         # 2. Build hyperlane mesh ensuring full graph connectivity
@@ -418,6 +448,7 @@ class GalaxyGenerator:
                 bodies=s_obj.bodies,
                 connections=tuple(sorted(connections[s_id])),
                 dominant_corp=s_obj.dominant_corp,
+                modifiers=s_obj.modifiers,
             )
         return final_systems
 
@@ -481,15 +512,22 @@ class GalaxyGenerator:
             archetype_pool.append(
                 ("volcanic", "dark_market", "black_market", "#e63946", "Unregulated shadow bazaar trafficking illicit xenoliths.")
             )
+        if sys_id in ("sol", "alpha_centauri", "cyclops"):
+            archetype_pool.append(
+                ("ring_world", "orbital_ring", "high_tech", "#c77dff", "Ancient ring megastructure supporting a stratified orbital civilization.")
+            )
 
-        habitable_types = {"terrestrial", "oceanic", "savanna", "tundra"}
+        habitable_types = {"terrestrial", "oceanic", "savanna", "tundra", "ring_world", "dyson_sphere"}
         resource_map = {
             "terrestrial": ("titanium",), "oceanic": ("hydroponics",), "gas_giant": ("fuel_cells",),
             "asteroid_belt": ("titanium", "xenoliths"), "desert_world": ("titanium",), "ice_world": ("hydroponics",),
             "lava_world": ("microchips",), "ringed_giant": ("fuel_cells",), "research_outpost": ("microchips",),
             "savanna": ("hydroponics", "medicines"), "tundra": ("medicines",), "toxic": ("medicines",),
             "barren": ("titanium",), "super_earth": ("titanium", "xenoliths"), "ice_giant": ("fuel_cells",),
-            "volcanic": ("xenoliths",),
+            "volcanic": ("xenoliths",), "ring_world": ("microchips", "hydroponics"),
+            "black_hole": ("xenoliths",), "solar_array": ("fuel_cells",),
+            "dyson_sphere": ("microchips", "fuel_cells"), "quantum_relay": ("microchips",),
+            "solar_collector": ("fuel_cells",), "wormhole": ("xenoliths",),
         }
         moon_colors = ("#c0c0c0", "#9a8c98", "#e0e1dd", "#8ecae6")
         gov_map = {
@@ -580,6 +618,118 @@ class GalaxyGenerator:
                     population=body_pop,
                     government=body_gov,
                     habitability=float(phys["habitability"]),
+                )
+            )
+
+        special_objects = {
+            "sol": ("dyson_sphere", "Dyson Sphere Helios", 0.82, "#ffd166", "Stellar-scale photovoltaic shell harvesting the Sol primary.", True),
+            "alpha_centauri": ("quantum_relay", "Quantum Relay Alpha", 2.4, "#7bf1a8", "Entanglement relay node carrying instant messages across the frontier.", True),
+            "cygnus_x1": ("wormhole", "Cygnus Throat", 4.8, "#d0bfff", "Stable wormhole mouth bending local hyperspace lanes.", False),
+            "cyclops": ("solar_collector", "Cyclops Collector Swarm", 3.1, "#ffd60a", "Orbital solar-panel lattice feeding the colony grid.", True),
+        }
+        if sys_id in special_objects:
+            obj_type, obj_name, obj_orbit, obj_color, obj_discovery, obj_dock = special_objects[sys_id]
+            obj_phys = compute_scientific_planet_properties(
+                body_type=obj_type,
+                spectral_type=spectral,
+                orbit_radius_au=obj_orbit,
+                rad_sample=6000.0,
+                grav_sample=1.0,
+                temp_jitter=0,
+                hazards=(),
+            )
+            bodies.append(
+                CelestialBody(
+                    id=f"{sys_id}_{obj_type}",
+                    name=obj_name,
+                    body_type=obj_type,
+                    orbit_radius=obj_orbit,
+                    orbit_speed=0.045,
+                    current_angle=1.7,
+                    radius_km=float(obj_phys["radius_km"]) if obj_type != "dyson_sphere" else 149_600_000.0,
+                    color=obj_color,
+                    hazards=() if obj_type != "wormhole" else ("tidal_shear",),
+                    station_dockable=obj_dock,
+                    market_archetype="high_tech" if obj_dock else "none",
+                    scan_completed=False,
+                    scan_discovery=obj_discovery,
+                    gravity=float(obj_phys["gravity"]),
+                    atmosphere=str(obj_phys["atmosphere"]),
+                    temperature_c=int(obj_phys["temperature_c"]),
+                    resources=("microchips", "fuel_cells") if obj_type != "wormhole" else ("xenoliths",),
+                    moons=(),
+                    landable=obj_dock,
+                    faction=faction if obj_dock else "Unclaimed",
+                    population=2_400_000_000 if obj_type == "dyson_sphere" else (120_000 if obj_dock else 0),
+                    government="Solar Engineering Directorate" if obj_type == "dyson_sphere" else ("Relay Authority" if obj_dock else "None"),
+                    habitability=float(obj_phys["habitability"]),
+                )
+            )
+
+        if sys_id in ("sol", "alpha_centauri", "cyclops"):
+            ring_phys = compute_scientific_planet_properties(
+                body_type="ring_world",
+                spectral_type=spectral,
+                orbit_radius_au=4.2,
+                rad_sample=7200.0,
+                grav_sample=1.0,
+                temp_jitter=0,
+                hazards=(),
+            )
+            bodies.append(
+                CelestialBody(
+                    id=f"{sys_id}_ring_world",
+                    name=f"{sys_name} Ring World (Orbital Habitat)",
+                    body_type="ring_world",
+                    orbit_radius=4.2,
+                    orbit_speed=0.035,
+                    current_angle=0.9,
+                    radius_km=float(ring_phys["radius_km"]),
+                    color="#c77dff",
+                    hazards=(),
+                    station_dockable=True,
+                    market_archetype="high_tech",
+                    scan_completed=False,
+                    scan_discovery="Ancient ring megastructure with layered habitat bands and orbital shipyards.",
+                    gravity=float(ring_phys["gravity"]),
+                    atmosphere=str(ring_phys["atmosphere"]),
+                    temperature_c=int(ring_phys["temperature_c"]),
+                    resources=("microchips", "hydroponics"),
+                    moons=(),
+                    landable=True,
+                    faction=faction,
+                    population=650_000_000,
+                    government=gov_map.get(faction, "Ring Assembly"),
+                    habitability=float(ring_phys["habitability"]),
+                )
+            )
+
+        if sys_id in ("cygnus_x1", "golconda"):
+            bodies.append(
+                CelestialBody(
+                    id=f"{sys_id}_black_hole",
+                    name=f"{sys_name} Event Horizon",
+                    body_type="black_hole",
+                    orbit_radius=0.45,
+                    orbit_speed=0.11,
+                    current_angle=math.pi * 0.5,
+                    radius_km=28.0,
+                    color="#0b0014",
+                    hazards=("gravity_well", "tidal_shear", "radiation"),
+                    station_dockable=False,
+                    market_archetype="none",
+                    scan_completed=False,
+                    scan_discovery="Gravitational singularity with an accretion halo rich in exotic particles.",
+                    gravity=999.0,
+                    atmosphere="Event Horizon / Vacuum",
+                    temperature_c=-270,
+                    resources=("xenoliths",),
+                    moons=(),
+                    landable=False,
+                    faction="Unclaimed",
+                    population=0,
+                    government="None",
+                    habitability=0.0,
                 )
             )
 

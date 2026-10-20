@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Sequence
 
 from voidfarer.models import FleetDrone, ShipState, ShipUpgrade
+from voidfarer.shipmods import calculate_ship_mod_bonuses
 
 
 @dataclass(frozen=True)
@@ -304,6 +305,14 @@ CATALOG_UPGRADES: tuple[ShipUpgrade, ...] = (
         description="Electronic countermeasure emitter reducing pirate and hostile encounter chance by 40%.",
         stat_bonus={"pirate_evasion": 0.40},
     ),
+    ShipUpgrade(
+        id="solar_panel_array",
+        name="Photovoltaic Solar Panel Array",
+        slot="utility",
+        cost=1200,
+        description="Deployable solar panels supplement reactor output and cooling in well-lit systems.",
+        stat_bonus={"reactor_output": 0.08, "reactor_cooling": 3.0},
+    ),
 )
 
 UPGRADE_MAP: dict[str, ShipUpgrade] = {u.id: u for u in CATALOG_UPGRADES}
@@ -369,6 +378,12 @@ def calculate_equipment_bonuses(ship: ShipState) -> dict[str, float]:
         "max_shield": 0.0,
         "cargo_capacity": 0.0,
         "hull_repair_per_tick": 0.0,
+        "reactor_output": 0.0,
+        "reactor_cooling": 0.0,
+        "heat_capacity": 0.0,
+        "heat_generation": 0.0,
+        "reactor_integrity": 0.0,
+        "drone_yield": 0.0,
     }
 
     sources: list[dict[str, float]] = []
@@ -389,9 +404,19 @@ def calculate_equipment_bonuses(ship: ShipState) -> dict[str, float]:
             elif stat in bonuses:
                 bonuses[stat] += float(value)
 
+    structural = calculate_ship_mod_bonuses(ship.ship_mods)
+    for stat, value in structural.items():
+        if stat == "fuel_efficiency":
+            bonuses["fuel_efficiency"] *= float(value)
+        elif stat == "scan_mult":
+            bonuses["scan_mult"] *= float(value)
+        elif stat in bonuses:
+            bonuses[stat] += float(value)
+
     bonuses["fuel_efficiency"] = max(0.10, bonuses["fuel_efficiency"])
-    bonuses["evasion"] = min(0.90, bonuses["evasion"])
-    bonuses["pirate_evasion"] = min(0.90, bonuses["pirate_evasion"])
+    bonuses["evasion"] = min(0.90, max(-0.90, bonuses["evasion"]))
+    bonuses["pirate_evasion"] = min(0.90, max(0.0, bonuses["pirate_evasion"]))
+    bonuses["drone_yield"] = max(0.0, bonuses["drone_yield"])
     return bonuses
 
 

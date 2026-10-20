@@ -190,8 +190,8 @@ body.cockpit-theme {
     border-radius: 6px;
     padding: 6px 10px;
     flex: 1 1 0;
-    min-width: 128px;
-    height: 52px;
+    min-width: 108px;
+    height: 44px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -262,7 +262,7 @@ body.cockpit-theme {
     border: 1px solid var(--border-glow);
     border-radius: 6px;
     padding: 6px 12px;
-    height: 52px;
+    height: 44px;
     box-sizing: border-box;
     flex-shrink: 0;
     backdrop-filter: blur(8px);
@@ -2836,3 +2836,473 @@ body.cockpit-theme {
 .message-card.unread { border-color: var(--neon-amber); }
 @media (max-width: 720px) { .target-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
+
+/* --- Reactor simulation strip --- */
+.reactor-sim-strip { display: grid; gap: 5px; padding: 6px 10px 8px; border-bottom: 1px solid rgba(255,170,0,.18); }
+.reactor-thermal { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: .62rem; color: var(--text-muted); }
+.reactor-heat-track { height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+.reactor-heat-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00ff99, #ffaa00 60%, #ff3355); transition: width .25s linear; }
+.reactor-mode-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.reactor-mode-btn { background: rgba(0,0,0,.35); border: 1px solid rgba(255,170,0,.3); color: var(--text-muted); border-radius: 3px; padding: 3px 7px; font-family: var(--font-mono); font-size: .58rem; cursor: pointer; }
+.reactor-mode-btn.active { color: #ffcc66; border-color: #ffaa00; background: rgba(255,170,0,.14); }
+.reactor-mode-btn:hover { color: #fff; }
+.reactor-eff-line { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--font-mono); font-size: .6rem; color: var(--text-muted); }
+.reactor-eff-line strong { color: var(--neon-cyan); font-weight: 600; }
+.reactor-critical .reactor-heat-fill { animation: reactorPulse .8s infinite alternate; }
+@keyframes reactorPulse { from { opacity: .65; } to { opacity: 1; } }
+
+/* --- Sector map modifier strip --- */
+.sector-mod-strip { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; padding: 0 12px 4px; font-family: var(--font-mono); font-size: .58rem; color: var(--text-muted); pointer-events: auto; }
+.sector-mod-chip { border: 1px solid rgba(0,240,255,.3); border-radius: 3px; padding: 2px 7px; color: var(--neon-cyan); background: rgba(0,240,255,.06); }
+.sector-mod-chip.hazard { border-color: rgba(255,51,85,.45); color: #ff6677; background: rgba(255,51,85,.08); }
+.sector-mod-chip.commerce { border-color: rgba(0,255,153,.4); color: #66ffbb; background: rgba(0,255,153,.07); }
+.sector-mod-chip.anomaly { border-color: rgba(204,102,255,.45); color: #cc88ff; background: rgba(204,102,255,.08); }
+
+/* --- Ship modification section --- */
+.shipmod-slot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin: 8px 0 12px; }
+.shipmod-slot { border: 1px solid var(--border-subtle); border-radius: 5px; padding: 8px; background: rgba(0,0,0,.22); font-family: var(--font-mono); }
+.shipmod-slot .slot-name { display: block; font-size: .6rem; color: var(--text-muted); margin-bottom: 4px; }
+.shipmod-slot .slot-mod { display: block; font-size: .7rem; color: var(--neon-purple, #cc66ff); }
+.shipmod-slot.empty .slot-mod { color: var(--text-muted); font-style: italic; }
+.shipmod-slot .mod-remove { margin-top: 6px; padding: 3px 7px; font-size: .58rem; }
+.shipmod-list { display: grid; gap: 6px; }
+.shipmod-card { border: 1px solid var(--border-subtle); border-radius: 5px; padding: 9px; background: rgba(204,102,255,.04); font-family: var(--font-mono); }
+.shipmod-card.installed { border-color: rgba(0,255,153,.35); background: rgba(0,255,153,.04); }
+.shipmod-card .shipmod-title-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.shipmod-card .shipmod-name { font-size: .76rem; color: #e8e8ff; }
+.shipmod-card .shipmod-desc { margin: 5px 0; font-size: .66rem; color: var(--text-muted); line-height: 1.35; }
+.shipmod-card .shipmod-effects { display: flex; flex-wrap: wrap; gap: 5px; font-size: .6rem; }
+.shipmod-effect { border: 1px solid rgba(0,240,255,.25); border-radius: 3px; padding: 1px 5px; color: var(--neon-cyan); }
+.shipmod-effect.negative { border-color: rgba(255,51,85,.4); color: #ff7788; }
+
+/* --- Fleet manager / character / empire panels --- */
+.fleet-manager-box { margin-top: 12px; border-top: 1px solid var(--border-subtle); padding-top: 10px; }
+.fleet-ship-roster { display: grid; gap: 6px; margin-bottom: 8px; }
+.fleet-ship-card { border: 1px solid var(--border-subtle); border-radius: 5px; padding: 8px; font-family: var(--font-mono); font-size: .68rem; background: rgba(0,240,255,.03); }
+.fleet-ship-card .ship-role { color: var(--neon-cyan); font-size: .6rem; }
+.fleet-ship-card .ship-actions { display: flex; gap: 5px; margin-top: 6px; }
+.escort-shop-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.escort-shop-grid button { padding: 6px; font-size: .6rem; }
+.character-summary, .research-summary { border: 1px solid var(--border-subtle); border-radius: 5px; padding: 9px; margin-bottom: 9px; font-family: var(--font-mono); font-size: .72rem; background: rgba(0,240,255,.03); }
+.character-skills, .character-abilities, .research-projects, .outpost-list, .diplomacy-list { display: grid; gap: 6px; margin-bottom: 12px; }
+.skill-row, .ability-row, .research-row, .outpost-row, .diplomacy-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; border: 1px solid var(--border-subtle); border-radius: 4px; padding: 7px; font-family: var(--font-mono); font-size: .68rem; background: rgba(0,0,0,.2); }
+.skill-row .rank, .ability-row .cooldown { color: var(--neon-cyan); }
+.ability-row.locked { opacity: .45; }
+.research-row .progress { flex: 1; height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin: 0 8px; }
+.research-row .progress div { height: 100%; background: var(--neon-cyan); }
+.empire-section { margin-bottom: 14px; }
+.diplomacy-row .leader-behavior { color: var(--neon-amber); font-size: .6rem; }
+.diplomacy-row.eliminated { opacity: .4; text-decoration: line-through; }
+/* --- Portraits and crew --- */
+.commander-portrait { float: left; margin-right: 10px; }
+.commander-portrait svg, .crew-portrait svg { display: block; border-radius: 50%; filter: drop-shadow(0 0 6px rgba(0,240,255,.35)); }
+.character-summary::after { content: ""; display: block; clear: both; }
+.crew-roster { display: grid; gap: 6px; }
+.crew-row { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-subtle); border-radius: 5px; padding: 7px; background: rgba(0,240,255,.03); font-family: var(--font-mono); font-size: .68rem; }
+.crew-row > div:nth-child(2) { flex: 1; }
+.message-choices { display: grid; gap: 5px; margin-top: 8px; }
+.message-choice-btn { display: grid; text-align: left; gap: 2px; padding: 7px 9px; border: 1px solid rgba(204,102,255,.35); border-radius: 4px; background: rgba(204,102,255,.06); color: var(--text-main); font-family: var(--font-mono); font-size: .66rem; cursor: pointer; }
+.message-choice-btn:hover:not(:disabled) { border-color: var(--neon-purple, #cc66ff); background: rgba(204,102,255,.13); }
+.message-choice-btn:disabled { opacity: .45; cursor: default; }
+.message-choice-btn span { color: var(--text-muted); font-size: .6rem; }
+
+/* ==========================================================================
+   Resolution-adaptive cockpit layer
+   Base rules above stay intact for the G-001..G-010 layout contract; this
+   layer only adapts spacing, density, and overflow to the actual viewport.
+   ========================================================================== */
+:root {
+    --ui-scale: 1;
+    --hud-gap: 14px;
+    --panel-pad: 14px;
+}
+
+html {
+    font-size: calc(16px * var(--ui-scale));
+}
+
+html[data-density="compact"] {
+    --hud-gap: 8px;
+    --panel-pad: 9px;
+}
+
+html[data-density="comfortable"] {
+    --hud-gap: 18px;
+    --panel-pad: 18px;
+}
+
+@media (min-width: 2200px) {
+    html[data-density="standard"] {
+        --hud-gap: 18px;
+        --panel-pad: 18px;
+    }
+
+    .cockpit-frame {
+        max-width: 3200px;
+        margin: 0 auto;
+        padding: 20px 28px;
+        gap: 18px;
+    }
+
+    .cockpit-grid {
+        grid-template-columns: 1.65fr 1.2fr 0.8fr;
+        gap: 20px;
+    }
+
+    .vital-card {
+        min-width: 150px;
+    }
+
+    .panel-right .flight-log-stream {
+        height: 300px;
+    }
+
+    .hud-glitch-title {
+        font-size: 1.75rem;
+    }
+
+    .radar-overlay-top {
+        font-size: 0.85rem;
+    }
+}
+
+@media (min-width: 3200px) {
+    html {
+        font-size: calc(18px * var(--ui-scale));
+    }
+
+    .cockpit-frame {
+        max-width: 3600px;
+    }
+
+    .vital-card {
+        min-width: 175px;
+    }
+
+    .panel-right .flight-log-stream {
+        height: 380px;
+    }
+}
+
+@media (max-width: 1500px) {
+    .hud-topbar {
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .vital-card {
+        min-width: 96px;
+        padding: 5px 8px;
+    }
+
+    .time-readout-group {
+        min-width: 116px;
+    }
+
+    .hud-sub {
+        display: none;
+    }
+}
+
+@media (max-width: 1200px) {
+    .cockpit-frame {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .cockpit-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .panel-left.drawer-collapsed {
+        width: 100%;
+        max-width: none;
+    }
+
+    .panel-left.drawer-collapsed .deck-tabs-header {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .vitals-row {
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .hud-time-deck {
+        gap: 6px;
+        padding: 5px 8px;
+    }
+}
+
+@media (max-width: 760px) {
+    .cockpit-frame {
+        padding: 6px;
+        gap: 8px;
+    }
+
+    .hud-topbar {
+        padding: 6px 8px;
+        gap: 5px;
+    }
+
+    .hud-brand {
+        gap: 7px;
+    }
+
+    .hud-logo-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+    }
+
+    .hud-glitch-title {
+        font-size: 1.02rem;
+        letter-spacing: 1.5px;
+    }
+
+    .hud-sub {
+        display: none;
+    }
+
+    .hud-top-actions {
+        gap: 4px;
+    }
+
+    .hud-top-actions .btn-hud {
+        padding: 5px 7px;
+        font-size: 0.62rem;
+    }
+
+    #audioToggleBtn,
+    #btnOpenPerks {
+        display: none;
+    }
+
+    .vital-card {
+        min-width: 84px;
+        height: 44px;
+        padding: 4px 6px;
+    }
+
+    .vital-label {
+        font-size: 0.58rem;
+    }
+
+    .vital-label strong {
+        font-size: 0.68rem;
+    }
+
+    .vital-subtext {
+        font-size: 0.56rem;
+    }
+
+    .hud-time-deck {
+        height: 44px;
+        padding: 4px 6px;
+        gap: 4px;
+    }
+
+    .time-readout-group {
+        min-width: 104px;
+    }
+
+    .stardate-text {
+        font-size: 0.72rem;
+    }
+
+    #btnTime5x,
+    #btnTime10x {
+        display: none;
+    }
+
+    .deck-panel {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .panel-left.drawer-collapsed {
+        width: 100%;
+        max-width: none;
+    }
+
+    .panel-left .deck-tabs-header {
+        flex-direction: row;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .panel-left .deck-tab-btn {
+        flex: none;
+        white-space: nowrap;
+    }
+
+    .cadet-academy-banner {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding: 7px 9px;
+    }
+
+    .cadet-reward-preview {
+        justify-self: start;
+    }
+
+    .target-actions {
+        gap: 5px;
+    }
+
+    .btn-action {
+        padding: 6px 8px;
+        font-size: 0.64rem;
+    }
+
+    .panel-right .flight-log-stream {
+        height: 150px;
+    }
+
+    .canvas-radar-container.radar-background-layer .radar-overlay-top {
+        top: 72px;
+    }
+
+    .canvas-radar-container.radar-background-layer .radar-controls {
+        top: 112px;
+        right: 10px;
+    }
+
+    .sector-mod-strip {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .hud-brand .hud-title-group {
+        display: none;
+    }
+
+    .hud-top-actions .btn-hud {
+        padding: 4px 6px;
+    }
+
+    .vital-card {
+        min-width: 76px;
+    }
+
+    .time-readout-group {
+        min-width: 96px;
+    }
+
+    .hud-footer {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+}
+
+@media (max-height: 720px) {
+    .cockpit-frame {
+        gap: 8px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+
+    .hud-topbar {
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    .deck-panel {
+        padding: 9px;
+        gap: 8px;
+    }
+
+    .cadet-academy-banner {
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+
+    .flight-log-stream {
+        height: 120px;
+    }
+
+    .power-slider-row {
+        gap: 3px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stars-layer-2,
+    .radar-sweep,
+    .time-status-badge.badge-paused,
+    .reactor-critical .reactor-heat-fill {
+        animation: none !important;
+    }
+
+    * {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
+body.cockpit-theme {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.hud-footer {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+#radarCanvas {
+    touch-action: none;
+}
+
+html[data-density="compact"] .deck-panel,
+html[data-density="compact"] .reactor-panel {
+    padding: var(--panel-pad);
+    gap: var(--hud-gap);
+}
+
+html[data-density="compact"] .vital-card {
+    min-width: 92px;
+}
+
+html[data-density="comfortable"] .vital-card {
+    min-width: 132px;
+}
+
+html[data-density="compact"] .panel-right .flight-log-stream {
+    height: 160px;
+}
+
+html[data-density="comfortable"] .panel-right .flight-log-stream {
+    height: 280px;
+}
+
+.setting-row select {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+}
+
+.viewport-readout-row strong {
+    color: var(--neon-cyan);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+}
+
+.salvage-info {
+    border: 1px solid rgba(255, 51, 85, 0.35);
+    border-radius: 4px;
+    padding: 5px 8px;
+    margin-bottom: 8px;
+    background: rgba(255, 51, 85, 0.06);
+    color: #ff8899;
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    line-height: 1.4;
+}

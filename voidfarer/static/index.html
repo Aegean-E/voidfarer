@@ -59,6 +59,19 @@
                 <label class="setting-row"><span>Orbit labels</span><input type="checkbox" id="settingLabels" checked></label>
                 <label class="setting-row"><span>Travel animation</span><input type="checkbox" id="settingAnimation" checked></label>
                 <label class="setting-row"><span>Starfield density</span><input type="range" id="settingStarDensity" min="40" max="240" value="140"></label>
+                <label class="setting-row"><span>HUD density (auto adapts to resolution)</span>
+                    <select id="settingDensity">
+                        <option value="auto">Auto (resolution-aware)</option>
+                        <option value="compact">Compact</option>
+                        <option value="standard">Standard</option>
+                        <option value="comfortable">Comfortable</option>
+                    </select>
+                </label>
+                <label class="setting-row"><span>HUD scale</span><input type="range" id="settingUiScale" min="85" max="120" step="5" value="100"></label>
+                <div class="setting-row viewport-readout-row">
+                    <span>Viewport</span>
+                    <strong id="viewportReadout">--</strong>
+                </div>
             </div>
         </div>
     </div>
@@ -210,9 +223,12 @@
                 <nav class="deck-tabs-header" id="deckTabsHeader" aria-label="Terminal sections">
                     <button class="deck-tab-btn" id="tabBtnMarket">COMMERCE</button>
                     <button class="deck-tab-btn" id="tabBtnArsenal">ARSENAL</button>
+                    <button class="deck-tab-btn" id="tabBtnShipMods">SHIP MODS</button>
                     <button class="deck-tab-btn" id="tabBtnFleet">FLEET</button>
                     <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnMastery">PILOT PERKS</button>
+                    <button class="deck-tab-btn" id="tabBtnCharacter">COMMANDER</button>
+                    <button class="deck-tab-btn" id="tabBtnEmpire">EMPIRE</button>
                     <button class="deck-tab-btn" id="tabBtnQuests">QUESTS</button>
                     <button class="deck-tab-btn" id="tabBtnAI">AI COMMAND</button>
                     <button class="deck-tab-btn" id="tabBtnDepot">DEPOT</button>
@@ -293,6 +309,17 @@
                         </div>
                     </div>
 
+                    <!-- Tab 2b: Structural Ship Modification Section -->
+                    <div class="shipmods-panel tab-content" id="tabContentShipMods" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-purple"></span> REFIT BAY</div>
+                            <h2 class="panel-title">SHIP MODIFICATION</h2>
+                        </div>
+                        <p class="panel-intro-text">Structural refits trade one capability for another. Drydock required to install or remove. Each slot holds one modification.</p>
+                        <div class="shipmod-slot-grid" id="shipModSlotGrid"></div>
+                        <div class="shipmod-list" id="shipModsList"></div>
+                    </div>
+
                     <!-- Tab 3: Autonomous Fleet Command & Drones -->
                     <div class="fleet-panel tab-content" id="tabContentFleet" style="display: none;">
                         <div class="panel-header">
@@ -307,6 +334,12 @@
                         </div>
 
                         <div class="mercenary-roster" id="mercenaryRoster"></div>
+
+                        <div class="fleet-manager-box">
+                            <h4 class="commission-title">FLEET MANAGER // ESCORT WING</h4>
+                            <div class="fleet-ship-roster" id="fleetShipRoster"></div>
+                            <div class="escort-shop-grid" id="escortShopGrid"></div>
+                        </div>
 
                         <!-- Commission New Drone -->
                         <div class="commission-drone-box">
@@ -409,6 +442,40 @@
                         <p class="panel-intro-text">Alien artifacts recovered via sensor sweeps, hazardous anomalies, and contracts. Provide permanent fleet bonuses.</p>
                         <div class="relics-grid" id="relicsGrid">
                             <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Tab: Commander Character Sheet -->
+                    <div class="character-panel tab-content" id="tabContentCharacter" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-cyan"></span> COMMANDER</div>
+                            <h2 class="panel-title">CHARACTER & ABILITIES</h2>
+                        </div>
+                        <div class="character-summary" id="characterSummary"></div>
+                        <div class="character-skills" id="characterSkills"></div>
+                        <div class="character-abilities" id="characterAbilities"></div>
+                        <div class="crew-section"><h3 class="subpanel-title">CREW ROSTER</h3><div class="crew-roster" id="crewRoster"></div></div>
+                    </div>
+
+                    <!-- Tab: Empire (Research, Outposts, Diplomacy) -->
+                    <div class="empire-panel tab-content" id="tabContentEmpire" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-green"></span> EMPIRE</div>
+                            <h2 class="panel-title">RESEARCH, OUTPOSTS & DIPLOMACY</h2>
+                        </div>
+                        <div class="empire-section">
+                            <h3 class="subpanel-title">RESEARCH DIRECTORATE</h3>
+                            <div id="researchSummary"></div>
+                            <div class="research-projects" id="researchProjects"></div>
+                        </div>
+                        <div class="empire-section">
+                            <h3 class="subpanel-title">OUTPOSTS</h3>
+                            <div id="outpostSummary"></div>
+                            <div class="outpost-list" id="outpostList"></div>
+                        </div>
+                        <div class="empire-section">
+                            <h3 class="subpanel-title">FACTION LEADERS & WARS</h3>
+                            <div class="diplomacy-list" id="diplomacyList"></div>
                         </div>
                     </div>
 
@@ -551,6 +618,7 @@
                         <div class="panel-tag"><span class="badge-dot"></span> NAV-RADAR</div>
                         <h2 class="panel-title" id="radarTitle">SOL SYSTEM ORBITS</h2>
                     </div>
+                    <div class="sector-mod-strip" id="sectorModsStrip" title="Active sector map modifiers"></div>
 
                     <!-- Canvas Radar Display (Full-Viewport Background Layer, G-004) -->
                     <div class="canvas-radar-container radar-background-layer" id="radarBackgroundLayer">
@@ -594,11 +662,14 @@
                             <span>GOVERNMENT <strong id="targetGovernment">--</strong></span>
                         </div>
                         <div class="target-resources" id="targetResources"></div>
+                        <div class="salvage-info" id="salvageInfo" style="display:none;"></div>
                         <div class="target-actions" id="targetActions">
                             <button class="btn-action btn-cyan" id="btnOrbitTarget" disabled>ENTER ORBIT</button>
                             <button class="btn-action btn-amber" id="btnSublightTarget" disabled>SUBLIGHT TRANSIT</button>
                             <button class="btn-action btn-purple" id="btnQuantumTarget" disabled>QUANTUM TRANSIT</button>
                             <button class="btn-action btn-green" id="btnLandTarget" style="display:none;" disabled>LAND ON SURFACE</button>
+                            <button class="btn-action btn-red" id="btnSalvageTarget" style="display:none;" disabled>BOARD DERELICT</button>
+                            <button class="btn-action btn-amber" id="btnScoopFuel" style="display:none;" disabled>SCOOP FUEL</button>
                             <button class="btn-action btn-purple" id="btnJumpTarget" style="display:none;" disabled>HYPERSPACE JUMP</button>
                         </div>
                     </div>
@@ -612,6 +683,26 @@
                         <span class="power-total" id="powerTotal">100% ALLOCATED</span>
                         <div class="reactor-header-actions">
                             <button class="text-btn" id="btnToggleReactor" aria-controls="panelReactor" aria-expanded="true" title="Hide or show reactor power routing">HIDE</button>
+                        </div>
+                    </div>
+
+                    <div class="reactor-sim-strip">
+                        <div class="reactor-thermal">
+                            <span>REACTOR HEAT</span>
+                            <div class="reactor-heat-track"><div class="reactor-heat-fill" id="reactorHeatFill" style="width: 0%;"></div></div>
+                            <strong id="reactorHeatLabel">0 / 100</strong>
+                        </div>
+                        <div class="reactor-mode-row" id="reactorModeRow">
+                            <button class="reactor-mode-btn active" data-mode="balanced">BALANCED</button>
+                            <button class="reactor-mode-btn" data-mode="economy">ECONOMY</button>
+                            <button class="reactor-mode-btn" data-mode="overdrive">OVERDRIVE</button>
+                            <button class="reactor-mode-btn" data-mode="silent">SILENT</button>
+                            <button class="btn-hud btn-amber" id="btnVentReactor" title="Emergency coolant purge">VENT</button>
+                        </div>
+                        <div class="reactor-eff-line">
+                            <span>OUTPUT <strong id="reactorOutputLabel">100%</strong></span>
+                            <span>COOLING <strong id="reactorCoolingLabel">6.0</strong></span>
+                            <span>INTEGRITY <strong id="reactorIntegrityLabel">100%</strong></span>
                         </div>
                     </div>
 

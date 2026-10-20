@@ -106,7 +106,8 @@ def scoop_yield(body: CelestialBody, effective_sensor_power: float, science_skil
     if profile is None:
         return 0
     power_factor = 0.6 + max(0.0, effective_sensor_power) / 25.0 * 0.4
-    skill_factor = 1.0 + max(0.0, science_skill - 1.0) * 0.08
+    skill_bonus = science_skill if science_skill < 1.0 else (science_skill - 1.0)
+    skill_factor = 1.0 + max(0.0, skill_bonus) * 0.5
     return max(1, min(48, int(round(profile["base"] * power_factor * skill_factor))))
 
 

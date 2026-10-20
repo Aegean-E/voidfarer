@@ -412,6 +412,6 @@ python -m voidfarer.cli codex claim first_light
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 361-test suite runs in about 5 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 374-test suite runs in about 5 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
-5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.
+5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.

@@ -12,7 +12,7 @@ from voidfarer.crew import CREW_ROLES, calculate_crew_bonuses, recruit_crew_memb
 from voidfarer.engine import SimulationEngine
 from voidfarer.galaxy import GalaxyGenerator
 from voidfarer.messaging import TREE_MAP, tree_root_message
-from voidfarer.models import CrewMember, MessageChoice, QuantumMessage
+from voidfarer.models import CombatEncounter, CrewMember, FleetShip, MessageChoice, QuantumMessage
 from voidfarer.research import RESEARCH_MAP
 from voidfarer.weapons import WEAPON_CATALOG, get_weapon
 
@@ -116,6 +116,37 @@ class CrewWeaponTest(unittest.TestCase):
         ok, msg = self.engine.install_weapon("quantum_lance")
         self.assertFalse(ok)
         self.assertIn("Insufficient", msg)
+
+    def test_combat_misfire_telemetry_preserves_weapon_misfire_description(self):
+        combat = CombatEncounter(
+            id="combat_telemetry",
+            enemy_name="Rogue Pirate",
+            enemy_class="Raider",
+            enemy_hull=200,
+            enemy_max_hull=200,
+            enemy_damage=5,
+            bounty_credits=100,
+            enemy_shield=50,
+            enemy_max_shield=50,
+        )
+        self.engine.state = self.engine._clone_state(
+            active_combat=combat,
+            ship=self.engine._clone_ship(
+                primary_weapon="pulse_laser",
+                fleet_ships=(FleetShip(id="fs_1", name="Wingmate 1", ship_class="Interceptor", role="escort", hull=100, max_hull=100, shield=50, max_shield=50, damage=20),),
+                battle_stance="aggressive",
+            ),
+        )
+        self.engine.rng.random = lambda: 0.99
+        ok, msg = self.engine.combat_action("fire_lasers")
+        self.assertTrue(ok)
+        self.assertIn("firing solution failed", msg)
+        self.assertNotIn("Enemy AI jinked", msg)
+
+        self.engine.rng.random = lambda: 0.10
+        ok2, msg2 = self.engine.combat_action("fire_lasers")
+        self.assertTrue(ok2)
+        self.assertIn("aggressive stance", msg2)
 
 
 class QuantumAndObjectsTest(unittest.TestCase):

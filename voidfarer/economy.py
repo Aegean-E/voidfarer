@@ -314,6 +314,11 @@ def calculate_dynamic_market_quote(
         if commodity.id in ("fuel_cells", "medicines", "xenoliths"):
             base = int(base * 1.25)
 
+    # 4b. Faction diplomatic discount or tariff
+    if faction_standing != 0:
+        standing_factor = 1.0 - max(-0.15, min(0.10, faction_standing * 0.0015))
+        base = max(2, int(base * standing_factor))
+
     # 5. Spread calculation
     spread = max(2, int(base * 0.12))
     buy_price = max(2, base + spread)

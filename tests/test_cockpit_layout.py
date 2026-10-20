@@ -460,5 +460,33 @@ class TestSingleLineVitalsAndDistanceParity(unittest.TestCase):
     def test_orbit_button_adheres_to_distance_calculation(self):
         self.assertIn("ENTER ORBIT (${distAu.toFixed(2)} AU)", self.js)
 
+class TestArsenalParityAndBulkDepotUI(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.html = INDEX_HTML.read_text(encoding="utf-8")
+        cls.js = APP_JS.read_text(encoding="utf-8")
+        cls.css = STYLE_CSS.read_text(encoding="utf-8")
 
+    def test_arsenal_contains_shipyard_and_weapons_containers(self):
+        self.assertIn('id="shipyardChassisList"', self.html)
+        self.assertIn('id="weaponsBayList"', self.html)
+
+    def test_app_wires_chassis_and_weapon_commissioning(self):
+        self.assertIn("handleCommissionChassis", self.js)
+        self.assertIn("/api/shipyard/chassis", self.js)
+        self.assertIn("handleInstallWeapon", self.js)
+        self.assertIn("/api/weapons/install", self.js)
+        self.assertIn("handleSetPrimaryWeapon", self.js)
+        self.assertIn("/api/weapons/set", self.js)
+
+    def test_depots_support_bulk_actions(self):
+        self.assertIn("WITHDRAW ALL", self.js)
+        self.assertIn("DEPOSIT ALL", self.js)
+        self.assertIn("SELL ALL", self.js)
+
+    def test_glassmorphic_styles_for_showroom_and_weapons(self):
+        self.assertIn(".chassis-showroom", self.css)
+        self.assertIn(".weapons-bay", self.css)
+        self.assertIn(".chassis-card", self.css)
+        self.assertIn(".weapon-card", self.css)
 

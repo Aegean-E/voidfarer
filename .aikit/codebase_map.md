@@ -7,10 +7,10 @@
 
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
-- **Total Classes**: `133`
+- **Total Classes**: `134`
 - **Total Top-Level Functions**: `159`
-- **Total Class Methods**: `695`
-- **Total Source Lines**: `21142`
+- **Total Class Methods**: `709`
+- **Total Source Lines**: `21403`
 
 ---
 
@@ -26,7 +26,7 @@
 ### [`tests/test_adaptive_ui_salvage.py`](tests/test_adaptive_ui_salvage.py)
 > *Regression tests for the resolution-adaptive cockpit, derelict salvage,*
 
-**Size**: `198` lines (`8529` bytes)
+**Size**: `204` lines (`8837` bytes)
 
 **Classes:**
 - `class TestAdaptiveCockpitAssets`
@@ -47,6 +47,7 @@
   - Method `.test_salvage_requires_a_derelict()`
   - Method `.test_fuel_scoop_refuels_and_heats_reactor()`
   - Method `.test_fuel_scoop_requires_a_scoopable_body()`
+  - Method `.test_scoop_yield_scales_with_science_skill()`
   - Method `.test_snapshot_exposes_salvage_and_scoop_hints()`
   - Method `.test_crew_drill_raises_skill_and_spends_credits()`
   - Method `.test_crew_drill_caps_skill()`
@@ -175,7 +176,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `464` lines (`19516` bytes)
+**Size**: `492` lines (`20812` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -243,13 +244,19 @@
   - Method `.test_topbar_and_vitals_are_on_single_non_wrapping_line()`
   - Method `.test_vital_cards_match_chrono_box_height()`
   - Method `.test_orbit_button_adheres_to_distance_calculation()`
+- `class TestArsenalParityAndBulkDepotUI`
+  - Method `.setUpClass()`
+  - Method `.test_arsenal_contains_shipyard_and_weapons_containers()`
+  - Method `.test_app_wires_chassis_and_weapon_commissioning()`
+  - Method `.test_depots_support_bulk_actions()`
+  - Method `.test_glassmorphic_styles_for_showroom_and_weapons()`
 
 ---
 
 ### [`tests/test_economy.py`](tests/test_economy.py)
 > *Unit tests for the dynamic galactic economy, stockpiles, events, and trade routes.*
 
-**Size**: `106` lines (`4594` bytes)
+**Size**: `142` lines (`6403` bytes)
 
 **Classes:**
 - `class TestInitialEconomy` - *Verify baseline economy generation across the galaxy.*
@@ -267,6 +274,9 @@
   - Method `.test_quote_has_positive_spread()`
   - Method `.test_events_shift_local_prices()`
   - Method `.test_trade_routes_are_sorted_and_cross_system()`
+  - Method `.test_faction_standing_influences_quote()`
+  - Method `.test_same_station_trade_cannot_arbitrage()`
+  - Method `.test_sell_from_depot_uses_dynamic_quote_and_updates_stockpiles()`
 
 ---
 
@@ -307,7 +317,7 @@
 ### [`tests/test_engine.py`](tests/test_engine.py)
 > *Unit tests for simulation engine state transitions, flight, upgrades, fleet, and combat.*
 
-**Size**: `367` lines (`15465` bytes)
+**Size**: `428` lines (`17988` bytes)
 
 **Classes:**
 - `class TestEngine`
@@ -329,6 +339,10 @@
   - Method `.test_starter_chassis_cannot_be_repurchased()`
   - Method `.test_sell_upgrade_removes_module_name_from_manifest()`
   - Method `.test_buy_item_requires_station_and_consumable()`
+  - Method `.test_buy_ship_chassis_rejects_if_cargo_exceeds_new_capacity()`
+  - Method `.test_sell_upgrade_rejects_if_cargo_exceeds_reduced_capacity()`
+  - Method `.test_remove_ship_mod_rejects_if_cargo_exceeds_reduced_capacity()`
+  - Method `.test_quantum_travel_fuel_cost_applies_fuel_efficiency_bonuses()`
 
 ---
 
@@ -494,7 +508,7 @@
 ### [`tests/test_messaging_crew_quantum.py`](tests/test_messaging_crew_quantum.py)
 > *Regression tests for message trees, crew, portraits, weapons, quantum tech, and megastructures.*
 
-**Size**: `165` lines (`7867` bytes)
+**Size**: `196` lines (`9152` bytes)
 
 **Classes:**
 - `class MessageTreeTest`
@@ -512,6 +526,7 @@
   - Method `.test_crew_round_trip_and_catalog()`
   - Method `.test_weapon_variety_and_install()`
   - Method `.test_weapon_requires_credits()`
+  - Method `.test_combat_misfire_telemetry_preserves_weapon_misfire_description()`
 - `class QuantumAndObjectsTest`
   - Method `.test_quantum_research_projects_exist()`
   - Method `.test_dyson_sphere_relay_wormhole_and_collector_exist()`
@@ -873,7 +888,7 @@
 ### [`voidfarer/economy.py`](voidfarer/economy.py)
 > *Dynamic Global Economy, supply/demand simulation, economic events, and galactic trade network.*
 
-**Size**: `390` lines (`14651` bytes)
+**Size**: `395` lines (`14862` bytes)
 
 **Functions:**
 - `def generate_initial_economy(systems, rng)` - *Construct baseline economy state with localized stockpiles and initial macroeconomic conditions.*
@@ -900,7 +915,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `4491` lines (`223555` bytes)
+**Size**: `4584` lines (`229066` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -1022,7 +1037,7 @@
 ### [`voidfarer/exploration.py`](voidfarer/exploration.py)
 > *Derelict salvage sites, fuel scooping profiles, and crew training drills.*
 
-**Size**: `115` lines (`4169` bytes)
+**Size**: `116` lines (`4242` bytes)
 
 **Classes:**
 - `class DerelictSite` - *A deterministic, once-per-body salvage site with a risk/reward profile.*

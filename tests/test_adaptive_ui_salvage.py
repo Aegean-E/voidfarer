@@ -139,6 +139,12 @@ class TestExplorationMechanics(unittest.TestCase):
         ok, _ = self.engine.scoop_fuel()
         self.assertFalse(ok)
 
+    def test_scoop_yield_scales_with_science_skill(self):
+        star = next(b for b in self.engine.current_system.bodies if b.body_type == "star")
+        base_yield = scoop_yield(star, 25.0, 0.0)
+        trained_yield = scoop_yield(star, 25.0, 0.35)
+        self.assertGreater(trained_yield, base_yield)
+
     def test_snapshot_exposes_salvage_and_scoop_hints(self):
         body = self._derelict_body()
         self.engine.orbit(body.id)

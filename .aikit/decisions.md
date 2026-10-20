@@ -382,3 +382,19 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   6. Add the CAPTAIN'S LOG tab in the cockpit's left vertical terminal rail (`G-003`, `G-008`), featuring a career statistics grid, four-metric summary strip, category filters, animated progress bars, claim buttons, ready notification badge, and milestone chronological flight log.
   7. Add full regression test suite in `tests/test_captains_log_codex.py` and REST integration test in `tests/test_server.py`.
 - **Consequences**: Long-term player motivation is reinforced through retroactive achievement rewards and visible career stats across all playstyles. CLI, REST, and cockpit UI maintain full functional parity. Legacy save compatibility is guaranteed by defaulted frozen dataclasses.
+
+### ADR-031: Economy Arbitrage Guards, Hold Overflow Validation, Transit Fuel Efficiency, Combat Polish, and Web Cockpit Arsenal Parity
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: An economic exploit permitted same-station buy/sell arbitrage loops when stacking trade margin bonuses (chassis, corp perks, relics). Faction standing discounts/tariffs were missing from raw dynamic market quotes. Depot sales relied on legacy static quotes without mutating local market stockpiles. Ships could downsize chassis, sell cargo modules, or remove cargo bay mods without hold capacity checks, resulting in cargo volume exceeding total capacity. Quantum transit ignored engine fuel efficiency bonuses. Fuel scooping had a fractional skill bug where science skill had zero effect on yield. Combat telemetry masked weapon misfire behind enemy evasion and ignored battle stance modifiers on escort wing volleys. The Web Cockpit also lacked UI for commissioning shipyard chassis, installing weapons, and performing bulk depot transfers.
+- **Decision**:
+  1. Add local dock purchase tracking (`_local_dock_purchases`) in `SimulationEngine`, clearing on jump or orbit change. Reselling locally purchased goods caps the unit return below buy price, eliminating immediate arbitrage while preserving full trade margin bonuses on imported cargo.
+  2. Factor faction standing (-100 to +100) directly into `calculate_dynamic_market_quote` with diplomatic discounts or hostile tariffs, and pass standing in status snapshot quotes.
+  3. Wire dynamic market pricing, trade margin bonuses, and local stockpile mutation into `sell_from_depot`.
+  4. Enforce strict cargo volume checks in `buy_ship_chassis`, `sell_upgrade`, `install_ship_mod`, and `remove_ship_mod`, rejecting refits if existing cargo volume exceeds the new capacity.
+  5. Apply equipment, research, passive, and piloting fuel efficiency bonuses to quantum in-system micro-jumps in `start_travel`.
+  6. Support fractional science skill bonuses in `scoop_yield`, making pilot science training properly amplify fuel recovery.
+  7. Preserve weapon-specific misfire telemetry in `combat_action` and log stance-modified escort volley damage with active stance annotations.
+  8. Upgrade the Web Cockpit ARSENAL tab with a Shipyard Chassis Showroom (`/api/shipyard/chassis`) and Weapons & Ordnance Bay (`/api/weapons/install`, `/api/weapons/set`), add "DEPOSIT ALL" / "WITHDRAW ALL" / "SELL ALL" bulk controls to the Cargo Depot, and style with glassmorphic cards.
+- **Consequences**: Economic exploits and inventory bugs are eradicated. Market dynamics, shipyard physics, cargo hold capacity, fuel math, and combat logging are realistic, coherent, and fully verified across 374 unit and regression tests.
+

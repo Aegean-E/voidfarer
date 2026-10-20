@@ -101,6 +101,42 @@ class TestDynamicMarketQuotes(unittest.TestCase):
         profits = [route["profit_per_unit"] for route in routes]
         self.assertEqual(profits, sorted(profits, reverse=True))
 
+    def test_faction_standing_influences_quote(self):
+        system = self.engine.current_system
+        body = next(b for b in system.bodies if b.station_dockable)
+        comm = COMMODITY_MAP["titanium"]
+        friendly_quote = calculate_dynamic_market_quote(
+            system, body, comm, self.engine.state.economy, faction_standing=60
+        )
+        hostile_quote = calculate_dynamic_market_quote(
+            system, body, comm, self.engine.state.economy, faction_standing=-60
+        )
+        self.assertLess(friendly_quote.buy_price, hostile_quote.buy_price)
+
+    def test_same_station_trade_cannot_arbitrage(self):
+        # Set up a ship with heavy trade bonuses
+        self.engine.buy_ship_chassis("orion_hauler")
+        credits_before = self.engine.state.ship.credits
+        ok, _ = self.engine.trade("titanium", 2, is_buy=True)
+        self.assertTrue(ok)
+        ok, _ = self.engine.trade("titanium", 2, is_buy=False)
+        self.assertTrue(ok)
+        # Immediate round-trip sale at the same station must not generate a net profit
+        self.assertLess(self.engine.state.ship.credits, credits_before)
+
+    def test_sell_from_depot_uses_dynamic_quote_and_updates_stockpiles(self):
+        # Deposit commodity into Sol depot
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(cargo={"titanium": 5})
+        )
+        ok, msg = self.engine.deposit_cargo("titanium", 3)
+        self.assertTrue(ok, msg)
+        before_stock = self.engine.state.economy.markets["sol"].stockpiles.get("titanium", 0)
+        ok, msg = self.engine.sell_from_depot("titanium", 2)
+        self.assertTrue(ok, msg)
+        after_stock = self.engine.state.economy.markets["sol"].stockpiles.get("titanium", 0)
+        self.assertEqual(after_stock, before_stock + 2)
+
 
 if __name__ == "__main__":
     unittest.main()

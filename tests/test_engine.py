@@ -362,6 +362,67 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(self.engine.state.ship.cargo.get("nanite_repair_paste"), 2)
         self.assertEqual(self.engine.state.ship.credits, credits_before - 500)
 
+    def test_buy_ship_chassis_rejects_if_cargo_exceeds_new_capacity(self):
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(
+                ship_class="Bulk Merchant Hauler",
+                cargo_capacity=160,
+                cargo={"titanium": 70},
+                credits=100000,
+            )
+        )
+        ok, msg = self.engine.buy_ship_chassis("solaris_gunship")
+        self.assertFalse(ok)
+        self.assertIn("overflow", msg.lower())
+
+    def test_sell_upgrade_rejects_if_cargo_exceeds_reduced_capacity(self):
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(
+                credits=100000,
+                equipped_upgrades={"cargo": "subspace_cargo_pods"},
+                upgrades=("Subspace Cargo Pods",),
+                cargo_capacity=60,
+                cargo={"titanium": 25},
+            )
+        )
+        ok, msg = self.engine.sell_upgrade("cargo")
+        self.assertFalse(ok)
+        self.assertIn("overflow", msg.lower())
+
+    def test_remove_ship_mod_rejects_if_cargo_exceeds_reduced_capacity(self):
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(
+                credits=100000,
+                ship_mods={"cargo_bay": "mod_expanded_cargo_bay"},
+                cargo_capacity=65,
+                cargo={"titanium": 28},
+            )
+        )
+        ok, msg = self.engine.remove_ship_mod("cargo_bay")
+        self.assertFalse(ok)
+        self.assertIn("overflow", msg.lower())
+
+    def test_quantum_travel_fuel_cost_applies_fuel_efficiency_bonuses(self):
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(fuel=100, max_fuel=100, equipped_upgrades={})
+        )
+        ok, _ = self.engine.start_travel("sol_body_2", mode="quantum")
+        self.assertTrue(ok)
+        base_burn = 100 - self.engine.state.ship.fuel
+
+        self.engine.orbit("sol_body_1")
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(fuel=100, max_fuel=100, equipped_upgrades={"engines": "warp_booster_mk1"})
+        )
+        ok, _ = self.engine.start_travel("sol_body_2", mode="quantum")
+        self.assertTrue(ok)
+        boosted_burn = 100 - self.engine.state.ship.fuel
+        self.assertLess(boosted_burn, base_burn)
+
 
 if __name__ == "__main__":
     unittest.main()

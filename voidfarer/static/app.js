@@ -486,6 +486,8 @@ class CockpitApp {
 
         // Arsenal & Fleet containers
         this.arsenalList = document.getElementById("arsenalList");
+        this.shipyardChassisList = document.getElementById("shipyardChassisList");
+        this.weaponsBayList = document.getElementById("weaponsBayList");
         this.shipModsList = document.getElementById("shipModsList");
         this.shipModSlotGrid = document.getElementById("shipModSlotGrid");
         this.fleetRoster = document.getElementById("fleetRoster");
@@ -1562,35 +1564,120 @@ class CockpitApp {
 
     renderArsenal() {
         if (!this.state) return;
-        this.arsenalList.innerHTML = "";
-        const upgrades = this.state.catalog_upgrades || [];
-        const equipped = this.state.ship.equipped_upgrades || {};
-        const credits = this.state.ship.credits;
+        if (this.arsenalList) {
+            this.arsenalList.innerHTML = "";
+            const upgrades = this.state.catalog_upgrades || [];
+            const equipped = this.state.ship.equipped_upgrades || {};
+            const credits = this.state.ship.credits;
 
-        upgrades.forEach(u => {
-            const isEquipped = equipped[u.slot] === u.id;
-            const card = document.createElement("div");
-            card.className = `arsenal-card ${isEquipped ? 'installed' : ''}`;
+            upgrades.forEach(u => {
+                const isEquipped = equipped[u.slot] === u.id;
+                const card = document.createElement("div");
+                card.className = `arsenal-card ${isEquipped ? 'installed' : ''}`;
 
-            card.innerHTML = `
-                <div class="arsenal-info">
-                    <div class="arsenal-title-row">
-                        <span class="slot-tag">${this.escapeHtml(u.slot.toUpperCase())}</span>
-                        <strong class="arsenal-name">${this.escapeHtml(u.name)}</strong>
+                card.innerHTML = `
+                    <div class="arsenal-info">
+                        <div class="arsenal-title-row">
+                            <span class="slot-tag">${this.escapeHtml(u.slot.toUpperCase())}</span>
+                            <strong class="arsenal-name">${this.escapeHtml(u.name)}</strong>
+                        </div>
+                        <p class="arsenal-desc">${this.escapeHtml(u.description)}</p>
                     </div>
-                    <p class="arsenal-desc">${this.escapeHtml(u.description)}</p>
-                </div>
-                <button class="btn-upgrade-buy" ${isEquipped || credits < u.cost ? 'disabled' : ''} data-id="${this.escapeHtml(u.id)}">
-                    ${isEquipped ? 'EQUIPPED' : `${u.cost} CR`}
-                </button>
-            `;
+                    <button class="btn-upgrade-buy" ${isEquipped || credits < u.cost ? 'disabled' : ''} data-id="${this.escapeHtml(u.id)}">
+                        ${isEquipped ? 'EQUIPPED' : `${u.cost} CR`}
+                    </button>
+                `;
 
-            if (!isEquipped) {
-                card.querySelector(".btn-upgrade-buy").addEventListener("click", () => this.handleBuyUpgrade(u.id));
-            }
+                if (!isEquipped) {
+                    card.querySelector(".btn-upgrade-buy").addEventListener("click", () => this.handleBuyUpgrade(u.id));
+                }
 
-            this.arsenalList.appendChild(card);
-        });
+                this.arsenalList.appendChild(card);
+            });
+        }
+
+        // Render Shipyard Chassis Showroom
+        if (this.shipyardChassisList) {
+            this.shipyardChassisList.innerHTML = "";
+            const chassisList = this.state.catalog_chassis || [];
+            const currentClass = this.state.ship?.ship_class;
+            const credits = this.state.ship?.credits || 0;
+            const isDocked = !!(this.state.orbiting_body && this.state.orbiting_body.station_dockable);
+
+            chassisList.forEach(c => {
+                const isCurrent = currentClass === c.ship_class;
+                const isStarter = c.cost === 0;
+                const canAfford = credits >= c.cost;
+                const card = document.createElement("div");
+                card.className = `chassis-card ${isCurrent ? 'installed' : ''}`;
+                card.innerHTML = `
+                    <div class="chassis-info">
+                        <div class="chassis-title-row">
+                            <span class="slot-tag tag-cyan">${this.escapeHtml(c.ship_class)}</span>
+                            <strong class="chassis-name">${this.escapeHtml(c.name)}</strong>
+                        </div>
+                        <p class="chassis-desc">${this.escapeHtml(c.description)}</p>
+                        <div class="chassis-specs">
+                            <span>Hull: <strong>${c.max_hull}</strong></span>
+                            <span>Shield: <strong>${c.max_shield}</strong></span>
+                            <span>Fuel: <strong>${c.max_fuel}</strong></span>
+                            <span>Cargo: <strong>${c.cargo_capacity}</strong></span>
+                        </div>
+                        <div class="chassis-perk">★ ${this.escapeHtml(c.specialty_perk)}</div>
+                    </div>
+                    <button class="btn-upgrade-buy" ${isCurrent || isStarter || !isDocked || !canAfford ? 'disabled' : ''} data-chassis="${this.escapeHtml(c.id)}">
+                        ${isCurrent ? 'ACTIVE HULL' : (isStarter ? 'STARTER' : (!isDocked ? 'DRYDOCK REQ.' : `${c.cost} CR`))}
+                    </button>
+                `;
+                if (!isCurrent && !isStarter && isDocked && canAfford) {
+                    card.querySelector(".btn-upgrade-buy").addEventListener("click", () => this.handleCommissionChassis(c.id));
+                }
+                this.shipyardChassisList.appendChild(card);
+            });
+        }
+
+        // Render Weapons & Ordnance Bay
+        if (this.weaponsBayList) {
+            this.weaponsBayList.innerHTML = "";
+            const weaponsList = this.state.catalog_weapons || [];
+            const ownedWeapons = this.state.ship?.weapons || [];
+            const primaryWeapon = this.state.ship?.primary_weapon;
+            const credits = this.state.ship?.credits || 0;
+            const isDocked = !!(this.state.orbiting_body && this.state.orbiting_body.station_dockable);
+
+            weaponsList.forEach(w => {
+                const isOwned = ownedWeapons.includes(w.id);
+                const isPrimary = primaryWeapon === w.id;
+                const canAfford = credits >= w.cost;
+                const card = document.createElement("div");
+                card.className = `weapon-card ${isPrimary ? 'installed' : ''}`;
+                card.innerHTML = `
+                    <div class="weapon-info">
+                        <div class="weapon-title-row">
+                            <span class="slot-tag tag-red">${this.escapeHtml(w.weapon_type.toUpperCase())}</span>
+                            <strong class="weapon-name">${this.escapeHtml(w.name)}</strong>
+                        </div>
+                        <p class="weapon-desc">${this.escapeHtml(w.description)}</p>
+                        <div class="weapon-stats">
+                            <span>DMG: <strong>${w.damage}</strong></span>
+                            <span>Shield: <strong>x${w.shield_mult}</strong></span>
+                            <span>Hull: <strong>x${w.hull_mult}</strong></span>
+                            <span>ACC: <strong>${Math.round(w.accuracy * 100)}%</strong></span>
+                        </div>
+                    </div>
+                    <button class="btn-upgrade-buy" ${isPrimary || (!isOwned && (!isDocked || !canAfford)) ? 'disabled' : ''} data-weapon="${this.escapeHtml(w.id)}">
+                        ${isPrimary ? 'PRIMARY' : (isOwned ? 'EQUIP' : (!isDocked ? 'DRYDOCK REQ.' : `${w.cost} CR`))}
+                    </button>
+                `;
+                const btn = card.querySelector(".btn-upgrade-buy");
+                if (isOwned && !isPrimary) {
+                    btn.addEventListener("click", () => this.handleSetPrimaryWeapon(w.id));
+                } else if (!isOwned && isDocked && canAfford) {
+                    btn.addEventListener("click", () => this.handleInstallWeapon(w.id));
+                }
+                this.weaponsBayList.appendChild(card);
+            });
+        }
     }
 
     renderShipMods() {
@@ -2235,6 +2322,72 @@ class CockpitApp {
             }
         } catch (e) {
             this.appendLog(`[ERROR] Upgrade install failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleCommissionChassis(chassisId) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/shipyard/chassis", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chassis_id: chassisId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Chassis commissioning failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleInstallWeapon(weaponId) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/weapons/install", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ weapon_id: weaponId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Weapon installation failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleSetPrimaryWeapon(weaponId) {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/weapons/set", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ weapon_id: weaponId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(json.message, "reward");
+                this.state = json.state;
+                this.renderHUD();
+            } else {
+                this.appendLog(`[ERROR] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Primary weapon configuration failed: ${e.message}`, "hazard");
         }
     }
 
@@ -3557,27 +3710,37 @@ class CockpitApp {
             <div class="depot-card">
                 <h4>${this.escapeHtml(item)} x${qty}</h4>
                 <div class="depot-actions">
-                    <button class="btn-hud" data-action="withdraw" data-item="${this.escapeHtml(item)}">WITHDRAW 1</button>
-                    <button class="btn-hud btn-green" data-action="sell" data-item="${this.escapeHtml(item)}">SELL 1 FROM DEPOT</button>
+                    <button class="btn-hud" data-action="withdraw" data-qty="1" data-item="${this.escapeHtml(item)}">WITHDRAW 1</button>
+                    ${qty > 1 ? `<button class="btn-hud" data-action="withdraw" data-qty="${qty}" data-item="${this.escapeHtml(item)}">WITHDRAW ALL</button>` : ""}
+                    <button class="btn-hud btn-green" data-action="sell" data-qty="1" data-item="${this.escapeHtml(item)}">SELL 1</button>
+                    ${qty > 1 ? `<button class="btn-hud btn-green" data-action="sell" data-qty="${qty}" data-item="${this.escapeHtml(item)}">SELL ALL</button>` : ""}
                 </div>
             </div>
         `).join("");
-        const shipRows = (this.state.inventory_manifest || []).map(item => `
+        const shipRows = (this.state.inventory_manifest || []).map(item => {
+            const itemQty = item.total_quantity || item.quantity || 0;
+            return `
             <div class="depot-card">
-                <h4>SHIP: ${this.escapeHtml(item.name || item.id)} x${item.total_quantity || item.quantity || 0}</h4>
+                <h4>SHIP: ${this.escapeHtml(item.name || item.id)} x${itemQty}</h4>
                 <div class="depot-actions">
-                    <button class="btn-hud" data-action="deposit" data-item="${this.escapeHtml(item.id)}">DEPOSIT 1</button>
+                    <button class="btn-hud" data-action="deposit" data-qty="1" data-item="${this.escapeHtml(item.id)}">DEPOSIT 1</button>
+                    ${itemQty > 1 ? `<button class="btn-hud" data-action="deposit" data-qty="${itemQty}" data-item="${this.escapeHtml(item.id)}">DEPOSIT ALL</button>` : ""}
                 </div>
             </div>
-        `).join("");
+            `;
+        }).join("");
         this.depotList.innerHTML = depotRows + shipRows || '<div class="depot-card">Depot and hold are empty.</div>';
         this.depotList.querySelectorAll("[data-action]").forEach(btn => {
-            btn.addEventListener("click", () => this.handleDepotAction(btn.getAttribute("data-action"), btn.getAttribute("data-item")));
+            btn.addEventListener("click", () => this.handleDepotAction(
+                btn.getAttribute("data-action"),
+                btn.getAttribute("data-item"),
+                parseInt(btn.getAttribute("data-qty") || "1", 10)
+            ));
         });
     }
 
-    async handleDepotAction(action, itemId) {
-        await this.postAction(`/api/depot/${action}`, { item_id: itemId, quantity: 1 }, "depot");
+    async handleDepotAction(action, itemId, quantity = 1) {
+        await this.postAction(`/api/depot/${action}`, { item_id: itemId, quantity: quantity }, "depot");
     }
 
     renderMessages() {

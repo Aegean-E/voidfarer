@@ -231,6 +231,7 @@ class SimulationEngine:
                 self.state = self._clone_state(ship=new_ship, economy=econ)
         else:
             self.state = self._create_initial_state(seed)
+        self._local_dock_purchases: dict[tuple[str, str, str], int] = {}
         self._bootstrap_frontier()
 
     def _bootstrap_frontier(self) -> None:
@@ -787,6 +788,7 @@ class SimulationEngine:
             if self.state.active_anomaly is not None:
                 return False, "Hyperspace drive locked: unresolved spatial anomaly in proximity!"
 
+            self._local_dock_purchases.clear()
             cur_sys = self.current_system
             if target_system_id not in cur_sys.connections:
                 return False, f"System '{target_system_id}' is not linked via hyperlane corridor."
@@ -1058,6 +1060,7 @@ class SimulationEngine:
     def orbit(self, body_id: str) -> tuple[bool, str]:
         """Establish orbital trajectory around a celestial body in the current system."""
         with self.lock:
+            self._local_dock_purchases.clear()
             cur_sys = self.current_system
             matched = None
             for b in cur_sys.bodies:
@@ -1115,7 +1118,17 @@ class SimulationEngine:
             new_fuel = self.state.ship.fuel
             if norm_mode == "quantum":
                 travel_map = self._map_effects(cur_sys)
-                fuel_cost = max(2, int(math.ceil(distance_au * 0.8 * float(travel_map["fuel_mult"]))))
+                equipment = self._combined_equipment()
+                passives = calculate_passive_multipliers(self.state.ship)
+                research = self._research_bonuses()
+                fuel_mult = (
+                    float(travel_map["fuel_mult"])
+                    * equipment["fuel_efficiency"]
+                    * passives.get("fuel_efficiency", 1.0)
+                    * research.get("fuel_efficiency", 1.0)
+                    * (1.0 - min(0.25, self._skill("piloting")))
+                )
+                fuel_cost = max(1, int(math.ceil(distance_au * 0.8 * fuel_mult)))
                 if self.state.ship.fuel < fuel_cost:
                     return False, f"Insufficient quantum fuel for micro-jump: need {fuel_cost}, have {self.state.ship.fuel}."
                 new_fuel -= fuel_cost
@@ -1418,6 +1431,9 @@ class SimulationEngine:
             installed[mod.slot] = mod.id
             new_credits = self.state.ship.credits - mod.cost
             total_hull, total_shield, total_capacity, total_fuel = self._recompute_caps(self.state.ship, ship_mods=installed)
+            current_cargo_vol = calculate_cargo_volume(self.state.ship.cargo)
+            if current_cargo_vol > total_capacity:
+                return False, f"Cargo hold overflow: current inventory ({current_cargo_vol} units) exceeds capacity ({total_capacity} units) with {mod.name}. Sell or store cargo first."
             log_entry = f"Structural refit: installed {mod.name} ({slot_label(mod.slot)}) for {mod.cost} cr."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
             new_ship = self._clone_ship(
@@ -1449,6 +1465,9 @@ class SimulationEngine:
             refund = get_ship_mod_sell_value(mod_id)
             total_hull, total_shield, total_capacity, total_fuel = self._recompute_caps(self.state.ship, ship_mods=installed)
             mod_name = mod.name if mod else mod_id
+            current_cargo_vol = calculate_cargo_volume(self.state.ship.cargo)
+            if current_cargo_vol > total_capacity:
+                return False, f"Cargo hold overflow: current inventory ({current_cargo_vol} units) exceeds capacity ({total_capacity} units) without {mod_name}. Sell or store cargo first."
             log_entry = f"Structural refit: removed {mod_name} for {refund} cr salvage credit."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
             new_ship = self._clone_ship(
@@ -2094,7 +2113,11 @@ class SimulationEngine:
             if not comm:
                 return False, f"Commodity '{commodity_id}' not traded here."
 
-            quote = calculate_dynamic_market_quote(self.current_system, body, comm, self.state.economy)
+            sys_faction_id = get_faction_id_from_name(self.current_system.faction)
+            standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
+            quote = calculate_dynamic_market_quote(
+                self.current_system, body, comm, self.state.economy, faction_standing=standing
+            )
             vol_per_unit = comm.volume
 
             cargo = dict(self.state.ship.cargo)
@@ -2122,6 +2145,8 @@ class SimulationEngine:
                 if current_cargo_volume + needed_space > self.state.ship.cargo_capacity:
                     return False, f"Cargo hold capacity exceeded: cannot load {needed_space} units."
 
+                dock_tag = (self.current_system.id, body.id, commodity_id)
+                self._local_dock_purchases[dock_tag] = self._local_dock_purchases.get(dock_tag, 0) + quantity
                 new_credits = self.state.ship.credits - total_cost
                 cargo[commodity_id] = cargo.get(commodity_id, 0) + quantity
                 tariff_note = ""
@@ -2158,7 +2183,19 @@ class SimulationEngine:
                 # Lawful commerce slightly boosts local faction relations
                 new_faction_standings[sys_faction_id] = min(100, new_faction_standings.get(sys_faction_id, 0) + 1)
 
-                revenue = int(quote.sell_price * quantity * margin_mult * corp_mult)
+                dock_tag = (self.current_system.id, body.id, commodity_id)
+                local_bought = self._local_dock_purchases.get(dock_tag, 0)
+                bonus_sell = int(quote.sell_price * margin_mult * corp_mult)
+                capped_sell = min(max(1, quote.buy_price - 1), bonus_sell)
+                if local_bought > 0:
+                    resold_local = min(quantity, local_bought)
+                    resold_import = quantity - resold_local
+                    self._local_dock_purchases[dock_tag] = local_bought - resold_local
+                    revenue = (resold_local * capped_sell) + (resold_import * bonus_sell)
+                    unit_sell_price = revenue // quantity
+                else:
+                    unit_sell_price = bonus_sell
+                    revenue = unit_sell_price * quantity
                 new_credits = self.state.ship.credits + revenue
                 cargo[commodity_id] = owned - quantity
                 if cargo[commodity_id] == 0:
@@ -2301,10 +2338,13 @@ class SimulationEngine:
 
             total_hull, total_shield, total_capacity, _max_fuel = self._recompute_caps(self.state.ship, equipped=equipped)
 
+            upg_name = upg.name if upg else upg_id
+            current_cargo_vol = calculate_cargo_volume(self.state.ship.cargo)
+            if current_cargo_vol > total_capacity:
+                return False, f"Cargo hold overflow: current inventory ({current_cargo_vol} units) exceeds capacity ({total_capacity} units) without {upg_name}. Sell or store cargo first."
+
             cur_hull = min(self.state.ship.hull, total_hull)
             cur_shield = min(self.state.ship.shield, total_shield)
-
-            upg_name = upg.name if upg else upg_id
             remaining_upgrades = tuple(n for n in self.state.ship.upgrades if n != upg_name)
             msg = f"Uninstalled {upg_name} from {slot} slot for {trade_in_value} cr trade-in value."
             new_log = list(self.state.ship.flight_log[-19:]) + [msg]
@@ -2347,6 +2387,10 @@ class SimulationEngine:
 
             probe = replace(self.state.ship, ship_class=chassis.ship_class)
             total_max_hull, total_max_shield, total_cargo_capacity, total_max_fuel = self._recompute_caps(probe)
+
+            current_cargo_vol = calculate_cargo_volume(self.state.ship.cargo)
+            if current_cargo_vol > total_cargo_capacity:
+                return False, f"Cargo hold overflow: current inventory ({current_cargo_vol} units) exceeds {chassis.name} capacity ({total_cargo_capacity} units). Sell or store cargo before downsizing."
 
             msg = f"Commissioned {chassis.name} ({chassis.ship_class}) at shipyard for {chassis.cost} cr! Perk: {chassis.specialty_perk}"
             new_log = list(self.state.ship.flight_log[-19:]) + [msg]
@@ -2823,17 +2867,19 @@ class SimulationEngine:
             if enemy_miss:
                 enemy_rem_hull = enemy_hull_before
                 enemy_rem_shield = enemy_shield_before
-                strike_desc = "Enemy AI jinked out of your firing solution; the strike missed."
+                if not weapon_miss:
+                    strike_desc = "Enemy AI jinked out of your firing solution; the strike missed."
             elif fleet_ships and action in damaging_actions:
                 fleet_volley = fleet_damage(fleet_ships, battle_stance)
                 if fleet_volley > 0:
+                    effective_volley = fleet_volley
                     if enemy_rem_shield > 0:
                         shield_hit = min(fleet_volley, enemy_rem_shield)
                         enemy_rem_shield -= shield_hit
                         fleet_volley -= shield_hit
                     if fleet_volley > 0:
                         enemy_rem_hull -= fleet_volley
-                    strike_desc += f" Escort wing added {fleet_damage(fleet_ships)} coordinated damage."
+                    strike_desc += f" Escort wing added {effective_volley} coordinated damage ({battle_stance} stance)."
 
             # Check if enemy was neutralized
             if enemy_rem_hull <= 0:
@@ -3480,7 +3526,15 @@ class SimulationEngine:
             market_quotes = []
             if orb_body and orb_body.station_dockable:
                 quotes = [
-                    calculate_dynamic_market_quote(cur_sys, orb_body, c, self.state.economy)
+                    calculate_dynamic_market_quote(
+                        cur_sys,
+                        orb_body,
+                        c,
+                        self.state.economy,
+                        faction_standing=self.state.ship.faction_standings.get(
+                            get_faction_id_from_name(cur_sys.faction), 0
+                        ),
+                    )
                     for c in CANONICAL_COMMODITIES
                 ]
                 market_quotes = [
@@ -3611,6 +3665,7 @@ class SimulationEngine:
                 "trade_routes": get_galactic_trade_routes(self.state.systems, self.state.economy),
                 "catalog_chassis": [c.to_dict() for c in CATALOG_CHASSIS],
                 "available_chassis": [c.to_dict() for c in get_available_chassis(self.current_chassis_id)],
+                "catalog_weapons": weapon_catalog(),
                 "ai_captains": [c.to_dict() for c in self.state.ai_captains],
                 "depots": [d.to_dict() for d in self.state.depots],
                 "messages": [m.to_dict() for m in self.state.messages],
@@ -3859,11 +3914,48 @@ class SimulationEngine:
             if depot.cargo.get(item_id, 0) < quantity:
                 return False, f"Depot contains only {depot.cargo.get(item_id, 0)} units of {item_id}."
             body = self.orbiting_body
-            quotes = GalaxyGenerator.get_market_quotes(self.current_system, body)
-            quote = next((q for q in quotes if q.commodity_id == item_id), None)
-            if not quote:
-                return False, f"No market quote is available for {item_id}."
-            revenue = quote.sell_price * quantity
+            if not body or body.market_archetype == "none":
+                return False, "Current orbital location has no commercial market exchange."
+            comm = COMMODITY_MAP.get(item_id)
+            if not comm:
+                return False, f"Unknown commodity '{item_id}'."
+            sys_faction_id = get_faction_id_from_name(self.current_system.faction)
+            standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
+            quote = calculate_dynamic_market_quote(
+                self.current_system, body, comm, self.state.economy, faction_standing=standing
+            )
+            passives = calculate_passive_multipliers(self.state.ship)
+            equipment = self._combined_equipment()
+            map_trade_bonus = float(self._map_effects()["trade_margin"])
+            faction_perks = get_faction_service_perks(sys_faction_id, standing)
+            margin_mult = passives.get("trade_margin", 1.0) * (
+                1.0
+                + equipment["trade_margin"]
+                + map_trade_bonus
+                + len(self.state.ship.allies) * 0.05
+                + self._skill("trade")
+                + float(faction_perks["trade_margin"])
+            )
+            margin_mult = max(0.25, margin_mult)
+            corp_mult = 1.0
+            dom_corp_id = self.current_system.dominant_corp
+            if dom_corp_id:
+                corp = get_corporation(dom_corp_id)
+                if corp and corp.specialty_commodity == item_id:
+                    corp_mult = 1.0 + corp.bonus_trade_margin
+            unit_sell = min(max(1, quote.buy_price - 1), int(quote.sell_price * margin_mult * corp_mult))
+            revenue = unit_sell * quantity
+            # Update local system stockpile in economy
+            econ_markets = dict(self.state.economy.markets)
+            sys_id = self.current_system.id
+            if sys_id in econ_markets:
+                sm = econ_markets[sys_id]
+                new_stocks = dict(sm.stockpiles)
+                new_stocks[item_id] = min(MAX_STOCK, new_stocks.get(item_id, 50) + quantity)
+                econ_markets[sys_id] = replace(sm, stockpiles=new_stocks)
+            new_economy = replace(self.state.economy, markets=econ_markets)
+
+
             depot_cargo = dict(depot.cargo)
             depot_cargo[item_id] -= quantity
             if depot_cargo[item_id] <= 0:
@@ -3877,6 +3969,7 @@ class SimulationEngine:
                 ship=self._clone_ship(credits=self.state.ship.credits + revenue),
                 depots=depots,
                 stats=stats,
+                economy=new_economy,
             )
             return True, f"Sold {quantity}x {item_id} from {depot.name} for {revenue} cr."
 

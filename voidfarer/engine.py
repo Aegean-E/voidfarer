@@ -43,6 +43,7 @@ from voidfarer.character import (
     tick_ability_cooldowns,
     train_skill,
 )
+from voidfarer.codex import build_codex_report, get_codex_entry
 from voidfarer.exploration import (
     crew_training_cost,
     derive_derelict,
@@ -133,6 +134,7 @@ from voidfarer.models import (
     AICaptain,
     BountyContract,
     CelestialBody,
+    CodexState,
     CombatEncounter,
     Depot,
     EconomicEvent,
@@ -385,6 +387,7 @@ class SimulationEngine:
             faction_leaders=kwargs.get("faction_leaders", cur.faction_leaders),
             wars=kwargs.get("wars", cur.wars),
             eliminated_factions=kwargs.get("eliminated_factions", cur.eliminated_factions),
+            codex=kwargs.get("codex", cur.codex),
         )
 
     def _research_bonuses(self) -> dict[str, float]:
@@ -1505,6 +1508,53 @@ class SimulationEngine:
                 "equipment_bonuses": equipment,
                 "power_efficiency": round(reactor_output_efficiency(ship.reactor, float(equipment.get("reactor_output", 0.0))), 3),
             }
+
+    def get_codex_report(self) -> dict[str, Any]:
+        """Captain's log and discovery codex derived from the saved game state."""
+        with self.lock:
+            return build_codex_report(self.state)
+
+    def claim_codex_reward(self, entry_id: str) -> tuple[bool, str]:
+        """Claim one completed codex milestone and persist its reward."""
+        with self.lock:
+            entry = get_codex_entry(entry_id)
+            if entry is None:
+                return False, f"Unknown codex milestone '{entry_id}'."
+            if entry_id in self.state.codex.claimed:
+                return False, f"Reward for '{entry.title}' is already claimed."
+
+            report = build_codex_report(self.state)
+            record = next((item for item in report["entries"] if item["id"] == entry_id), None)
+            if record is None or not record["completed"]:
+                current = record["value"] if record else 0
+                return False, f"Locked: {entry.title} ({current}/{entry.target})."
+
+            new_credits = self.state.ship.credits + entry.reward_credits
+            new_mastery, xp_logs = self._award_pilot_xp(entry.reward_xp, self.state.ship.mastery)
+            claim_log = (
+                f"CODEX UNLOCKED: {entry.title} "
+                f"(+{entry.reward_credits} cr, +{entry.reward_xp} XP)."
+            )
+            new_log = list(self.state.ship.flight_log[-19:]) + [claim_log] + xp_logs
+            codex = CodexState(
+                claimed=self.state.codex.claimed + (entry_id,),
+                claimed_dates={
+                    **self.state.codex.claimed_dates,
+                    entry_id: self.state.time.current_date,
+                },
+            )
+            self.state = self._clone_state(
+                ship=self._clone_ship(
+                    credits=new_credits,
+                    mastery=new_mastery,
+                    flight_log=tuple(new_log[-20:]),
+                ),
+                codex=codex,
+            )
+            return True, (
+                f"Codex milestone claimed: {entry.title} "
+                f"(+{entry.reward_credits} cr, +{entry.reward_xp} XP)."
+            )
 
     def train_character_skill(self, skill: str) -> tuple[bool, str]:
         with self.lock:
@@ -3468,6 +3518,7 @@ class SimulationEngine:
                 "active_combat": self.state.active_combat.to_dict() if self.state.active_combat else None,
                 "time": self.state.time.to_dict(),
                 "stats": dict(self.state.stats),
+                "codex": build_codex_report(self.state),
                 "equipment_bonuses": equipment_snapshot,
                 "map_modifiers": system_modifier_summary(cur_sys),
                 "map_effects": self._map_effects(cur_sys),
@@ -3965,7 +4016,9 @@ class SimulationEngine:
                 reactor=new_reactor,
                 flight_log=tuple(list(self.state.ship.flight_log[-19:]) + [log_entry]),
             )
-            self.state = self._clone_state(ship=new_ship)
+            stats = dict(self.state.stats)
+            stats["scoops"] = stats.get("scoops", 0) + 1
+            self.state = self._clone_state(ship=new_ship, stats=stats)
             return True, log_entry
 
     def train_crew_member(self, crew_id: str) -> tuple[bool, str]:

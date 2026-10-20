@@ -1561,6 +1561,31 @@ class GlobalEconomyState:
 
 
 @dataclass(frozen=True)
+class CodexState:
+    """Persistent captain's log progress: claimed milestones and their dates."""
+
+    claimed: tuple[str, ...] = ()
+    claimed_dates: dict[str, str] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "claimed": list(self.claimed),
+            "claimed_dates": dict(self.claimed_dates),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CodexState:
+        if not data:
+            return cls()
+        claimed = tuple(str(entry_id) for entry_id in data.get("claimed", ()))
+        dates = {
+            str(entry_id): str(claimed_date)
+            for entry_id, claimed_date in data.get("claimed_dates", {}).items()
+        }
+        return cls(claimed=claimed, claimed_dates=dates)
+
+
+@dataclass(frozen=True)
 class GameState:
     """Master simulation universe state container."""
 
@@ -1591,6 +1616,7 @@ class GameState:
     faction_leaders: tuple[FactionLeader, ...] = ()
     wars: tuple[WarState, ...] = ()
     eliminated_factions: tuple[str, ...] = ()
+    codex: CodexState = field(default_factory=CodexState)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1614,6 +1640,7 @@ class GameState:
             "faction_leaders": [l.to_dict() for l in self.faction_leaders],
             "wars": [w.to_dict() for w in self.wars],
             "eliminated_factions": list(self.eliminated_factions),
+            "codex": self.codex.to_dict(),
         }
 
     @classmethod
@@ -1660,5 +1687,6 @@ class GameState:
             faction_leaders=tuple(FactionLeader.from_dict(l) for l in data.get("faction_leaders", ())),
             wars=tuple(WarState.from_dict(w) for w in data.get("wars", ())),
             eliminated_factions=tuple(data.get("eliminated_factions", ())),
+            codex=CodexState.from_dict(data.get("codex", {})),
         )
 

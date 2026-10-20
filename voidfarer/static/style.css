@@ -3306,3 +3306,319 @@ html[data-density="comfortable"] .panel-right .flight-log-stream {
     font-size: 0.64rem;
     line-height: 1.4;
 }
+
+/* Captain's Log & Discovery Codex Styles */
+.codex-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    max-height: 560px;
+    padding-right: 6px;
+}
+
+.codex-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.codex-metric-card {
+    background: rgba(10, 16, 28, 0.85);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.codex-metric-card.highlight-ready {
+    border-color: var(--neon-green);
+    box-shadow: 0 0 10px rgba(0, 255, 170, 0.25);
+    background: rgba(0, 255, 170, 0.08);
+}
+
+.codex-metric-val {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--neon-cyan);
+}
+
+.codex-metric-card.highlight-ready .codex-metric-val {
+    color: var(--neon-green);
+}
+
+.codex-metric-lbl {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.codex-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.codex-section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.codex-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.codex-stat-chip {
+    background: rgba(10, 16, 28, 0.65);
+    border: 1px solid rgba(0, 240, 255, 0.1);
+    border-radius: 4px;
+    padding: 6px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.68rem;
+}
+
+.codex-stat-label {
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.codex-stat-value {
+    color: var(--neon-cyan);
+    font-family: var(--font-mono);
+}
+
+.codex-category-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.codex-cat-filter {
+    background: rgba(10, 16, 28, 0.8);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.codex-cat-filter:hover {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+}
+
+.codex-cat-filter.active {
+    background: rgba(0, 240, 255, 0.15);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 6px rgba(0, 240, 255, 0.2);
+}
+
+.codex-entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.codex-entry {
+    background: rgba(10, 16, 28, 0.85);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.codex-entry.claimed {
+    border-color: rgba(0, 240, 255, 0.2);
+    opacity: 0.85;
+}
+
+.codex-entry.ready {
+    border-color: var(--neon-green);
+    background: rgba(0, 255, 170, 0.05);
+    box-shadow: 0 0 12px rgba(0, 255, 170, 0.18);
+}
+
+.codex-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.codex-entry-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.codex-entry-cat {
+    font-family: var(--font-mono);
+    font-size: 0.54rem;
+    color: var(--text-muted);
+    letter-spacing: 0.8px;
+}
+
+.codex-entry-title {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+}
+
+.codex-entry.ready .codex-entry-title {
+    color: var(--neon-green);
+}
+
+.codex-entry-rewards {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.reward-tag {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.35);
+    color: #ffaa00;
+    border-radius: 3px;
+}
+
+.reward-tag.xp {
+    background: rgba(199, 125, 255, 0.12);
+    border-color: rgba(199, 125, 255, 0.35);
+    color: #c77dff;
+}
+
+.codex-entry-desc {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+.codex-entry-hint {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.codex-entry-hint .hint-kicker {
+    color: var(--neon-cyan);
+}
+
+.codex-entry-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.codex-progress-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.codex-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan));
+    transition: width 0.3s ease;
+}
+
+.codex-entry.ready .codex-progress-fill {
+    background: linear-gradient(90deg, #00aa66, var(--neon-green));
+}
+
+.codex-entry-action {
+    display: flex;
+    align-items: center;
+}
+
+.codex-progress-readout {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.codex-claimed-badge {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--neon-cyan);
+    letter-spacing: 0.5px;
+}
+
+.codex-claim-btn {
+    font-size: 0.64rem;
+    padding: 3px 8px;
+    letter-spacing: 0.5px;
+}
+
+.codex-log-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 140px;
+    overflow-y: auto;
+    background: rgba(5, 10, 20, 0.65);
+    border: 1px solid rgba(0, 240, 255, 0.12);
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+
+.codex-log-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.06);
+    color: var(--text-secondary);
+}
+
+.codex-log-line:last-child {
+    border-bottom: none;
+}
+
+.codex-log-date {
+    color: var(--text-muted);
+    font-size: 0.58rem;
+    min-width: 70px;
+}
+
+.codex-log-title {
+    color: var(--text-primary);
+    flex: 1;
+    margin: 0 8px;
+}
+
+.codex-log-reward {
+    color: var(--neon-amber);
+    font-size: 0.6rem;
+}

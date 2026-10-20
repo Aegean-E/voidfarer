@@ -568,6 +568,16 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "report": report, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/codex/claim":
+            entry_id = str(body.get("entry_id", ""))
+            if not entry_id:
+                self._send_error_json("Entry ID required")
+                return
+            ok, msg = self.engine.claim_codex_reward(entry_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/scoop":
             ok, msg = self.engine.scoop_fuel()
             self.storage.save(self.engine.state)

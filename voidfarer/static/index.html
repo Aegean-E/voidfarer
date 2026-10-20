@@ -229,6 +229,7 @@
                     <button class="deck-tab-btn" id="tabBtnMastery">PILOT PERKS</button>
                     <button class="deck-tab-btn" id="tabBtnCharacter">COMMANDER</button>
                     <button class="deck-tab-btn" id="tabBtnEmpire">EMPIRE</button>
+                    <button class="deck-tab-btn" id="tabBtnCodex">CAPTAIN'S LOG <span class="tab-badge" id="codexBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnQuests">QUESTS</button>
                     <button class="deck-tab-btn" id="tabBtnAI">AI COMMAND</button>
                     <button class="deck-tab-btn" id="tabBtnDepot">DEPOT</button>
@@ -476,6 +477,35 @@
                         <div class="empire-section">
                             <h3 class="subpanel-title">FACTION LEADERS & WARS</h3>
                             <div class="diplomacy-list" id="diplomacyList"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Captain's Log & Discovery Codex -->
+                    <div class="codex-panel tab-content" id="tabContentCodex" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-cyan"></span> CAPTAIN'S LOG</div>
+                            <h2 class="panel-title">DISCOVERY CODEX & MILESTONES</h2>
+                            <span class="badge-arch" id="codexProgressBadge">0 / 0 CLAIMED</span>
+                        </div>
+
+                        <div class="codex-summary-strip" id="codexSummaryStrip"></div>
+
+                        <div class="codex-section">
+                            <h3 class="subpanel-title">CAREER STATISTICS</h3>
+                            <div class="codex-stats-grid" id="codexStatsGrid"></div>
+                        </div>
+
+                        <div class="codex-section">
+                            <div class="codex-section-header">
+                                <h3 class="subpanel-title">DISCOVERY MILESTONES</h3>
+                                <div class="codex-category-filters" id="codexCategoryFilters"></div>
+                            </div>
+                            <div class="codex-entry-list" id="codexEntryList"></div>
+                        </div>
+
+                        <div class="codex-section">
+                            <h3 class="subpanel-title">CLAIMED MILESTONES LOG</h3>
+                            <div class="codex-log-stream" id="codexLog"></div>
                         </div>
                     </div>
 

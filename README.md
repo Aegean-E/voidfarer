@@ -75,6 +75,7 @@ voidfarer/
 │   ├── economy.py            <- dynamic galactic economy, stockpiles & trade routes
 │   ├── frontier.py           <- AI captains, depots, mercenaries & quantum messages
 │   ├── exploration.py        <- derelict salvage, fuel scooping & crew drills
+│   ├── codex.py              <- discovery codex, career statistics & milestones
 │   ├── inventory.py          <- item catalog, consumables & cargo manifest
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
@@ -88,6 +89,7 @@ voidfarer/
     ├── test_adaptive_ui_salvage.py
     ├── test_ai_and_calendar.py
     ├── test_batch_launchers.py
+    ├── test_captains_log_codex.py
     ├── test_cli.py
     ├── test_cockpit_layout.py
     ├── test_economy.py
@@ -364,17 +366,12 @@ python -m voidfarer.cli crew recruit scientist
 python -m voidfarer.cli crew train <crew_id>
 python -m voidfarer.cli weapons install railgun
 ```
-The commander ages, earns XP/skill points, and trains six skills. Abilities include reactor
-overclock, emergency repair, battle focus, science burst, trade instinct, and diplomacy. Research
-unlocks reactor, scan, combat, outpost, repair, and fuel technologies. Outposts produce credits,
-research, and commodities each tick. Faction leaders use behaviors to declare and resolve wars;
-factions can capture systems and be eliminated without territory. Escort corvettes, frigates,
-cruisers, and carriers add coordinated volleys, take incoming fire, and use battle stances.
-Route planning supports multi-jump paths and black-hole hazards; solar panels, ring worlds, and
-black holes are present as ship upgrades, outposts, and celestial bodies. Message trees branch into credits, research, crew, standing, weapons, or reactor effects. Crew
-have roles, morale, wages, skill bonuses, and SVG portraits; weapons cover laser, kinetic, missile,
-plasma, ion, quantum, and drone types. The game begins 01.01.3042 in the Quantum Age with Dyson
-spheres, quantum relays, solar collectors, wormholes, ring worlds, and black holes.
+The commander ages, earns XP, and trains six skills with active cooldown abilities. Research
+unlocks reactor, scan, combat, outpost, repair, and fuel tech. Outposts produce resources each tick.
+Faction leaders wage wars, capture systems, and face elimination. Escort warships coordinate volleys,
+screen damage, and adopt battle stances. Multi-jump routing handles black holes. Message trees branch
+into lasting outcomes. Crew feature roles, morale, wages, and SVG portraits. The setting begins
+01.01.3042 in the Quantum Age with Dyson spheres, wormholes, and ring worlds.
 
 ### 19. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
@@ -395,6 +392,19 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Ship Modification Section**: Drydock refit bay with five structural slots, trade-off cards, live capacity recomputation, install and salvage-remove controls.
 - **Resolution-Adaptive HUD**: ultrawide/tablet/phone/short-height breakpoints, density and HUD-scale settings, DPR-correct radar, ResizeObserver, touch pan/pinch, reduced motion, and safe-area insets.
 - **Derelict Boarding & Fuel Scooping**: once-per-body salvage risk/reward; star/gas/ice fuel scoops that trade reactor heat for fuel; paid crew training drills.
+- **Captain's Log & Discovery Codex**: career statistics grid, discovery milestones, claim rewards, category filters, and persistent flight log.
+
+### 20. Captain's Log & Discovery Codex
+```bash
+# Career statistics, discovery overview, and claimed milestone log
+python -m voidfarer.cli log
+
+# Discovery codex milestones with category filters
+python -m voidfarer.cli codex
+
+# Claim credits and pilot XP for a completed milestone
+python -m voidfarer.cli codex claim first_light
+```
 
 ---
 
@@ -402,6 +412,6 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 342-test suite runs in about 5 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 361-test suite runs in about 5 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Effective Hardware & Chassis Bonuses**: Every advertised module effect (fuel savings, scan yields, combat damage, evasion, shield regeneration, ECM) and every chassis perk (trade margin, scan yield, combat damage) is aggregated and applied in the simulation.

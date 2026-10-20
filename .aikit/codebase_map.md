@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `52`
-- **Total Classes**: `125`
-- **Total Top-Level Functions**: `152`
-- **Total Class Methods**: `666`
-- **Total Source Lines**: `20125`
+- **Total Python Modules**: `54`
+- **Total Classes**: `133`
+- **Total Top-Level Functions**: `159`
+- **Total Class Methods**: `695`
+- **Total Source Lines**: `21142`
 
 ---
 
@@ -98,6 +98,42 @@
   - Method `.test_voidfarer_bat_uses_crlf_line_endings()`
 - `class TestLauncherMenu` - *The interactive mission menu must survive its ASCII banner and exit cleanly.*
   - Method `.test_menu_choice_zero_renders_and_exits_cleanly()`
+
+---
+
+### [`tests/test_captains_log_codex.py`](tests/test_captains_log_codex.py)
+> *Regression tests for the captain's log, discovery codex, statistics, and rewards.*
+
+**Size**: `224` lines (`9462` bytes)
+
+**Classes:**
+- `class TestCodexCatalog`
+  - Method `.test_entry_ids_are_unique_and_resolvable()`
+  - Method `.test_entries_have_positive_targets_and_valid_categories()`
+  - Method `.test_report_covers_every_entry_and_starts_unclaimed()`
+  - Method `.test_fresh_engine_has_no_completed_milestones()`
+  - Method `.test_unknown_metric_is_rejected()`
+- `class TestCodexState`
+  - Method `.test_round_trip_preserves_claims_and_dates()`
+  - Method `.test_legacy_game_payload_defaults_codex()`
+- `class TestCodexEngine`
+  - Method `.setUp()`
+  - Method `._entry(entry_id)`
+  - Method `.test_jump_progresses_jump_and_system_metrics()`
+  - Method `.test_claim_grants_credits_xp_and_persists_once()`
+  - Method `.test_locked_and_unknown_claims_are_rejected_without_side_effects()`
+  - Method `.test_scoop_increments_the_statistic()`
+  - Method `.test_status_snapshot_exposes_the_codex()`
+  - Method `.test_claims_survive_save_and_load()`
+- `class TestCodexCli`
+  - Method `.setUp()`
+  - Method `._run(argv)`
+  - Method `.test_log_and_codex_commands_render()`
+  - Method `.test_codex_claim_after_jump()`
+- `class TestCodexCockpitAssets`
+  - Method `.test_index_declares_the_captains_log_tab()`
+  - Method `.test_javascript_renders_and_claims_codex_entries()`
+  - Method `.test_styles_cover_codex_cards()`
 
 ---
 
@@ -574,7 +610,7 @@
 ### [`tests/test_server.py`](tests/test_server.py)
 > *Unit and integration tests for embedded HTTP server REST endpoints.*
 
-**Size**: `324` lines (`14043` bytes)
+**Size**: `352` lines (`15331` bytes)
 
 **Classes:**
 - `class TestServer`
@@ -608,6 +644,7 @@
   - Method `.test_landing_and_depot_endpoints()`
   - Method `.test_save_load_delete_endpoints()`
   - Method `.test_multiple_save_slots_endpoints_and_listing()`
+  - Method `.test_codex_claim_endpoint()`
 
 ---
 
@@ -744,7 +781,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `2332` lines (`118871` bytes)
+**Size**: `2466` lines (`124967` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -772,6 +809,8 @@
 - `def cmd_contracts(engine, storage, parts)` - *Inspect dynamic sector bounties, claim completed contracts, and trigger fresh assignments.*
 - `def cmd_mastery(engine, storage, parts)` - *Display pilot progression rank, talent tree specializations, and allocate perks.*
 - `def cmd_relics(engine)` - *Display recovered ancient Precursor relics and passive fleet bonuses.*
+- `def cmd_log(engine)` - *Display the captain's log: career statistics, milestones, and flight record.*
+- `def cmd_codex(engine, storage, parts)` - *Inspect the discovery codex and claim completed milestone rewards.*
 - `def cmd_streak(engine)` - *Display current expedition jump streak and active loss aversion multiplier.*
 - `def cmd_tutorial(engine, storage, parts)` - *Cadet Flight Academy progressive tutorial system.*
 - `def cmd_story(engine, storage, parts)` - *The Precursor Cipher: Branching episodic space opera campaign.*
@@ -789,6 +828,26 @@
 - `def cmd_repl(engine, storage)` - *Launch interactive terminal command session.*
 - `def cmd_events(engine, storage, parts)` - *List or dismiss cockpit popup events.*
 - `def main(argv)` - *Main CLI entrypoint.*
+
+---
+
+### [`voidfarer/codex.py`](voidfarer/codex.py)
+> *Captain's log and discovery codex: milestones, statistics, and rewards.*
+
+**Size**: `540` lines (`18331` bytes)
+
+**Classes:**
+- `class CodexCategory` - *A thematic grouping of codex milestones.*
+  - Method `.to_dict()`
+- `class CodexEntry` - *One discovery milestone and its reward.*
+  - Method `.to_dict()`
+
+**Functions:**
+- `def get_codex_entry(entry_id)` - *Resolve one codex milestone by identifier.*
+- `def _seen_bodies(state)`
+- `def metric_value(state, metric)` - *Compute one codex metric from the saved game state.*
+- `def evaluate_codex(state)` - *Return every milestone with current progress, completion, and claim state.*
+- `def build_codex_report(state)` - *Build the JSON-safe captain's log and discovery codex report.*
 
 ---
 
@@ -841,7 +900,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `4438` lines (`221104` bytes)
+**Size**: `4491` lines (`223555` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -882,6 +941,8 @@
   - Method `.remove_ship_mod(slot)` - *Remove a structural modification and recover part of its cost.*
   - Method `.get_ship_mod_report()` - *Serializable structural modification catalog and installed layout.*
   - Method `.get_simulation_report()` - *Unified simulation telemetry: reactor, environment, and structural refits.*
+  - Method `.get_codex_report()` - *Captain's log and discovery codex derived from the saved game state.*
+  - Method `.claim_codex_reward(entry_id)` - *Claim one completed codex milestone and persist its reward.*
   - Method `.train_character_skill(skill)`
   - Method `.use_character_ability(ability_id, target_faction_id)`
   - Method `.choose_research(project_id)`
@@ -1117,7 +1178,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1664` lines (`60223` bytes)
+**Size**: `1692` lines (`61191` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*
@@ -1251,6 +1312,9 @@
 - `class GlobalEconomyState` - *Galactic economy simulation tracking localized market states and macro-economic events.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
+- `class CodexState` - *Persistent captain's log progress: claimed milestones and their dates.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
 - `class GameState` - *Master simulation universe state container.*
   - Method `.to_dict()`
   - Method `.from_dict(data)`
@@ -1335,7 +1399,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `1086` lines (`45252` bytes)
+**Size**: `1096` lines (`45687` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*

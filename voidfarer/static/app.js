@@ -414,6 +414,16 @@ class CockpitApp {
         this.tabBtnMastery = document.getElementById("tabBtnMastery");
         this.tabBtnCharacter = document.getElementById("tabBtnCharacter");
         this.tabBtnEmpire = document.getElementById("tabBtnEmpire");
+        this.tabBtnCodex = document.getElementById("tabBtnCodex");
+        this.codexBadge = document.getElementById("codexBadge");
+        this.tabContentCodex = document.getElementById("tabContentCodex");
+        this.codexProgressBadge = document.getElementById("codexProgressBadge");
+        this.codexSummaryStrip = document.getElementById("codexSummaryStrip");
+        this.codexStatsGrid = document.getElementById("codexStatsGrid");
+        this.codexCategoryFilters = document.getElementById("codexCategoryFilters");
+        this.codexEntryList = document.getElementById("codexEntryList");
+        this.codexLog = document.getElementById("codexLog");
+        this.activeCodexCategory = "all";
         this.tabBtnStory = document.getElementById("tabBtnStory");
         this.tabBtnFactions = document.getElementById("tabBtnFactions");
         this.tabBtnQuests = document.getElementById("tabBtnQuests");
@@ -612,6 +622,7 @@ class CockpitApp {
         this.tabBtnMastery.addEventListener("click", () => this.switchRightTab("mastery"));
         if (this.tabBtnCharacter) this.tabBtnCharacter.addEventListener("click", () => this.switchRightTab("character"));
         if (this.tabBtnEmpire) this.tabBtnEmpire.addEventListener("click", () => this.switchRightTab("empire"));
+        if (this.tabBtnCodex) this.tabBtnCodex.addEventListener("click", () => this.switchRightTab("codex"));
         this.tabBtnStory.addEventListener("click", () => this.switchRightTab("story"));
         if (this.tabBtnFactions) {
             this.tabBtnFactions.addEventListener("click", () => this.switchRightTab("factions"));
@@ -913,14 +924,14 @@ class CockpitApp {
             market: this.tabBtnMarket, arsenal: this.tabBtnArsenal, shipmods: this.tabBtnShipMods, fleet: this.tabBtnFleet,
             contracts: this.tabBtnContracts, story: this.tabBtnStory, factions: this.tabBtnFactions,
             quests: this.tabBtnQuests, ai: this.tabBtnAI, depot: this.tabBtnDepot, messages: this.tabBtnMessages,
-            character: this.tabBtnCharacter, empire: this.tabBtnEmpire,
+            character: this.tabBtnCharacter, empire: this.tabBtnEmpire, codex: this.tabBtnCodex,
         };
 
         const tabContents = {
             market: this.tabContentMarket, arsenal: this.tabContentArsenal, shipmods: this.tabContentShipMods, fleet: this.tabContentFleet,
             contracts: this.tabContentContracts, story: this.tabContentStory, factions: this.tabContentFactions,
             quests: this.tabContentQuests, ai: this.tabContentAI, depot: this.tabContentDepot, messages: this.tabContentMessages,
-            character: this.tabContentCharacter, empire: this.tabContentEmpire,
+            character: this.tabContentCharacter, empire: this.tabContentEmpire, codex: this.tabContentCodex,
         };
 
         // If clicking the already open tab, toggle the drawer closed
@@ -954,6 +965,7 @@ class CockpitApp {
         if (tabName === "shipmods") this.renderShipMods();
         if (tabName === "character") this.renderCharacter();
         if (tabName === "empire") this.renderEmpire();
+        if (tabName === "codex") this.renderCodex();
         if (tabName === "fleet") this.renderFleet();
         if (tabName === "contracts") this.renderContracts();
         if (tabName === "story") this.renderStory();
@@ -1124,6 +1136,18 @@ class CockpitApp {
             this.contractsBadge.textContent = readyContracts.length;
         } else {
             this.contractsBadge.style.display = "none";
+        }
+
+        // Captain's log ready notification badge
+        const codex = this.state.codex;
+        if (codex && this.codexBadge) {
+            const readyCount = codex.totals ? codex.totals.ready : 0;
+            if (readyCount > 0) {
+                this.codexBadge.style.display = "inline-block";
+                this.codexBadge.textContent = readyCount;
+            } else {
+                this.codexBadge.style.display = "none";
+            }
         }
 
         // Render Cosmic Chronometer & Time Controls
@@ -1308,6 +1332,8 @@ class CockpitApp {
             this.renderShipMods();
         } else if (this.activeRightTab === "character") {
             this.renderCharacter();
+        } else if (this.activeRightTab === "codex") {
+            this.renderCodex();
         } else if (this.activeRightTab === "empire") {
             this.renderEmpire();
         } else if (this.activeRightTab === "fleet") {
@@ -1768,6 +1794,132 @@ class CockpitApp {
         this.diplomacyList.querySelectorAll("[data-diplo]").forEach(btn =>
             btn.addEventListener("click", () => this.postAction("/api/diplomacy", { faction_id: btn.getAttribute("data-diplo"), action: "improve", amount: 0 }, "empire"))
         );
+    }
+
+    renderCodex() {
+        if (!this.state || !this.codexEntryList) return;
+        const codex = this.state.codex;
+        if (!codex) {
+            this.codexEntryList.innerHTML = `<div class="empty-msg">Codex telemetry offline.</div>`;
+            return;
+        }
+
+        const totals = codex.totals || { entries: 0, completed: 0, claimed: 0, ready: 0, completion_pct: 0 };
+        if (this.codexProgressBadge) {
+            this.codexProgressBadge.textContent = `${totals.claimed} / ${totals.entries} CLAIMED (${totals.completion_pct}%)`;
+        }
+
+        if (this.codexSummaryStrip) {
+            this.codexSummaryStrip.innerHTML = `
+                <div class="codex-metric-card">
+                    <span class="codex-metric-val">${totals.claimed}</span>
+                    <span class="codex-metric-lbl">CLAIMED</span>
+                </div>
+                <div class="codex-metric-card">
+                    <span class="codex-metric-val">${totals.completed}</span>
+                    <span class="codex-metric-lbl">DISCOVERED</span>
+                </div>
+                <div class="codex-metric-card ${totals.ready > 0 ? "highlight-ready" : ""}">
+                    <span class="codex-metric-val">${totals.ready}</span>
+                    <span class="codex-metric-lbl">READY</span>
+                </div>
+                <div class="codex-metric-card">
+                    <span class="codex-metric-val">${totals.entries}</span>
+                    <span class="codex-metric-lbl">TOTAL</span>
+                </div>
+            `;
+        }
+
+        if (this.codexStatsGrid) {
+            const stats = codex.stats || [];
+            this.codexStatsGrid.innerHTML = stats.map(s => `
+                <div class="codex-stat-chip">
+                    <span class="codex-stat-label">${this.escapeHtml(s.label)}</span>
+                    <strong class="codex-stat-value">${Number(s.value).toLocaleString()}</strong>
+                </div>
+            `).join("");
+        }
+
+        if (this.codexCategoryFilters) {
+            const categories = codex.categories || [];
+            const activeCat = this.activeCodexCategory || "all";
+            const buttonsHtml = [
+                `<button class="codex-cat-filter ${activeCat === "all" ? "active" : ""}" data-category="all">ALL (${totals.entries})</button>`,
+                ...categories.map(c => `
+                    <button class="codex-cat-filter ${activeCat === c.id ? "active" : ""}" data-category="${this.escapeHtml(c.id)}">
+                        ${this.escapeHtml(c.name.toUpperCase())} (${c.claimed}/${c.entries})
+                    </button>
+                `)
+            ].join("");
+            this.codexCategoryFilters.innerHTML = buttonsHtml;
+            this.codexCategoryFilters.querySelectorAll("[data-category]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    this.activeCodexCategory = btn.getAttribute("data-category");
+                    this.renderCodex();
+                });
+            });
+        }
+
+        const activeCat = this.activeCodexCategory || "all";
+        const entries = (codex.entries || []).filter(e => activeCat === "all" || e.category === activeCat);
+
+        this.codexEntryList.innerHTML = entries.map(entry => {
+            const pct = Math.min(100, Math.round((entry.progress / entry.target) * 100));
+            const statusClass = entry.claimed ? "claimed" : (entry.ready ? "ready" : "in-progress");
+            let actionHtml = "";
+            if (entry.claimed) {
+                actionHtml = `<span class="codex-claimed-badge">CLAIMED ${entry.claimed_date ? `// ${this.escapeHtml(entry.claimed_date)}` : ""}</span>`;
+            } else if (entry.ready) {
+                actionHtml = `<button class="btn-hud btn-green codex-claim-btn" data-claim-codex="${this.escapeHtml(entry.id)}">CLAIM REWARD</button>`;
+            } else {
+                actionHtml = `<span class="codex-progress-readout">${entry.progress} / ${entry.target}</span>`;
+            }
+
+            return `
+                <div class="codex-entry ${statusClass}">
+                    <div class="codex-entry-header">
+                        <div class="codex-entry-title-wrap">
+                            <span class="codex-entry-cat">${this.escapeHtml(entry.category.toUpperCase())}</span>
+                            <h4 class="codex-entry-title">${this.escapeHtml(entry.title)}</h4>
+                        </div>
+                        <div class="codex-entry-rewards">
+                            <span class="reward-tag">+${entry.reward_credits} CR</span>
+                            <span class="reward-tag xp">+${entry.reward_xp} XP</span>
+                        </div>
+                    </div>
+                    <p class="codex-entry-desc">${this.escapeHtml(entry.description)}</p>
+                    <p class="codex-entry-hint"><span class="hint-kicker">HINT:</span> ${this.escapeHtml(entry.hint)}</p>
+                    <div class="codex-entry-footer">
+                        <div class="codex-progress-track">
+                            <div class="codex-progress-fill" style="width: ${pct}%;"></div>
+                        </div>
+                        <div class="codex-entry-action">${actionHtml}</div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        this.codexEntryList.querySelectorAll("[data-claim-codex]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const entryId = btn.getAttribute("data-claim-codex");
+                this.postAction("/api/codex/claim", { entry_id: entryId }, "codex");
+            });
+        });
+
+        if (this.codexLog) {
+            const logs = codex.log || [];
+            if (logs.length === 0) {
+                this.codexLog.innerHTML = `<div class="empty-msg">No milestones claimed yet. Complete objectives across the galaxy to claim rewards.</div>`;
+            } else {
+                this.codexLog.innerHTML = logs.map(l => `
+                    <div class="codex-log-line">
+                        <span class="codex-log-date">${this.escapeHtml(l.date || "LOGGED")}</span>
+                        <span class="codex-log-title">${this.escapeHtml(l.title)}</span>
+                        <span class="codex-log-reward">+${l.reward_credits} CR / +${l.reward_xp} XP</span>
+                    </div>
+                `).join("");
+            }
+        }
     }
 
     renderFleetManager() {

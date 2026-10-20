@@ -1048,6 +1048,125 @@ def cmd_relics(engine: SimulationEngine) -> int:
     return 0
 
 
+def cmd_log(engine: SimulationEngine) -> int:
+    """Display the captain's log: career statistics, milestones, and flight record."""
+    report = engine.get_codex_report()
+    totals = report["totals"]
+    state = engine.state
+    print(f"\n{BOLD}{CYAN}=== CAPTAIN'S LOG ==={RESET}")
+    print(
+        f"{YELLOW}{state.time.current_date}{RESET} | Tick {state.time.tick} | "
+        f"{engine.current_system.name} | Commander {state.ship.commander_name}"
+    )
+    print(
+        f"Milestones: {totals['claimed']}/{totals['entries']} claimed | "
+        f"{totals['completed']} discovered | {GREEN if totals['ready'] else DIM}{totals['ready']} ready to claim{RESET}"
+    )
+
+    print(f"\n{BOLD}CAREER STATISTICS{RESET}")
+    stats = report["stats"]
+    for index in range(0, len(stats), 2):
+        left = stats[index]
+        right = stats[index + 1] if index + 1 < len(stats) else None
+        line = f"  {left['label']:<24} {left['value']:>10}"
+        if right:
+            line += f"    {right['label']:<24} {right['value']:>10}"
+        print(line)
+
+    print(f"\n{BOLD}MILESTONE LOG{RESET}")
+    if report["log"]:
+        for entry in report["log"]:
+            print(
+                f"  {entry['date']:<12} {GREEN}+{RESET} {entry['title']:<28} "
+                f"{YELLOW}+{entry['reward_credits']} CR / +{entry['reward_xp']} XP{RESET}"
+            )
+        if totals["ready"]:
+            print(f"\n{YELLOW}Ready to claim: run `codex` to see milestones, then `codex claim <id>`.{RESET}")
+    else:
+        print(f"  {DIM}No milestones claimed yet. Run `codex` to inspect the discovery register.{RESET}")
+
+    print(f"\n{BOLD}RECENT FLIGHT LOG{RESET}")
+    if report["flight_log"]:
+        for line in report["flight_log"][-8:]:
+            print(f"  {DIM}{line}{RESET}")
+    else:
+        print(f"  {DIM}No flight entries recorded.{RESET}")
+    return 0
+
+
+def cmd_codex(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """Inspect the discovery codex and claim completed milestone rewards."""
+    sub = parts[1].lower() if len(parts) > 1 else "list"
+    if sub in ("claim", "collect"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} codex claim <entry_id>")
+            return 1
+        ok, msg = engine.claim_codex_reward(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    report = engine.get_codex_report()
+    entries = report["entries"]
+    if sub in ("show", "info"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} codex show <entry_id>")
+            return 1
+        record = next((item for item in entries if item["id"] == parts[2]), None)
+        if record is None:
+            print(f"{RED}Unknown codex milestone '{parts[2]}'.{RESET}")
+            return 1
+        status = "CLAIMED" if record["claimed"] else ("READY TO CLAIM" if record["ready"] else "LOCKED")
+        print(f"\n{BOLD}{CYAN}{record['title']}{RESET} ({record['id']})")
+        print(f"Category: {record['category']} | Status: {status}")
+        print(f"{record['description']}")
+        print(f"Hint: {record['hint']}")
+        print(f"Progress: {record['value']}/{record['target']} | Reward: {record['reward_summary']}")
+        if record["claimed"]:
+            print(f"Claimed on {record['claimed_date']}.")
+        return 0
+
+    category_filter = sub if any(category["id"] == sub for category in report["categories"]) else None
+    if sub not in ("list", "status", "all") and category_filter is None:
+        print(f"{RED}Unknown codex command '{sub}'. Options: list, show, claim, or a category id.{RESET}")
+        return 1
+
+    totals = report["totals"]
+    print(f"\n{BOLD}{CYAN}=== DISCOVERY CODEX ==={RESET}")
+    print(
+        f"{totals['claimed']}/{totals['entries']} rewards claimed | "
+        f"{totals['completed']} milestones discovered ({totals['completion_pct']}%) | "
+        f"{GREEN if totals['ready'] else DIM}{totals['ready']} ready{RESET}"
+    )
+    for category in report["categories"]:
+        if category_filter and category["id"] != category_filter:
+            continue
+        print(f"\n{BOLD}[{category['name'].upper()}]{RESET} {DIM}{category['description']}{RESET}")
+        for record in entries:
+            if record["category"] != category["id"]:
+                continue
+            if record["claimed"]:
+                marker = f"{GREEN}+{RESET}"
+                status = f"CLAIMED {record['claimed_date']}"
+            elif record["ready"]:
+                marker = f"{YELLOW}*{RESET}"
+                status = f"READY {record['value']}/{record['target']}"
+            elif record["completed"]:
+                marker = f"{YELLOW}!{RESET}"
+                status = f"{record['value']}/{record['target']}"
+            else:
+                marker = " "
+                status = f"{record['value']}/{record['target']}"
+            print(
+                f"  [{marker}] {record['title']:<26} {status:<18} "
+                f"{YELLOW}+{record['reward_credits']} CR / +{record['reward_xp']} XP{RESET}  {DIM}{record['id']}{RESET}"
+            )
+    if totals["ready"]:
+        print(f"\n{YELLOW}Claim with: codex claim <entry_id>{RESET}")
+    return 0
+
+
 def cmd_streak(engine: SimulationEngine) -> int:
     """Display current expedition jump streak and active loss aversion multiplier."""
     ship = engine.state.ship
@@ -1645,6 +1764,10 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             cmd_mastery(engine, storage, ["mastery", "unlock"] + parts[1:])
         elif cmd in ("relics", "relic", "vault", "artifacts"):
             cmd_relics(engine)
+        elif cmd in ("codex", "achievements", "milestones"):
+            cmd_codex(engine, storage, parts)
+        elif cmd in ("log", "journal", "captainslog"):
+            cmd_log(engine)
         elif cmd in ("streak", "fire"):
             cmd_streak(engine)
         elif cmd in ("tutorial", "academy", "cadet"):
@@ -2053,6 +2176,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     refit_p.add_argument("target", nargs="?", help="Modification ID or slot")
 
     subparsers.add_parser("simulation", help="Print unified simulation telemetry report")
+    subparsers.add_parser("log", help="Captain's log: career statistics, milestones, and flight record")
+    codex_p = subparsers.add_parser("codex", help="Discovery codex progress and achievement rewards")
+    codex_p.add_argument("action", nargs="?", default="list", help="list, show <id>, claim <id>, or a category id")
+    codex_p.add_argument("entry_id", nargs="?", help="Codex entry id for show/claim")
 
     time_p = subparsers.add_parser("time", help="Inspect and control simulation time and ticks")
     time_p.add_argument("action", nargs="?", default="status", choices=["status", "pause", "resume", "play", "speed", "step", "wait", "tick"])
@@ -2122,6 +2249,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.target:
             parts.append(args.target)
         return cmd_refit(engine, storage, parts)
+    elif args.command == "log":
+        return cmd_log(engine)
+    elif args.command == "codex":
+        parts = ["codex", args.action]
+        if args.entry_id:
+            parts.append(args.entry_id)
+        return cmd_codex(engine, storage, parts)
     elif args.command == "simulation":
         report = engine.get_simulation_report()
         print(f"\n{BOLD}{CYAN}=== SIMULATION REPORT ==={RESET}")

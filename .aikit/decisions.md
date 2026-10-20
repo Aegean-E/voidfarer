@@ -368,3 +368,17 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   6. Expose all three mechanics through CLI (`salvage`, `scoop`, `crew train`), REST (`/api/salvage`, `/api/scoop`, `/api/crew/train`), and cockpit actions (BOARD DERELICT, SCOOP FUEL, crew DRILL).
   7. Harden client runtime behavior: single-flight 1s state polling, skip polling when hidden, hotkey suppression while overlays/typing targets are active, and modifier-key guards.
 - **Consequences**: The cockpit remains usable from small phones to 4K/ultrawide displays with crisp radar rendering and touch input, exploration gains a repeatable risk/reward loop, fuel has an in-space recovery path with reactor heat pressure, crew gain a credit sink and skill progression, and several runtime bugs are removed. Legacy saves default `salvage_claimed=False`; no RNG stream is consumed during model backfill.
+
+### ADR-030: Captain's Log, Discovery Codex, Career Statistics, and Milestone Rewards
+- **Date**: 2026-10-20
+- **Status**: Accepted
+- **Context**: Players had no central discovery journal, persistent career statistics overview, or structured long-term milestone goals spanning exploration, fleet command, commerce, tactical combat, diplomacy, and galactic lore. The simulation already tracked rich metrics (jumps, systems, scans, landings, derelict salvages, fuel scoops, trade volume, earnings, combat victories, anomalies, story progress) but only exposed a subset in disjointed screens.
+- **Decision**:
+  1. Add `CodexState` model with `claimed: tuple[str, ...]` and `claimed_dates: dict[str, str]`, defaulting cleanly on legacy saves inside `GameState.codex` without consuming any RNG stream.
+  2. Add `voidfarer/codex.py` with six thematic categories (`exploration`, `command`, `commerce`, `combat`, `diplomacy`, `legacy`), 28 discovery milestone entries, and 28 deterministic metrics derived directly from the saved universe. Milestones unlock retroactively without separate tracking.
+  3. Implement `claim_codex_reward(entry_id)` in `SimulationEngine`, awarding credits and pilot XP, logging to flight log, updating career stats (`scoops`), and atomically updating `CodexState`.
+  4. Expose CLI commands `python -m voidfarer.cli log`, `python -m voidfarer.cli codex`, and `python -m voidfarer.cli codex claim <entry_id>`.
+  5. Add REST endpoint `/api/codex/claim` in `voidfarer/server.py` and integrate the full codex report in status snapshots.
+  6. Add the CAPTAIN'S LOG tab in the cockpit's left vertical terminal rail (`G-003`, `G-008`), featuring a career statistics grid, four-metric summary strip, category filters, animated progress bars, claim buttons, ready notification badge, and milestone chronological flight log.
+  7. Add full regression test suite in `tests/test_captains_log_codex.py` and REST integration test in `tests/test_server.py`.
+- **Consequences**: Long-term player motivation is reinforced through retroactive achievement rewards and visible career stats across all playstyles. CLI, REST, and cockpit UI maintain full functional parity. Legacy save compatibility is guaranteed by defaulted frozen dataclasses.

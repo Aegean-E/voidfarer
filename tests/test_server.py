@@ -319,6 +319,34 @@ class TestServer(unittest.TestCase):
         st_bad, _ = self._post("/api/save", {"slot": "../bad"})
         self.assertEqual(st_bad, 400)
 
+    def test_codex_claim_endpoint(self):
+        st_jump, data_jump = self._post("/api/jump", {"target": "alpha_centauri"})
+        self.assertEqual(st_jump, 200)
+
+        st_claim, data_claim = self._post("/api/codex/claim", {"entry_id": "first_light"})
+        self.assertEqual(st_claim, 200)
+        payload = json.loads(data_claim.decode("utf-8"))
+        self.assertTrue(payload["ok"])
+        self.assertIn("First Light", payload["message"])
+        self.assertEqual(payload["state"]["codex"]["totals"]["claimed"], 1)
+
+        # Claiming again fails
+        st_again, data_again = self._post("/api/codex/claim", {"entry_id": "first_light"})
+        self.assertEqual(st_again, 200)
+        again_payload = json.loads(data_again.decode("utf-8"))
+        self.assertFalse(again_payload["ok"])
+        self.assertIn("already claimed", again_payload["message"].lower())
+
+        # Locked entry fails
+        st_locked, data_locked = self._post("/api/codex/claim", {"entry_id": "warlord"})
+        self.assertEqual(st_locked, 200)
+        locked_payload = json.loads(data_locked.decode("utf-8"))
+        self.assertFalse(locked_payload["ok"])
+
+        # Missing entry_id fails with 400
+        st_missing, _ = self._post("/api/codex/claim", {})
+        self.assertEqual(st_missing, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

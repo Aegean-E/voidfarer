@@ -7,10 +7,12 @@ name = "voidfarer"
 version = "0.1.0"
 description = "A deep-space fleet, procedural galaxy, and holographic cockpit simulation engine"
 readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.10"
 authors = [{ name = "AI Assistant" }]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Operating System :: OS Independent",
     "Topic :: Games/Entertainment :: Simulation",
 ]

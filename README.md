@@ -45,6 +45,7 @@ voidfarer/
 │   ├── ATTENTION_MECHANICS_LITERATURE_REVIEW.md <- behavioral psychology review
 │   └── NARRATIVE_AND_TUTORIAL_LITERATURE_REVIEW.md <- cognitive load & narrative review
 ├── .gitignore                <- transient state & python caches excluded
+├── LICENSE                   <- GNU AGPL-3.0 license
 ├── pyproject.toml            <- build and package configuration
 ├── play.bat                  <- 1-click interactive Windows launcher (default: Web Cockpit)
 ├── voidfarer.bat             <- 1-click Windows CLI passthrough launcher

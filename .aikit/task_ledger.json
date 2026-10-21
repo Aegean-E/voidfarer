@@ -3,21 +3,12 @@
   "active_task": {
     "task_id": "cockpit-redesign-wiring-v1",
     "last_phase": "phase 4",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792587233.4456792
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792587233.4456792,
+    "completed_at": 1792587267.5755336
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 4/5] Derelict salvage, fuel scooping, crew training drills with exploration module, engine methods, CLI/REST/cockpit parity, and 17 new regression tests; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792506171.1809926,
-      "timestamp_str": "2026-10-20 17:22:51"
-    },
     {
       "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
       "phase": "phase 4",
@@ -222,6 +213,15 @@
       "status": "in_progress",
       "timestamp": 1792587233.4456792,
       "timestamp_str": "2026-10-21 15:53:53"
+    },
+    {
+      "task_id": "cockpit-redesign-wiring-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'cockpit-redesign-wiring-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792587267.5755348,
+      "timestamp_str": "2026-10-21 15:54:27"
     }
   ]
 }

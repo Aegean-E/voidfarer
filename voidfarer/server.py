@@ -472,6 +472,12 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return
 
+        if path == "/api/crew/shore":
+            ok, msg = self.engine.shore_leave()
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
         if path == "/api/weapons/install":
             ok, msg = self.engine.install_weapon(str(body.get("weapon_id", "")))
             self.storage.save(self.engine.state)

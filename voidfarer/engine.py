@@ -24,11 +24,13 @@ from voidfarer.factions import (
 )
 from voidfarer.crew import (
     CREW_ROLES,
+    apply_morale_event,
     calculate_crew_bonuses,
     crew_catalog,
     crew_upkeep,
     get_crew_role,
     recruit_crew_member,
+    shore_leave_restore,
     tick_crew,
 )
 from voidfarer.character import (
@@ -1195,6 +1197,14 @@ class SimulationEngine:
                 tut_relics,
             )
 
+            arrival_crew = self.state.ship.crew
+            if is_hostile_territory:
+                arrival_crew, hostile_morale_log = apply_morale_event(
+                    self.state.ship.crew, -2.0, f"arrival in hostile {target_sys.name} territory"
+                )
+                if hostile_morale_log:
+                    new_log.append(hostile_morale_log)
+
             new_ship = self._clone_ship(
                 hull=new_hull,
                 max_hull=new_max_hull,
@@ -1215,6 +1225,7 @@ class SimulationEngine:
                 tactical_combo=0,
                 tutorial=new_tut,
                 story=new_story,
+                crew=arrival_crew,
             )
 
             stats = dict(self.state.stats)
@@ -2228,6 +2239,36 @@ class SimulationEngine:
                 "upkeep": crew_upkeep(crew),
                 "capacity": 8,
                 "active": len([c for c in crew if c.status == "active"]),
+                "cash_flow": self.cash_flow(),
+                "morale_warnings": [
+                    f"{c.name} is near desertion" for c in crew if c.status == "active" and c.morale < 20.0
+                ],
+            }
+
+    def cash_flow(self) -> dict[str, Any]:
+        """Per-tick credit flow telemetry: crew upkeep against passive income estimates."""
+        with self.lock:
+            upkeep = crew_upkeep(self.state.ship.crew)
+            passive = 0.0
+            # Scout drones bank credits once per 4-tick harvest cycle
+            for drone in self.state.ship.fleet_drones:
+                if drone.drone_type != "scout":
+                    continue
+                faction_id = get_faction_id_from_name(
+                    (self.state.systems.get(drone.assigned_system_id) or self.current_system).faction
+                )
+                perks = get_faction_service_perks(faction_id, self.state.ship.faction_standings.get(faction_id, 0))
+                yield_bonus = 1.0 + float(perks["drone_yield_bonus"])
+                passive += max(10.0, 75 * drone.efficiency * (0.5 + drone.integrity / 200.0) * yield_bonus) / 4.0
+            # Outposts produce credits each tick
+            research_yield_mult = 1.0 + float(self._research_bonuses()["outpost_yield"]) + self._skill("trade")
+            for outpost in self.state.outposts:
+                production = outpost_tick_production(outpost, research_yield_mult)
+                passive += float(production.get("credits", 0.0))
+            return {
+                "upkeep_per_tick": upkeep,
+                "passive_per_tick": round(passive, 1),
+                "net_per_tick": round(passive - upkeep, 1),
             }
 
     def install_weapon(self, weapon_id: str) -> tuple[bool, str]:
@@ -2414,7 +2455,36 @@ class SimulationEngine:
 
             if is_buy:
                 unit_price = quote.buy_price
-                total_cost = unit_price * quantity
+                simulated_stocks = None
+                market = self.state.economy.markets.get(self.current_system.id)
+                if market is not None:
+                    # Volume-aware execution: walk the local stockpile in slices so
+                    # bulk orders move the price they pay (simulation, not a flat quote).
+                    stocks = dict(market.stockpiles)
+                    remaining = quantity
+                    total_cost = 0
+                    while remaining > 0:
+                        slice_qty = min(remaining, max(1, stocks.get(commodity_id, 50) // 8))
+                        slice_quote = calculate_dynamic_market_quote(
+                            self.current_system, body, comm,
+                            GlobalEconomyState(
+                                markets={self.current_system.id: SystemMarketState(
+                                    system_id=self.current_system.id,
+                                    stockpiles=stocks,
+                                    production_rates=market.production_rates,
+                                    consumption_rates=market.consumption_rates,
+                                )},
+                                active_events=self.state.economy.active_events,
+                                last_updated_tick=self.state.economy.last_updated_tick,
+                            ),
+                            faction_standing=standing,
+                        )
+                        total_cost += slice_quote.buy_price * slice_qty
+                        stocks[commodity_id] = max(MIN_STOCK, stocks.get(commodity_id, 50) - slice_qty)
+                        remaining -= slice_qty
+                    simulated_stocks = stocks
+                else:
+                    total_cost = unit_price * quantity
                 if self.state.ship.credits < total_cost:
                     return False, f"Insufficient credits: {total_cost} cr required, {self.state.ship.credits} cr available."
 
@@ -2433,7 +2503,12 @@ class SimulationEngine:
                     tariff_note = f" (+{round((standing_factor - 1.0)*100)}% {self.current_system.faction} tariff)"
                 elif standing_factor < 1.0:
                     tariff_note = f" (-{round((1.0 - standing_factor)*100)}% {self.current_system.faction} discount)"
-                msg = f"Purchased {quantity}x {quote.name} for {total_cost} cr{tariff_note}."
+                impact_note = ""
+                if quantity > 0 and total_cost > unit_price * quantity:
+                    impact_pct = round(((total_cost / quantity) / unit_price - 1.0) * 100.0)
+                    if impact_pct >= 1:
+                        impact_note = f" (avg {total_cost // quantity}/unit, market impact +{impact_pct}%)"
+                msg = f"Purchased {quantity}x {quote.name} for {total_cost} cr{tariff_note}{impact_note}."
             else:
                 owned = cargo.get(commodity_id, 0)
                 if owned < quantity:
@@ -2464,7 +2539,38 @@ class SimulationEngine:
 
                 dock_tag = (self.current_system.id, body.id, commodity_id)
                 local_bought, local_cost = self._local_dock_purchases.get(dock_tag, (0, 0))
-                bonus_sell = int(quote.sell_price * margin_mult * corp_mult)
+                # Volume-aware execution: selling in slices floods the local stockpile
+                # and walks the base price down, so bulk dumps earn diminishing returns.
+                simulated_stocks = None
+                market = self.state.economy.markets.get(self.current_system.id)
+                if market is not None:
+                    stocks = dict(market.stockpiles)
+                    remaining = quantity
+                    base_revenue = 0
+                    while remaining > 0:
+                        slice_qty = min(remaining, max(1, stocks.get(commodity_id, 50) // 8))
+                        slice_quote = calculate_dynamic_market_quote(
+                            self.current_system, body, comm,
+                            GlobalEconomyState(
+                                markets={self.current_system.id: SystemMarketState(
+                                    system_id=self.current_system.id,
+                                    stockpiles=stocks,
+                                    production_rates=market.production_rates,
+                                    consumption_rates=market.consumption_rates,
+                                )},
+                                active_events=self.state.economy.active_events,
+                                last_updated_tick=self.state.economy.last_updated_tick,
+                            ),
+                            faction_standing=standing,
+                        )
+                        base_revenue += slice_quote.sell_price * slice_qty
+                        stocks[commodity_id] = min(MAX_STOCK, stocks.get(commodity_id, 50) + slice_qty)
+                        remaining -= slice_qty
+                    simulated_stocks = stocks
+                    avg_base_sell = base_revenue / quantity
+                else:
+                    avg_base_sell = quote.sell_price
+                bonus_sell = int(avg_base_sell * margin_mult * corp_mult)
                 if local_bought > 0:
                     resold_local = min(quantity, local_bought)
                     resold_import = quantity - resold_local
@@ -2485,7 +2591,12 @@ class SimulationEngine:
                 if cargo[commodity_id] == 0:
                     del cargo[commodity_id]
                 stats["credits_earned"] += revenue
-                msg = f"Sold {quantity}x {quote.name} for {revenue} cr (trade margin: x{margin_mult:.2f}){corp_note}."
+                impact_note = ""
+                if quantity > 0 and avg_base_sell < quote.sell_price:
+                    impact_pct = round((1.0 - (avg_base_sell / quote.sell_price)) * 100.0)
+                    if impact_pct >= 1:
+                        impact_note = f" (base avg {avg_base_sell:.0f}/unit, market impact -{impact_pct}%)"
+                msg = f"Sold {quantity}x {quote.name} for {revenue} cr (trade margin: x{margin_mult:.2f}){corp_note}{impact_note}."
 
             stats["trades"] += 1
             log_entry = f"Market transaction: {msg}"
@@ -2520,11 +2631,14 @@ class SimulationEngine:
             sys_id = self.current_system.id
             if sys_id in econ_markets:
                 sm = econ_markets[sys_id]
-                new_stocks = dict(sm.stockpiles)
-                if is_buy:
-                    new_stocks[commodity_id] = max(MIN_STOCK, new_stocks.get(commodity_id, 50) - quantity)
+                if simulated_stocks is not None:
+                    new_stocks = dict(simulated_stocks)
                 else:
-                    new_stocks[commodity_id] = min(MAX_STOCK, new_stocks.get(commodity_id, 50) + quantity)
+                    new_stocks = dict(sm.stockpiles)
+                    if is_buy:
+                        new_stocks[commodity_id] = max(MIN_STOCK, new_stocks.get(commodity_id, 50) - quantity)
+                    else:
+                        new_stocks[commodity_id] = min(MAX_STOCK, new_stocks.get(commodity_id, 50) + quantity)
                 econ_markets[sys_id] = SystemMarketState(
                     system_id=sys_id,
                     stockpiles=new_stocks,
@@ -3247,6 +3361,9 @@ class SimulationEngine:
                     replace(s, experience=s.experience + 3, status="escorting" if s.hull > 0 else "destroyed")
                     for s in fleet_ships
                 )
+                victory_crew, morale_log = apply_morale_event(self.state.ship.crew, 5.0, "combat victory celebrated")
+                if morale_log:
+                    new_log.append(morale_log)
                 systems_after = dict(self.state.systems)
                 eliminated_after = self.state.eliminated_factions
                 war_target = next(
@@ -3282,6 +3399,7 @@ class SimulationEngine:
                     corp_standings=new_corp_standings,
                     tactical_combo=0,
                     streak=new_streak,
+                    crew=victory_crew,
                     fleet_ships=new_fleet_ships,
                     flight_log=tuple(new_log[-20:]),
                 )
@@ -3330,6 +3448,8 @@ class SimulationEngine:
                 if absorbed > 0:
                     inbound = max(0, inbound - absorbed)
                     evasion_note += f" Escort screen absorbed {absorbed} damage."
+            breach_crew = None
+            breach_log = ""
             if new_shield >= inbound:
                 new_shield -= inbound
             else:
@@ -3337,6 +3457,7 @@ class SimulationEngine:
                 new_shield = 0
                 new_hull = max(0, new_hull - overflow)
                 new_combo = 0
+                breach_crew, breach_log = apply_morale_event(self.state.ship.crew, -4.0, "hull breach under fire")
                 if new_hull < 50:
                     new_streak = max(1, self.state.ship.streak - 1)
 
@@ -3379,11 +3500,14 @@ class SimulationEngine:
             )
 
             new_log = list(self.state.ship.flight_log[-19:]) + [msg]
+            if breach_log:
+                new_log.append(breach_log)
             new_ship = self._clone_ship(
                 hull=new_hull,
                 shield=new_shield,
                 tactical_combo=new_combo,
                 streak=new_streak,
+                crew=breach_crew if breach_crew is not None else self.state.ship.crew,
                 fleet_ships=fleet_ships,
                 flight_log=tuple(new_log[-20:]),
             )
@@ -3892,6 +4016,9 @@ class SimulationEngine:
             relic_msg = f" Acquired unique relic [{awarded_relic.name}]!" if awarded_relic else ""
             log_entry = f"STORY DECISION: [{found_choice.text}] resolved. +{found_choice.reward_credits} cr.{relic_msg}"
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+            celebration_crew, morale_log = apply_morale_event(self.state.ship.crew, 6.0, "campaign milestone celebrated")
+            if morale_log:
+                new_log.append(morale_log)
 
             new_ship = self._clone_ship(
                 hull=new_hull,
@@ -3902,6 +4029,7 @@ class SimulationEngine:
                 relics=tuple(new_relics),
                 story=new_story,
                 faction_standings=new_faction_standings,
+                crew=celebration_crew,
                 flight_log=tuple(new_log[-20:]),
             )
 
@@ -4109,6 +4237,7 @@ class SimulationEngine:
                 "travel": self.state.ship.travel.to_dict() if self.state.ship.travel else None,
                 "void": self.void_status(),
                 "story_status": self.story_status(),
+                "cash_flow": self.cash_flow(),
                 "allies": list(self.state.ship.allies),
                 "quests": self.get_quests(),
                 "mercenary_catalog": MERCENARY_CATALOG,
@@ -4572,6 +4701,46 @@ class SimulationEngine:
             self.state = self._clone_state(ship=new_ship)
             return True, f"{member.name} completed a training drill: skill {member.skill} -> {updated.skill} (-{cost} cr)."
 
+    def shore_leave(self) -> tuple[bool, str]:
+        """Grant fleet-wide shore leave at a docked station, restoring crew morale for credits."""
+        with self.lock:
+            body = self.orbiting_body
+            if not body or not body.station_dockable:
+                return False, "Shore leave requires docking at a station or colony with leisure decks."
+
+            active = [m for m in self.state.ship.crew if m.status == "active"]
+            if not active:
+                return False, "No active crew aboard to grant shore leave."
+
+            deficit = sum(max(0.0, 100.0 - m.morale) for m in active)
+            if deficit <= 0:
+                return False, "Crew morale is already at peak; the leisure decks stand empty."
+
+            faction_id = get_faction_id_from_name(self.current_system.faction)
+            perks = get_faction_service_perks(faction_id, self.state.ship.faction_standings.get(faction_id, 0))
+            discount = float(perks.get("repair_discount", 0.0))
+
+            new_crew, restored, cost = shore_leave_restore(self.state.ship.crew)
+            cost = max(1, int(cost * (1.0 - discount)))
+            if self.state.ship.credits < cost:
+                return False, f"Insufficient credits: shore leave costs {cost} cr ({restored} morale points)."
+
+            log_entry = f"SHORE LEAVE: Crew rotates through {body.name} leisure decks. +{restored} morale for {cost} cr."
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+            self.state = self._clone_state(
+                ship=self._clone_ship(
+                    credits=self.state.ship.credits - cost,
+                    crew=new_crew,
+                    flight_log=tuple(new_log[-20:]),
+                )
+            )
+            self.emit_event(
+                "crew",
+                "Shore Leave Granted",
+                f"The crew returns rested and re-focused. Morale +{restored} for {cost} cr.",
+            )
+            return True, f"Shore leave completed: +{restored} morale across {len(active)} crew for {cost} cr."
+
     def hire_mercenary(self, merc_id: str) -> tuple[bool, str]:
         with self.lock:
             merc = MERCENARY_CATALOG.get(merc_id)
@@ -4769,7 +4938,7 @@ class SimulationEngine:
                 ))
 
             research_gain += int(equipment.get("research_per_tick", 0.0) * num_ticks)
-            new_crew, wage_cost, crew_logs = tick_crew(cur_ship.crew, num_ticks, cur_ship.credits + outpost_credits)
+            new_crew, wage_cost, crew_logs = tick_crew(cur_ship.crew, num_ticks, cur_ship.credits + outpost_credits, rng=self.rng)
 
             points = research_state.points + max(0, research_gain)
             progress = research_state.progress + max(0, research_gain)
@@ -4903,10 +5072,13 @@ class SimulationEngine:
                         new_hull = max(1, new_hull - self.VOID_STORM_HULL_LOSS)
                         if stability < 30:
                             new_hull = max(1, new_hull - self.VOID_STORM_HULL_LOSS)
+                        new_crew, storm_morale_log = apply_morale_event(new_crew, -3.0, "void storm shear in the Hollow")
                         new_flight_log.append(
                             f"VOID STORM: Shear front weathered ({storms_weathered} total). "
                             f"Stability {max(0.0, stability):.0f}%, shields -{self.VOID_STORM_SHIELD_LOSS}."
                         )
+                        if storm_morale_log:
+                            new_flight_log.append(storm_morale_log)
 
                 if forced_emergence or stability <= 0:
                     origin_sys = self.state.systems.get(new_void.origin_system_id)

@@ -165,6 +165,14 @@ def cmd_status(engine: SimulationEngine) -> int:
     print(f"╠════ AUTONOMOUS FLEET ASSETS ════════════════════════════════════════╣{RESET}")
     print(f"║ {GREEN}{drone_summary:<67}{RESET} ║")
 
+    # Cash flow telemetry
+    flow = engine.cash_flow()
+    net = flow["net_per_tick"]
+    flow_color = GREEN if net >= 0 else RED
+    flow_summary = f"Upkeep -{flow['upkeep_per_tick']} | Passive +{flow['passive_per_tick']} | Net {net:+.1f} cr/tick"
+    print(f"╠════ CASH FLOW TELEMETRY ════════════════════════════════════════════╣{RESET}")
+    print(f"║ {flow_color}{flow_summary[:67]:<67}{RESET} ║")
+
     # Cadet Academy & Story progression
     tut = ship.tutorial
     if tut.is_active:
@@ -1688,11 +1696,12 @@ def cmd_crew(engine: SimulationEngine, storage: StorageManager, parts: list[str]
         print(f"\n{BOLD}{CYAN}=== CREW ROSTER ==={RESET}")
         print(f"Active {report['active']}/{report['capacity']} | Upkeep {report['upkeep']} cr/tick")
         for member in report["crew"]:
+            morale_note = f"{RED}⚠ NEAR DESERTION{RESET}" if member["morale"] < 20 else (f"{YELLOW}LOW{RESET}" if member["morale"] < 35 else f"{GREEN}OK{RESET}")
             print(
                 f"{member['id']:<18} {BOLD}{member['name']:<18}{RESET} {member['role']:<12} "
-                f"SKILL {member['skill']} MORALE {member['morale']:.0f} WAGE {member['wage']} PORTRAIT {member['portrait']}"
+                f"SKILL {member['skill']} MORALE {member['morale']:.0f} [{morale_note}] WAGE {member['wage']} PORTRAIT {member['portrait']}"
             )
-        print(f"\n{DIM}Recruit: crew recruit <{'|'.join(r.id for r in CREW_ROLES)}> | Drill: crew train <id> | Dismiss: crew dismiss <id>{RESET}")
+        print(f"\n{DIM}Recruit: crew recruit <{'|'.join(r.id for r in CREW_ROLES)}> | Drill: crew train <id> | Dismiss: crew dismiss <id> | Shore leave: crew shore{RESET}")
         return 0
     if sub in ("recruit", "hire"):
         if len(parts) < 3:
@@ -1712,6 +1721,12 @@ def cmd_crew(engine: SimulationEngine, storage: StorageManager, parts: list[str]
         if ok:
             storage.save(engine.state)
         return 0 if ok else 1
+    if sub in ("shore", "leave", "rest"):
+        ok, msg = engine.shore_leave()
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
     if sub in ("dismiss", "fire"):
         if len(parts) < 3:
             print(f"{RED}Usage:{RESET} crew dismiss <crew_id>")
@@ -1721,7 +1736,7 @@ def cmd_crew(engine: SimulationEngine, storage: StorageManager, parts: list[str]
         if ok:
             storage.save(engine.state)
         return 0 if ok else 1
-    print(f"{RED}Unknown crew command '{sub}'. Options: list, recruit, train, dismiss.{RESET}")
+    print(f"{RED}Unknown crew command '{sub}'. Options: list, recruit, train, shore, dismiss.{RESET}")
     return 1
 
 
@@ -2222,8 +2237,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers.add_parser("corps", help="Inspect interstellar megacorporations and trade perks")
     subparsers.add_parser("corporations", help="Alias for 'corps'")
 
-    crew_p = subparsers.add_parser("crew", help="Crew roster, recruiting, drills, and portraits")
-    crew_p.add_argument("action", nargs="?", default="list", choices=["list", "recruit", "train", "dismiss"])
+    crew_p = subparsers.add_parser("crew", help="Crew roster, recruiting, drills, shore leave, and portraits")
+    crew_p.add_argument("action", nargs="?", default="list", choices=["list", "recruit", "train", "shore", "dismiss"])
     crew_p.add_argument("value", nargs="?", help="Role or crew id")
 
     subparsers.add_parser("salvage", help="Board the derelict at the current body")

@@ -115,24 +115,104 @@ def crew_upkeep(crew: Sequence[CrewMember]) -> int:
     return sum(member.wage for member in crew if member.status == "active")
 
 
-def tick_crew(crew: Sequence[CrewMember], num_ticks: int, credits_available: int) -> tuple[tuple[CrewMember, ...], int, list[str]]:
+# Morale thresholds for the living crew simulation
+RESIGN_MORALE = 20.0
+RESIGN_CHANCE_PER_TICK = 0.08
+CRITICAL_MORALE = 35.0
+
+
+def tick_crew(
+    crew: Sequence[CrewMember],
+    num_ticks: int,
+    credits_available: int,
+    rng: random.Random | None = None,
+) -> tuple[tuple[CrewMember, ...], int, list[str]]:
+    """Advance wages and morale; unpaid crews sink toward desertion.
+
+    Only active members drift. Wages are paid from available credits; shortfalls
+    drain morale, and members below the resignation threshold may desert while
+    the pay crisis lasts (seeded rng keeps desertion deterministic per stream).
+    """
     from dataclasses import replace
+
+    if rng is None:
+        rng = random.Random()
 
     logs: list[str] = []
     upkeep = crew_upkeep(crew) * num_ticks
     paid = min(upkeep, max(0, credits_available))
     unpaid = upkeep - paid
-    updated = []
+    updated: list[CrewMember] = []
+    resigned: list[str] = []
+    warned = False
     for member in crew:
+        if member.status != "active":
+            updated.append(member)
+            continue
         morale = member.morale
         if unpaid > 0:
             morale = max(0.0, morale - 0.8 * num_ticks)
         else:
             morale = min(100.0, morale + 0.1 * num_ticks)
+        if morale < RESIGN_MORALE and unpaid > 0:
+            if rng.random() < min(0.5, RESIGN_CHANCE_PER_TICK * num_ticks):
+                resigned.append(f"{member.name} ({member.role}) resigned over unpaid wages and abandoned ship.")
+                continue
+        if morale < CRITICAL_MORALE and not warned:
+            logs.append(f"CREW MORALE CRITICAL: {member.name} is near desertion. Pay wages or grant shore leave.")
+            warned = True
         updated.append(replace(member, morale=round(morale, 1)))
     if unpaid > 0:
         logs.append(f"CREW WAGES UNPAID: {unpaid} cr short; morale is falling.")
+    for notice in resigned:
+        logs.append(f"CREW RESIGNED: {notice}")
     return tuple(updated), paid, logs
+
+
+def apply_morale_event(
+    crew: Sequence[CrewMember],
+    delta: float,
+    reason: str,
+) -> tuple[tuple[CrewMember, ...], str | None]:
+    """Shift every active member's morale by an event delta, clamped to 0..100."""
+    from dataclasses import replace
+
+    if not crew or delta == 0:
+        return tuple(crew), None
+    updated = []
+    for member in crew:
+        if member.status != "active":
+            updated.append(member)
+            continue
+        morale = max(0.0, min(100.0, member.morale + delta))
+        updated.append(replace(member, morale=round(morale, 1)))
+    sign = "+" if delta > 0 else ""
+    return tuple(updated), f"CREW MORALE {sign}{delta:g} ({reason})."
+
+
+def shore_leave_restore(crew: Sequence[CrewMember]) -> tuple[tuple[CrewMember, ...], int, int]:
+    """Compute a fleet-wide shore leave outcome: restored crew and morale points.
+
+    Returns (updated_crew, restored_points, credit_cost). Each active member
+    recovers up to 35 morale; the credit cost scales with the total restored.
+    """
+    from dataclasses import replace
+
+    per_member_cap = 35.0
+    flat_fee = 25
+    cost_per_point = 6
+    updated = []
+    restored = 0.0
+    for member in crew:
+        if member.status != "active":
+            updated.append(member)
+            continue
+        deficit = max(0.0, 100.0 - member.morale)
+        gain = min(per_member_cap, deficit)
+        restored += gain
+        updated.append(replace(member, morale=round(min(100.0, member.morale + gain), 1)))
+    cost = flat_fee + int(cost_per_point * restored) if restored > 0 else 0
+    return tuple(updated), int(restored), cost
 
 
 def crew_catalog() -> list[dict[str, Any]]:

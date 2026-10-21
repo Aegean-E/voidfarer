@@ -1,50 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "story-void-traversal-v1",
+    "task_id": "sim-crew-market-cashflow-v1",
     "last_phase": "phase 4",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792614465.5973346,
-    "completed_at": 1792614501.6017554
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792621236.3740423
   },
   "checkpoints": [
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/4] Review last three commits: reproduce combat, trade-quote, dock-tracking, module-uninstall and UI defects; plan regression tests",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792599575.5774562,
-      "timestamp_str": "2026-10-21 19:19:35",
-      "impact_assessment": {
-        "why": "The last three commits introduced a combat crash, an applied-twice faction price modifier, dock tracking that resets on same-station orbit and leaks across reset/load, an uninstall adapter that can remove a different installed module, and duplicate UI bindings",
-        "benefits": "Restores crash-free combat, single-source market pricing, a durable same-station arbitrage guard, truthful uninstall behavior, and a single scan action per cockpit click",
-        "risks": "contract: unchanged public routes; dependency: none; concurrency: engine lock already held; state: in-memory dock ledger lifecycle changes only",
-        "mitigation": "Add failing-first tests per defect, keep legacy shipmod routes, run all 375+ tests and the project gates"
-      }
-    },
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/4] Backend hardening: combat evade crash, single-source faction pricing, cost-basis arbitrage guard, dock ledger lifecycle, module uninstall id check; CLI parity",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792599955.4604979,
-      "timestamp_str": "2026-10-21 19:25:55"
-    },
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[3/4] Cockpit fixes: single scan binding, commander creation reset/immediate render, cargo volume display, escaped portraits, drydock-gated slot removal; regressions added",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792599956.622026,
-      "timestamp_str": "2026-10-21 19:25:56"
-    },
     {
       "task_id": "review-last-3-changes-v1",
       "phase": "phase 5",
@@ -223,6 +186,42 @@
       "status": "completed",
       "timestamp": 1792614501.6017568,
       "timestamp_str": "2026-10-21 23:28:21"
+    },
+    {
+      "task_id": "sim-crew-market-cashflow-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/6] Planning: living crew morale (event-driven morale shifts, paid shore leave at stations, resignation risk below morale 20, inactive-crew drift bugfix), volume-aware market execution (sliced orders walk prices with the shifting stockpile, average-price and impact reporting), and cash-flow telemetry (upkeep vs passive income per tick in snapshot, CLI status, and crew tab)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792615356.61725,
+      "timestamp_str": "2026-10-21 23:42:36",
+      "impact_assessment": {
+        "why": "Crew morale only moves +/-0.1-0.8 per tick via wages with no events, consequences, or player agency; bulk trade orders execute at a flat pre-trade quote so dumping large volumes has zero price impact; and the negative baseline wage burn (-65 cr/tick vs ~+19 passive) is invisible to the player, weakening the simulation feel and the retention loop around crew management",
+        "benefits": "Crew becomes a living system with stakes (resignations) and a credit-sink lever (shore leave); markets punish bulk dumps and reward order sizing; players can see and manage their net cash flow; combat, void storms, hostile arrivals and story resolutions now feed back into crew state",
+        "risks": "contract: tick_crew gains an rng parameter and removes resigning crew, trade messages gain impact wording, and the market response for bulk orders changes; dependency: none added; concurrency: engine lock retained, shore leave mutates under it; state: no schema change (morale and stockpiles already serialized), resignation only removes existing crew entries",
+        "mitigation": "Failing-first tests for every behavior, single-unit orders keep the legacy price and message shape so the tutorial and existing trade tests stay valid, resignation is seeded from the engine rng for determinism (G-012), shore leave validates docking and credits atomically, and CLI/REST/cockpit parity is covered by tests plus layout regressions"
+      }
+    },
+    {
+      "task_id": "sim-crew-market-cashflow-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[4/6] Implemented: living crew morale (combat victory +5, hull breach -4, void storm -3, hostile arrival -2, story celebration +6, resignation risk below morale 20 while wages unpaid, critical-morale warnings, inactive-crew drift fix), paid shore leave at docked stations with faction repair discounts, volume-aware market execution with sliced stockpile walks and impact reporting on both buy and sell, cash-flow telemetry in engine/crew report/snapshot/CLI status; 460 tests pass",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792617663.294404,
+      "timestamp_str": "2026-10-22 00:21:03"
+    },
+    {
+      "task_id": "sim-crew-market-cashflow-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[6/6] Verification: 464 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, README trimmed under the 22.5k budget, codebase map synced, ADR-036 recorded, CLI crew/status and REST /api/crew/shore dogfooded; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792621236.3740423,
+      "timestamp_str": "2026-10-22 01:20:36"
     }
   ]
 }

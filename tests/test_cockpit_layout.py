@@ -636,3 +636,43 @@ class TestStoryAndVoidCockpit(unittest.TestCase):
         for selector in (".void-traverse-panel", ".story-objectives-box", ".story-choice-locked", "body.void-transit"):
             self.assertIn(selector, self.css, f"missing CSS rule for {selector}")
 
+
+class TestCrewSimulationCockpit(unittest.TestCase):
+    """Living crew telemetry: morale bars, shore leave, and cash-flow readouts."""
+
+    @classmethod
+    def setUpClass(cls):
+        parser = _TreeBuilder()
+        parser.feed(INDEX_HTML.read_text(encoding="utf-8"))
+        parser.close()
+        cls.dom = parser.root
+        cls.html = INDEX_HTML.read_text(encoding="utf-8")
+        cls.js = APP_JS.read_text(encoding="utf-8")
+        cls.css = STYLE_CSS.read_text(encoding="utf-8")
+
+    def test_crew_tab_holds_cashflow_shore_and_roster(self):
+        crew_tab = self.dom.find_by_id("tabContentCrew")
+        self.assertIsNotNone(crew_tab, "crew tab (#tabContentCrew) missing")
+        for element_id in ("crewCashFlow", "crewShoreRow", "btnShoreLeave", "crewRoster", "crewAssignments"):
+            node = crew_tab.find_by_id(element_id)
+            self.assertIsNotNone(node, f"#{element_id} missing from the crew tab")
+
+    def test_crew_section_source_order(self):
+        order = []
+        for element_id in ("crewCashFlow", "crewAssignments", "crewRoster", "crewShoreRow"):
+            index = self.html.find(f'id="{element_id}"')
+            self.assertGreaterEqual(index, 0, f"#{element_id} missing from index.html")
+            order.append(index)
+        self.assertEqual(order, sorted(order), "crew tab sections are out of order")
+
+    def test_app_wires_shore_leave_and_morale_bars(self):
+        self.assertIn("handleShoreLeave", self.js)
+        self.assertIn("/api/crew/shore", self.js)
+        self.assertIn("crew-morale-bar", self.js)
+        self.assertIn("crew-morale-critical", self.js)
+        self.assertIn("cash_flow", self.js, "renderCrew must consume the cash-flow payload")
+
+    def test_crew_simulation_styles_exist(self):
+        for selector in (".crew-cashflow-row", ".crew-shore-row", ".crew-morale-bar", ".crew-morale-fill"):
+            self.assertIn(selector, self.css, f"missing CSS rule for {selector}")
+

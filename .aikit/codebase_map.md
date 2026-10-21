@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `55`
-- **Total Classes**: `142`
-- **Total Top-Level Functions**: `171`
-- **Total Class Methods**: `796`
-- **Total Source Lines**: `23665`
+- **Total Python Modules**: `56`
+- **Total Classes**: `149`
+- **Total Top-Level Functions**: `174`
+- **Total Class Methods**: `841`
+- **Total Source Lines**: `24377`
 
 ---
 
@@ -176,7 +176,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `638` lines (`28595` bytes)
+**Size**: `678` lines (`30545` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -265,6 +265,12 @@
   - Method `.test_app_wires_void_endpoints_and_renders()`
   - Method `.test_locked_story_choices_render_disabled_with_reasons()`
   - Method `.test_void_and_locked_choice_styles_exist()`
+- `class TestCrewSimulationCockpit` - *Living crew telemetry: morale bars, shore leave, and cash-flow readouts.*
+  - Method `.setUpClass()`
+  - Method `.test_crew_tab_holds_cashflow_shore_and_roster()`
+  - Method `.test_crew_section_source_order()`
+  - Method `.test_app_wires_shore_leave_and_morale_bars()`
+  - Method `.test_crew_simulation_styles_exist()`
 
 ---
 
@@ -688,6 +694,62 @@
 
 ---
 
+### [`tests/test_sim_mechanics.py`](tests/test_sim_mechanics.py)
+> *Unit and integration tests for the living crew, volume-aware market, and cash-flow mechanics.*
+
+**Size**: `399` lines (`16518` bytes)
+
+**Classes:**
+- `class TestCrewMoraleCore`
+  - Method `.test_morale_event_clamps_and_logs()`
+  - Method `.test_inactive_members_do_not_drift()`
+  - Method `.test_unpaid_crew_can_resign_deterministically()`
+  - Method `.test_paid_crew_never_resigns()`
+  - Method `.test_critical_morale_warning_is_logged()`
+  - Method `.test_shore_leave_restore_math()`
+- `class TestEngineMoraleEvents`
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `._crew_morale()`
+  - Method `.test_story_choice_celebration_raises_morale()`
+  - Method `.test_hostile_arrival_lowers_morale()`
+  - Method `.test_void_storm_lowers_morale()`
+- `class TestShoreLeave`
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `.test_shore_leave_requires_docking()`
+  - Method `.test_shore_leave_restores_morale_for_credits()`
+  - Method `.test_shore_leave_rejects_peak_morale()`
+  - Method `.test_shore_leave_rejects_insufficient_credits()`
+  - Method `.test_cli_crew_shore_command()`
+  - Method `.test_cli_main_crew_shore()`
+- `class TestVolumeAwareMarket`
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `._stock(commodity_id)`
+  - Method `.test_single_unit_keeps_flat_price()`
+  - Method `.test_bulk_buy_pays_market_impact()`
+  - Method `.test_bulk_sell_earns_diminishing_returns()`
+  - Method `.test_buy_rejected_when_impact_exceeds_credits()`
+  - Method `.test_arbitrage_guard_still_blocks_same_station_round_trip()`
+- `class TestCashFlowTelemetry`
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `.test_cash_flow_fields_and_math()`
+  - Method `.test_scout_drone_counts_as_passive_income()`
+  - Method `.test_snapshot_and_crew_report_expose_cash_flow()`
+  - Method `.test_cli_status_prints_cash_flow()`
+- `class TestServerCrewShoreEndpoint`
+  - Method `.setUpClass()`
+  - Method `.tearDownClass()`
+  - Method `._post(path, body)`
+  - Method `.test_post_crew_shore()`
+
+**Functions:**
+- `def _member(member_id, morale, status, wage)`
+
+---
+
 ### [`tests/test_storage.py`](tests/test_storage.py)
 > *Unit tests for atomic persistence, crash safety, and shadow backup recovery.*
 
@@ -884,7 +946,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `2567` lines (`130897` bytes)
+**Size**: `2582` lines (`131858` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -958,7 +1020,7 @@
 ### [`voidfarer/crew.py`](voidfarer/crew.py)
 > *Crew roles, recruiting, portraits, and crew-derived ship bonuses.*
 
-**Size**: `139` lines (`4989` bytes)
+**Size**: `219` lines (`7858` bytes)
 
 **Classes:**
 - `class CrewRole`
@@ -969,7 +1031,9 @@
 - `def recruit_crew_member(role_id, seed, current_count)`
 - `def calculate_crew_bonuses(crew)`
 - `def crew_upkeep(crew)`
-- `def tick_crew(crew, num_ticks, credits_available)`
+- `def tick_crew(crew, num_ticks, credits_available, rng)` - *Advance wages and morale; unpaid crews sink toward desertion.*
+- `def apply_morale_event(crew, delta, reason)` - *Shift every active member's morale by an event delta, clamped to 0..100.*
+- `def shore_leave_restore(crew)` - *Compute a fleet-wide shore leave outcome: restored crew and morale points.*
 - `def crew_catalog()`
 
 ---
@@ -1005,7 +1069,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `5129` lines (`255890` bytes)
+**Size**: `5301` lines (`265664` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -1074,6 +1138,7 @@
   - Method `.recruit_crew(role_id)`
   - Method `.dismiss_crew(crew_id)`
   - Method `.get_crew_report()`
+  - Method `.cash_flow()` - *Per-tick credit flow telemetry: crew upkeep against passive income estimates.*
   - Method `.install_weapon(weapon_id)`
   - Method `.set_primary_weapon(weapon_id)`
   - Method `.get_weapon_report()`
@@ -1119,6 +1184,7 @@
   - Method `.salvage_derelict()` - *Board the current body's derelict hulk for cargo, credits, and hazard risk.*
   - Method `.scoop_fuel()` - *Recover fuel from a star, gas giant, or ice body currently in orbit.*
   - Method `.train_crew_member(crew_id)` - *Run a paid training drill that raises one crew member's skill rank.*
+  - Method `.shore_leave()` - *Grant fleet-wide shore leave at a docked station, restoring crew morale for credits.*
   - Method `.hire_mercenary(merc_id)`
   - Method `.dismiss_fleet_unit(drone_id)`
   - Method `.refit_fleet_unit(drone_id)`
@@ -1527,7 +1593,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `1134` lines (`47451` bytes)
+**Size**: `1140` lines (`47706` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*

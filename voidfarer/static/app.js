@@ -541,6 +541,9 @@ class CockpitApp {
         this.btnOpenSkillsTab = document.getElementById("btnOpenSkillsTab");
         this.btnToggleSkills = document.getElementById("btnToggleSkills");
         this.crewAssignments = document.getElementById("crewAssignments");
+        this.crewCashFlow = document.getElementById("crewCashFlow");
+        this.btnShoreLeave = document.getElementById("btnShoreLeave");
+        this.crewShoreNote = document.getElementById("crewShoreNote");
         this.shipVisual = document.getElementById("shipVisual");
         this.shipModulesGrid = document.getElementById("shipModulesGrid");
         this.shipStatsPanel = document.getElementById("shipStatsPanel");
@@ -2468,6 +2471,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const crew = this.state.crew || [];
         const bonuses = this.state.crew_bonuses || {};
         const roles = this.state.crew_roles || [];
+        const cashFlow = (this.state.crew_report && this.state.crew_report.cash_flow) || this.state.cash_flow || null;
         const bonusLabels = {
             fuel_efficiency: "FUEL EFFICIENCY",
             evasion: "EVASION",
@@ -2479,6 +2483,17 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             trade_margin: "TRADE MARGIN",
             boarding_defense: "BOARDING DEFENSE"
         };
+
+        if (this.crewCashFlow && cashFlow) {
+            const net = cashFlow.net_per_tick;
+            const netColor = net >= 0 ? "var(--neon-green, #00f088)" : "var(--neon-red, #ff3355)";
+            this.crewCashFlow.innerHTML = `
+                <span class="cashflow-label">CASH FLOW / TICK</span>
+                <span class="cashflow-value">UPKEEP <strong>-${cashFlow.upkeep_per_tick}</strong> CR</span>
+                <span class="cashflow-value">PASSIVE <strong>+${cashFlow.passive_per_tick}</strong> CR</span>
+                <span class="cashflow-value">NET <strong style="color:${netColor}">${net >= 0 ? "+" : ""}${net}</strong> CR</span>
+            `;
+        }
 
         if (this.crewAssignments) {
             const bonusChips = Object.entries(bonuses)
@@ -2507,20 +2522,59 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         }
 
         if (this.crewRoster) {
-            this.crewRoster.innerHTML = crew.length ? crew.map(m => `
+            this.crewRoster.innerHTML = crew.length ? crew.map(m => {
+                const morale = Math.round(m.morale);
+                const moraleClass = morale < 20 ? "crew-morale-critical" : (morale < 35 ? "crew-morale-low" : "");
+                const moraleNote = morale < 20 ? " ⚠ NEAR DESERTION" : (morale < 35 ? " LOW" : "");
+                return `
                 <div class="crew-row">
                     <div class="crew-portrait">${this.portraitAvatar(m.portrait, m.name)}</div>
-                    <div><strong>${this.escapeHtml(m.name)}</strong><br><small>${this.escapeHtml(m.role)} | skill ${m.skill} | morale ${Math.round(m.morale)} | wage ${m.wage}</small></div>
+                    <div class="crew-info-block">
+                        <strong>${this.escapeHtml(m.name)}</strong><br>
+                        <small>${this.escapeHtml(m.role)} | skill ${m.skill} | wage ${m.wage}</small>
+                        <div class="crew-morale-bar" title="Morale ${morale}${moraleNote}">
+                            <div class="crew-morale-fill ${moraleClass}" style="width:${morale}%"></div>
+                            <span class="crew-morale-text">${morale}${moraleNote}</span>
+                        </div>
+                    </div>
                     <button class="btn-hud btn-amber" data-train-crew="${this.escapeHtml(m.id)}" ${m.skill >= 10 ? "disabled" : ""}>DRILL</button>
                     <button class="btn-hud" data-dismiss-crew="${this.escapeHtml(m.id)}">DISMISS</button>
                 </div>
-            `).join("") : `<p class="panel-intro-text">No crew aboard. Dock at a station and recruit specialists.</p>`;
+                `;
+            }).join("") : `<p class="panel-intro-text">No crew aboard. Dock at a station and recruit specialists.</p>`;
             this.crewRoster.querySelectorAll("[data-train-crew]").forEach(btn =>
                 btn.addEventListener("click", () => this.postAction("/api/crew/train", { crew_id: btn.getAttribute("data-train-crew") }, "crew"))
             );
             this.crewRoster.querySelectorAll("[data-dismiss-crew]").forEach(btn =>
                 btn.addEventListener("click", () => this.postAction("/api/crew/dismiss", { crew_id: btn.getAttribute("data-dismiss-crew") }, "crew"))
             );
+        }
+
+        if (this.btnShoreLeave) {
+            this.btnShoreLeave.addEventListener("click", () => this.handleShoreLeave());
+        }
+    }
+
+    async handleShoreLeave() {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/crew/shore", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({})
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(`[CREW] ${json.message}`, "reward");
+                this.state = json.state;
+                this.renderHUD();
+                this.renderCrew();
+            } else {
+                this.appendLog(`[CREW] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Shore leave failed: ${e.message}`, "hazard");
         }
     }
 

@@ -113,6 +113,7 @@ voidfarer/
     ├── test_story.py
     ├── test_time_and_ticks.py
     ├── test_transit_civ_events.py
+    ├── test_sim_mechanics.py
     └── test_void_traversal.py
 ```
 
@@ -385,14 +386,18 @@ python -m voidfarer.cli messages tree
 python -m voidfarer.cli messages choose <message_id> <choice_id>
 python -m voidfarer.cli crew recruit scientist
 python -m voidfarer.cli crew train <crew_id>
+python -m voidfarer.cli crew shore
 python -m voidfarer.cli weapons install railgun
 ```
 The commander ages, earns XP, and trains six skills with active cooldown abilities. Research
 unlocks reactor, scan, combat, outpost, repair, and fuel tech. Outposts produce resources each tick.
 Faction leaders wage wars, capture systems, and face elimination. Escort warships coordinate volleys,
 screen damage, and adopt battle stances. Multi-jump routing handles black holes. Message trees branch
-into lasting outcomes. Crew feature roles, morale, wages, and SVG portraits. The setting begins
-01.01.3042 in the Quantum Age with Dyson spheres, wormholes, and ring worlds.
+into lasting outcomes. Crew feature roles, morale, wages, and SVG portraits; morale reacts to
+battles, hull breaches, void storms, hostile arrivals, and campaign beats, unpaid crews below
+morale 20 risk resignation, and docked stations offer paid shore leave. Bulk orders walk the
+local stockpile price, and the status deck, CLI, and crew tab show per-tick cash flow. The
+setting begins 01.01.3042 in the Quantum Age with Dyson spheres, wormholes, and ring worlds.
 
 ### 19. Holographic Web Cockpit Interface
 Launch the embedded zero-dependency Web Audio & Canvas cockpit:
@@ -437,6 +442,6 @@ python -m voidfarer.cli codex claim first_light
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 435-test suite runs in about 6 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 464-test suite runs in about 7 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.

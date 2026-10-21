@@ -65,12 +65,12 @@ voidfarer/
 │   ├── outposts.py           <- outpost catalogs & tick production
 │   ├── faction_state.py      <- faction leaders, behaviors, wars & elimination
 │   ├── fleet.py              <- escort warships, formations & battle support
-│   ├── navigation.py         <- multi-jump routing & black-hole hazards
+│   ├── navigation.py         <- multi-jump routing, void lanes & black-hole hazards
 │   ├── messaging.py          <- branching quantum message trees
 │   ├── crew.py               <- crew roles, recruiting & portraits
 │   ├── weapons.py            <- weapon types & combat modifiers
 │   ├── retention.py          <- relics, dynamic contracts & pilot mastery
-│   ├── story.py              <- cadet academy & precursor cipher campaign
+│   ├── story.py              <- cadet academy, cipher campaign flags & endings
 │   ├── upgrades.py           <- hardware upgrades catalog & drone templates
 │   ├── economy.py            <- dynamic galactic economy, stockpiles & trade routes
 │   ├── frontier.py           <- AI captains, depots, mercenaries & quantum messages
@@ -112,7 +112,8 @@ voidfarer/
     ├── test_storage.py
     ├── test_story.py
     ├── test_time_and_ticks.py
-    └── test_transit_civ_events.py
+    ├── test_transit_civ_events.py
+    └── test_void_traversal.py
 ```
 
 ---
@@ -264,12 +265,29 @@ python -m voidfarer.cli tutorial reset
 
 ### 13. The Precursor Cipher Narrative Campaign (Space Opera)
 ```bash
-# Display active chapter synopsis, transmissions log, and moral choices
+# Display active chapter synopsis, objectives, transmissions log, and moral choices
 python -m voidfarer.cli story
 
 # Resolve an episodic narrative dilemma
 python -m voidfarer.cli story choose choice_vance_telemetry
 ```
+The five-act campaign tracks persistent story flags: later choices can require earlier decisions (the Act V title claim needs the Act IV Voidfarer's Oath; selling the echoes needs the Act I Syndicate leak), locked choices show their branch-resolvable reasons, and the finale resolves one of three endings (First VoidFarer, Sentinel, Shadow Broker). Completed legacy saves migrate into the extended campaign on load.
+
+### 13b. The Hollow Between (Void Lane Traversal)
+```bash
+# Void drive readiness, storm risk, and charted destinations
+python -m voidfarer.cli void
+
+# Full deterministic void lane chart for this save seed
+python -m voidfarer.cli void lanes
+
+# Slip beyond a black-hole event horizon toward a lane-linked system
+python -m voidfarer.cli void dive golconda
+
+# Emergency surfacing back through the entry horizon (costs hull and shields)
+python -m voidfarer.cli void emerge
+```
+Black-hole anchors (Cygnus Void Gate, Golconda Rift) mesh into a seeded void-lane graph with far spokes. Diving requires orbiting an event horizon, route fuel, and 25% shields; each tick in the Hollow risks storms that drain stability, shields, and hull. Stability collapse force-ejects you at the origin; arrival grants pilot XP plus a first-visit cartography bounty. The `gateways_open` story flag calms storms by 25%, and the Void Compass / Crown of Echoes relics raise starting stability.
 
 ### 14. Geopolitical Factions & Megacorporations
 ```bash
@@ -300,7 +318,7 @@ python -m voidfarer.cli time step 4
 ```bash
 python -m voidfarer.cli repl
 ```
-Inside the interactive REPL, you can execute all commands (`status`, `chart`, `time`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `economy`, `inventory`, `shipyard`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
+Inside the interactive REPL, you can execute all commands (`status`, `chart`, `time`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `economy`, `inventory`, `shipyard`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, `void`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
 
 Frontier commands are also available directly:
 ```bash
@@ -389,6 +407,8 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Transit, Landing & Fleet**: Tick-synchronized sublight/quantum transit, surface survey rewards, and drone/mercenary commands.
 - **Living Galaxy**: Procedural worlds, AI traders, dynamic markets, faction perks, and reputation.
 - **Mission Panels**: Quests, contracts, diplomacy, depots, messages, COMMS, factions, perks, relics, and combat.
+- **Space-Opera Campaign Tab**: Five acts with a live objective checklist, locked choices that show their requirements, follow-up transmissions, and one of three resolved endings with epilogue.
+- **The Hollow Between Panel**: Void drive readiness and blockers, lane destination dive buttons, live traversal progress and stability meters, emergency emerge, and a hue-shifted radar overlay while in the void.
 - **REPL Server Lifecycle**: `serve` runs the HTTP server and simulation ticker; `serve stop` or REPL exit saves and shuts down.
 - **Reactor Power Matrix (`G-006`, `G-013`)**: Bottom-left strip panel with sliders, `Q/W/E/R` hotkeys, thermal telemetry, four modes, and VENT.
 - **Sector Map Modifiers**: Generated environmental conditions displayed as radar chips and applied to fuel, scans, encounters, trade, and reactor heat.
@@ -417,6 +437,6 @@ python -m voidfarer.cli codex claim first_light
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 393-test suite runs in about 6 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 435-test suite runs in about 6 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.

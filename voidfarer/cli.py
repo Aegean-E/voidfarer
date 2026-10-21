@@ -183,9 +183,18 @@ def cmd_status(engine: SimulationEngine) -> int:
     else:
         chap = story.current_chapter
         chap_status = "COMPLETED" if chap.completed else f"TARGET: {chap.target_system_id}"
-        chap_msg = f"Act {story.active_act}: {chap.title} [{chap_status}]"
+        chap_title = chap.title.split(": ", 1)[-1] if chap.title.startswith("Act ") else chap.title
+        chap_msg = f"Act {story.active_act}: {chap_title} [{chap_status}]"
     print(f"╠════ THE PRECURSOR CIPHER (STORY) ════════════════════════════════════╣{RESET}")
     print(f"║ {MAGENTA}{chap_msg[:67]:<67}{RESET} ║")
+
+    if ship.void_traversal is not None:
+        vt = ship.void_traversal
+        dest_sys = engine.state.systems.get(vt.destination_system_id)
+        dest_name = dest_sys.name if dest_sys else vt.destination_system_id
+        void_msg = f"In the Hollow Between -> {dest_name} | Stability {vt.stability:.0f}% | Storms {vt.storms_weathered}"
+        print(f"╠════ VOID TRAVERSAL ══════════════════════════════════════════════════╣{RESET}")
+        print(f"║ {MAGENTA}{void_msg[:67]:<67}{RESET} ║")
 
     print(f"╠════ NAVIGATION COORDINATES ═════════════════════════════════════════╣{RESET}")
     print(f"║ System:    {CYAN}{cur_sys.name:<22}{RESET} Faction:  {cur_sys.faction:<22} ║")
@@ -1247,14 +1256,17 @@ def cmd_story(engine: SimulationEngine, storage: StorageManager, parts: list[str
 
     if story.completed:
         print(f"\n{BOLD}{MAGENTA}╔════ THE PRECURSOR CIPHER: NARRATIVE CAMPAIGN ════════════════════════╗{RESET}")
-        print(f"║ {BOLD}{YELLOW}⭐ CAMPAIGN CONCLUDED: ALL NARRATIVE ACTS RESOLVED ⭐{RESET}               ║")
-        print(f"║ Status: {GREEN}{'TRIUMPHANT VICTORY':<18}{RESET} Final Acts: {'3 / 3 COMPLETED':<26} ║")
+        ending = story.ending_id or "ending_sentinel"
+        from voidfarer.story import ENDING_VARIANTS
+
+        variant = ENDING_VARIANTS.get(ending, ENDING_VARIANTS["ending_sentinel"])
+        print(f"║ {BOLD}{YELLOW}⭐ CAMPAIGN CONCLUDED: {variant['title'].upper()} ⭐{RESET}")
+        print(f"║ Status: {GREEN}{'TRIUMPHANT VICTORY':<18}{RESET} Final Acts: {f'{len(story.chapters)} / {len(story.chapters)} COMPLETED':<26} ║")
         print(f"╠════ FACTION ALIGNMENT & REPUTATION ══════════════════════════════════╣{RESET}")
         rep = story.faction_reputation
         print(f"║ Sol Coalition: {CYAN}{rep.get('coalition', 0):>+4}{RESET}  │  Free Spacers Syndicate: {YELLOW}{rep.get('syndicate', 0):>+4}{RESET}  │  Precursor Watch: {MAGENTA}{rep.get('precursor', 0):>+4}{RESET} ║")
         print(f"╠════ EPILOGUE ════════════════════════════════════════════════════════╣{RESET}")
-        print("  The Precursor Gateway pulses with radiant energy across the galaxy.")
-        print("  Commander Astraea's name is etched into ancient cosmic starmaps.")
+        print(f"  {variant['epilogue']}")
         print(f"\n{BOLD}Archived Subspace Transmissions ({len(story.transmission_log)} total):{RESET}")
         for tx in story.transmission_log[-3:]:
             speaker_color = CYAN if "Vance" in tx.speaker else (YELLOW if "Cipher" in tx.speaker else MAGENTA)
@@ -1263,8 +1275,9 @@ def cmd_story(engine: SimulationEngine, storage: StorageManager, parts: list[str
         return 0
 
     chap = story.current_chapter
+    chap_title = chap.title.split(": ", 1)[-1] if chap.title.startswith("Act ") else chap.title
     print(f"\n{BOLD}{MAGENTA}╔════ THE PRECURSOR CIPHER: NARRATIVE CAMPAIGN ════════════════════════╗{RESET}")
-    print(f"║ {BOLD}Act {story.active_act}: {chap.title:<58}{RESET} ║")
+    print(f"║ {BOLD}Act {story.active_act}: {chap_title:<58}{RESET} ║")
     target_str = str(chap.target_system_id or "DEEP SPACE")[:12]
     status_label = "COMPLETED" if chap.completed else f"TARGET: {target_str}"
     print(f"║ Sector Target: {CYAN}{target_str:<12}{RESET} Status: {status_label:<34} ║")
@@ -1273,6 +1286,13 @@ def cmd_story(engine: SimulationEngine, storage: StorageManager, parts: list[str
     print(f"║ Sol Coalition: {CYAN}{rep.get('coalition', 0):>+4}{RESET}  │  Free Spacers Syndicate: {YELLOW}{rep.get('syndicate', 0):>+4}{RESET}  │  Precursor Watch: {MAGENTA}{rep.get('precursor', 0):>+4}{RESET} ║")
     print(f"╠════ SYNOPSIS ════════════════════════════════════════════════════════╣{RESET}")
     print(f"  {chap.synopsis}")
+
+    status = engine.story_status()
+    if status.get("unmet_requirements"):
+        print(f"\n{YELLOW}{BOLD}OBJECTIVES REQUIRED:{RESET}")
+        for req in status["unmet_requirements"]:
+            print(f"  • {req}")
+
     print(f"\n{BOLD}Subspace Transmissions Log ({len(story.transmission_log)} recorded):{RESET}")
 
     recent = story.transmission_log[-3:] if story.transmission_log else []
@@ -1283,14 +1303,81 @@ def cmd_story(engine: SimulationEngine, storage: StorageManager, parts: list[str
 
     if not chap.completed and chap.choices:
         print(f"\n{BOLD}{YELLOW}⚡ CRITICAL MORAL DECISION REQUIRED:{RESET}")
+        choice_status = {c["id"]: c for c in status.get("choices", [])}
         for c in chap.choices:
             cost_str = f" [Cost: {c.cost_credits} cr]" if c.cost_credits > 0 else ""
-            print(f"  • {BOLD}{c.id}{RESET}{cost_str}: {c.label}")
-            print(f"    {DIM}{c.consequence_summary}{RESET}")
+            state = choice_status.get(c.id, {})
+            if state.get("locked"):
+                reason = state.get("lock_reason") or "Requirements unmet"
+                print(f"  • {BOLD}{c.id}{RESET}{cost_str}: {c.label}")
+                print(f"    {RED}🔒 LOCKED - {reason}{RESET}")
+            else:
+                print(f"  • {BOLD}{c.id}{RESET}{cost_str}: {c.label}")
+                print(f"    {DIM}{c.consequence_summary}{RESET}")
         print(f"\n{CYAN}Type: story choose <choice_id>{RESET} to resolve this encounter.")
     elif chap.completed:
         print(f"\n{GREEN}Chapter completed.{RESET} Follow navigational beacons to advance.")
 
+    return 0
+
+
+def cmd_void(engine: SimulationEngine, storage: StorageManager, parts: list[str]) -> int:
+    """The Hollow Between: void lane traversal between black-hole anchors."""
+    sub = parts[1].lower() if len(parts) > 1 else "status"
+
+    if sub in ("dive", "enter"):
+        if len(parts) < 3:
+            print(f"{RED}Usage:{RESET} void dive <system_id>")
+            return 1
+        ok, msg = engine.void_dive(parts[2])
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    if sub == "emerge":
+        ok, msg = engine.void_emerge()
+        print((GREEN if ok else RED) + msg + RESET)
+        if ok:
+            storage.save(engine.state)
+        return 0 if ok else 1
+
+    status = engine.void_status()
+
+    if sub in ("lanes", "map", "chart"):
+        print(f"\n{BOLD}{MAGENTA}╔════ THE HOLLOW BETWEEN: VOID LANE CHART ═════════════════════════════╗{RESET}")
+        for sys_id, neighbors in status["lanes"].items():
+            system = engine.state.systems.get(sys_id)
+            name = system.name if system else sys_id
+            print(f"║ {CYAN}{name:<36}{RESET} -> {', '.join(neighbors)}")
+        print(f"╚═════════════════════════════════════════════════════════════════════╝{RESET}")
+        return 0
+
+    print(f"\n{BOLD}{MAGENTA}╔════ THE HOLLOW BETWEEN: VOID TRAVERSAL ═════════════════════════════╗{RESET}")
+    traversal = status["traversal"]
+    if traversal is not None:
+        dest_sys = engine.state.systems.get(traversal["destination_system_id"])
+        dest_name = dest_sys.name if dest_sys else traversal["destination_system_id"]
+        print(f"║ Status:     {MAGENTA}IN THE VOID{RESET} bound for {BOLD}{dest_name}{RESET}")
+        print(f"║ Stability:  {_bar(int(traversal['stability']), 130, 24, GREEN if traversal['stability'] > 60 else RED)}")
+        print(f"║ Storms:     {YELLOW}{traversal['storms_weathered']}{RESET} weathered  |  Progress: {int((status['traversal_progress'] or 0.0) * 100)}%")
+        print(f"║ {CYAN}Type: void emerge{RESET} for emergency surfacing (costs hull and shields).")
+    else:
+        if status["dive_ready"]:
+            print(f"║ Status:     {GREEN}READY TO DIVE{RESET} (orbiting a black-hole event horizon)")
+            print(f"║ Storm Risk: {YELLOW}{status['storm_chance'] * 100:.0f}%{RESET} per tick in the Hollow")
+            print(f"╠════ CHARTED DESTINATIONS ════════════════════════════════════════════╣{RESET}")
+            if status["destinations"]:
+                for dest in status["destinations"]:
+                    print(f"║ • {BOLD}{dest['system_id']:<24}{RESET} {dest['name']:<28} Fuel: ~{dest['fuel_estimate']}")
+                print(f"║ {CYAN}Type: void dive <system_id>{RESET} to slip beyond the horizon.")
+            else:
+                print(f"║ No void lanes lead onward from this horizon.")
+        else:
+            print(f"║ Status:     {RED}VOID DRIVE OFFLINE{RESET}")
+            for blocker in status["blockers"]:
+                print(f"║ • {YELLOW}{blocker}{RESET}")
+    print(f"╚═════════════════════════════════════════════════════════════════════╝{RESET}")
     return 0
 
 
@@ -1774,6 +1861,8 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             cmd_tutorial(engine, storage, parts)
         elif cmd in ("story", "campaign", "act", "lore", "comms"):
             cmd_story(engine, storage, parts)
+        elif cmd in ("void", "hollow"):
+            cmd_void(engine, storage, parts)
         elif cmd in ("serve", "web", "gui", "hud"):
             if len(parts) > 1 and parts[1] in ("stop", "shutdown"):
                 if server_handle is not None:
@@ -1934,6 +2023,7 @@ def cmd_repl(engine: SimulationEngine, storage: StorageManager) -> int:
             print("  mastery [unlock <id>]          - Pilot rank, XP progression, and talent tree")
             print("  tutorial [skip|reset]          - Cadet Flight Academy onboarding and guidance")
             print("  story [choose <id>]            - The Precursor Cipher narrative campaign")
+            print("  void [status|lanes|dive|emerge] - The Hollow Between void lane traversal")
             print("  relics                         - Ancient Precursor Relic vault & passive fleet buffs")
             print("  streak                         - Expedition jump streak & multiplier status")
             print("  market                         - Check commodity trade prices")
@@ -2075,6 +2165,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     story_p = subparsers.add_parser("story", help="The Precursor Cipher narrative campaign")
     story_p.add_argument("action", nargs="?", default="status", choices=["status", "choose"])
     story_p.add_argument("choice_id", nargs="?", help="Choice ID to select")
+
+    void_p = subparsers.add_parser("void", help="The Hollow Between void lane traversal")
+    void_p.add_argument("action", nargs="?", default="status", choices=["status", "lanes", "dive", "emerge"])
+    void_p.add_argument("system_id", nargs="?", help="Destination system ID for dive")
 
     jump_p = subparsers.add_parser("jump", help="Jump to adjacent star system")
     jump_p.add_argument("system_id", help="Target star system ID")
@@ -2381,6 +2475,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.choice_id:
                 parts.append(args.choice_id)
         return cmd_story(engine, storage, parts)
+    elif args.command == "void":
+        parts = ["void"]
+        if args.action != "status":
+            parts.append(args.action)
+            if args.system_id:
+                parts.append(args.system_id)
+        return cmd_void(engine, storage, parts)
     elif args.command == "scan":
         ok, msg, _ = engine.scan()
         print((GREEN if ok else RED) + msg + RESET)

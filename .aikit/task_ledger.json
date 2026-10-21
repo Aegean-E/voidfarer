@@ -1,59 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "layout-command-strip-v1",
+    "task_id": "story-void-traversal-v1",
     "last_phase": "phase 4",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792606035.9362154,
-    "completed_at": 1792606072.1971872
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792614465.5973346
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-mechanics-economy-storage-fix-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792516170.5684166,
-      "timestamp_str": "2026-10-20 20:09:30"
-    },
-    {
-      "task_id": "cockpit-redesign-wiring-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/3] Audit the in-flight cockpit redesign, fix the JS parse breaks, and wire the PLAYER, SKILLS, CREW and SHIP tabs to the real simulation state",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792587192.1604667,
-      "timestamp_str": "2026-10-21 15:53:12",
-      "impact_assessment": {
-        "why": "The uncommitted cockpit redesign was syntactically invalid and its ship, crew, and creation flows called state fields and endpoints that do not exist",
-        "benefits": "A functional tabbed cockpit, truthful ship refits, persistent commander creation, and no dead or invented UI data",
-        "risks": "contract: new /api/ship/module and optional new-game profile; dependency: none added; concurrency: existing engine lock retained; state: commander name/age/background/skills persist with no schema change",
-        "mitigation": "Wrap the existing install/remove engine methods, validate profile values, remove unsupported perk/gender/race fields, and cover the new routes with server tests"
-      }
-    },
-    {
-      "task_id": "cockpit-redesign-wiring-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/3] Implementation: repaired charStep/renderStory/checkDeath, rewrote renderShip over state.ship_mods, wired crew bonuses and player traits, added /api/ship/module and persistent commander profiles, updated ADR-032 and README",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792587198.4768922,
-      "timestamp_str": "2026-10-21 15:53:18"
-    },
-    {
-      "task_id": "cockpit-redesign-wiring-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[3/3] Phase 4 complete: checklists: passed; 4/4 gates (test, hygiene, guidelines, secrets) green; 375 tests pass",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792587233.4456792,
-      "timestamp_str": "2026-10-21 15:53:53"
-    },
     {
       "task_id": "cockpit-redesign-wiring-v1",
       "phase": "completed",
@@ -222,6 +176,52 @@
       "status": "completed",
       "timestamp": 1792606072.197189,
       "timestamp_str": "2026-10-21 21:07:52"
+    },
+    {
+      "task_id": "story-void-traversal-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/6] Planning: proper story mechanics (requirement-gated choices, persistent story flags, follow-up transmissions, branch-skipped chapters, ending resolution, 5-act campaign with old-save migration) plus void traversal (deterministic void lanes between black-hole systems, void dive/emerge, tick-driven storms and arrival)",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792607106.626149,
+      "timestamp_str": "2026-10-21 21:25:06",
+      "impact_assessment": {
+        "why": "The narrative campaign is a static 3-act linear chain whose choices have no persistent consequences, and the game named VoidFarer has no mechanics for traversing the void between stars despite black-hole systems existing",
+        "benefits": "Branching consequences that persist and gate later content, branch-resolvable locked choices with reasons, distinct campaign endings, and a deterministic risk-reward void travel layer with CLI/REST/cockpit parity",
+        "risks": "contract: story save schema grows (flags, requirements, endings) and the campaign extends from 3 to 5 acts so the old completed-campaign test contract changes; dependency: none added (stdlib only); concurrency: existing engine lock retained for all new mutations; state: ShipState gains void_traversal with None default and StoryState gains flags/ending_id with empty defaults, both backward compatible via from_dict migration",
+        "mitigation": "Failing-first tests for every new behavior, additive serialization defaults for old saves, migration reopens a completed 3-act save into the 5-act campaign deterministically, the changed test contract is recorded in the ADR per PRINCIPLE-014 R2, and all lanes/storms derive from the galaxy seed and engine RNG"
+      }
+    },
+    {
+      "task_id": "story-void-traversal-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/6] Story mechanics implemented: StoryRequirements gating (flags, reputation, relics, orbit body), persistent choice flags with glossary, branch-resolvable locked choices with reasons, follow-up transmissions, flag-gated chapter skipping, 5-act campaign with Act IV black-hole orbit gate and Act V finale, three deterministic endings, legacy 3-act save migration on init and load; 403 tests pass",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792608313.9447792,
+      "timestamp_str": "2026-10-21 21:45:13"
+    },
+    {
+      "task_id": "story-void-traversal-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[4/6] Void mechanics implemented: VoidTraversalState with backward-compatible serialization, deterministic seeded void-lane graph meshing black-hole anchors with far spokes, void_dive/void_emerge/void_status with horizon-orbit/fuel/shield gates, tick-driven storms with stability collapse and forced emergence, arrival rewards with first-visit cartography bounty, relic void_stability passives, gateways_open storm calming, CLI void command + REST /api/void routes + snapshot parity; 428 tests pass",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792610339.7164001,
+      "timestamp_str": "2026-10-21 22:18:59"
+    },
+    {
+      "task_id": "story-void-traversal-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[6/6] Verification: 435 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, codebase map synced, ADR-035/README updated, legacy-save black-hole backfill verified against a real pre-void save, CLI and REST dogfooded; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792614465.5973346,
+      "timestamp_str": "2026-10-21 23:27:45"
     }
   ]
 }

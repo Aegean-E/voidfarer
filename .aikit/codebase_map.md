@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `54`
-- **Total Classes**: `134`
-- **Total Top-Level Functions**: `160`
-- **Total Class Methods**: `730`
-- **Total Source Lines**: `21821`
+- **Total Python Modules**: `55`
+- **Total Classes**: `142`
+- **Total Top-Level Functions**: `171`
+- **Total Class Methods**: `796`
+- **Total Source Lines**: `23665`
 
 ---
 
@@ -176,7 +176,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `591` lines (`26164` bytes)
+**Size**: `638` lines (`28595` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -258,6 +258,13 @@
   - Method `.test_app_wires_chassis_and_weapon_commissioning()`
   - Method `.test_depots_support_bulk_actions()`
   - Method `.test_glassmorphic_styles_for_showroom_and_weapons()`
+- `class TestStoryAndVoidCockpit` - *Story branching UI and the Hollow Between void traversal panel.*
+  - Method `.setUpClass()`
+  - Method `.test_story_tab_holds_objectives_choices_and_void_panel()`
+  - Method `.test_story_section_source_order()`
+  - Method `.test_app_wires_void_endpoints_and_renders()`
+  - Method `.test_locked_story_choices_render_disabled_with_reasons()`
+  - Method `.test_void_and_locked_choice_styles_exist()`
 
 ---
 
@@ -703,7 +710,7 @@
 ### [`tests/test_story.py`](tests/test_story.py)
 > *Unit and integration tests for Cadet Flight Academy and The Precursor Cipher story campaign.*
 
-**Size**: `386` lines (`15599` bytes)
+**Size**: `674` lines (`28755` bytes)
 
 **Classes:**
 - `class TestStoryAndTutorial`
@@ -727,6 +734,20 @@
   - Method `._post(path, body)`
   - Method `.test_server_tutorial_endpoints()`
   - Method `.test_server_story_endpoints()`
+- `class TestStoryBranchingMechanics` - *Requirement-gated choices, persistent flags, endings, and legacy-save migration.*
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `._travel_to(destination)`
+  - Method `.test_story_status_reports_objectives_and_locks()`
+  - Method `.test_act_iv_requires_black_hole_orbit()`
+  - Method `.test_locked_choices_report_branch_resolvable_reasons()`
+  - Method `.test_persistent_flags_drive_distinct_endings()`
+  - Method `.test_follow_up_transmissions_persist()`
+  - Method `.test_resolve_story_ending_variants()`
+  - Method `.test_chapter_flag_gating_skips_ineligible_chapters()`
+  - Method `.test_migrate_story_state_variants()`
+  - Method `.test_engine_load_state_migrates_legacy_campaign()`
+  - Method `.test_serialization_roundtrip_preserves_flags_and_ending()`
 
 ---
 
@@ -788,6 +809,54 @@
 
 ---
 
+### [`tests/test_void_traversal.py`](tests/test_void_traversal.py)
+> *Unit and integration tests for the Hollow Between void traversal mechanics.*
+
+**Size**: `452` lines (`18605` bytes)
+
+**Classes:**
+- `class TestVoidLanes`
+  - Method `.setUp()`
+  - Method `.test_anchors_are_black_hole_systems()`
+  - Method `.test_lane_determinism_per_seed()`
+  - Method `.test_anchor_mesh_connectivity()`
+  - Method `.test_void_route_plan_metrics()`
+  - Method `.test_void_shortest_route_symmetry()`
+- `class TestVoidTraversalState`
+  - Method `.test_roundtrip_and_progress()`
+  - Method `.test_ship_state_serialization()`
+- `class TestVoidDiveAndTraversal`
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `._goto_cygnus_horizon()`
+  - Method `.test_dive_requires_black_hole_orbit()`
+  - Method `.test_dive_validation_errors()`
+  - Method `.test_dive_initializes_traversal()`
+  - Method `.test_relic_grants_starting_stability()`
+  - Method `.test_emergency_emergence_restores_horizon_orbit()`
+  - Method `.test_tick_advances_to_arrival()`
+  - Method `.test_first_visit_cartography_bounty()`
+  - Method `.test_storms_damage_and_are_recorded()`
+  - Method `.test_stability_collapse_forces_emergence()`
+  - Method `.test_gateways_open_calms_storms()`
+  - Method `.test_void_status_parity_fields()`
+  - Method `.test_void_status_reports_destination_name_in_transit()`
+  - Method `.test_snapshot_includes_void_and_story_status()`
+  - Method `.test_cli_void_commands()`
+  - Method `.test_legacy_save_backfills_black_hole_horizons()`
+  - Method `.test_cli_main_entrypoint()`
+- `class TestServerVoidEndpoints`
+  - Method `.setUpClass()`
+  - Method `.tearDownClass()`
+  - Method `._get(path)`
+  - Method `._post(path, body)`
+  - Method `.test_get_api_void()`
+  - Method `.test_post_api_void_dive_rejected_without_horizon()`
+  - Method `.test_post_api_void_emerge_rejected_when_not_traversing()`
+  - Method `.test_story_endpoint_includes_status()`
+
+---
+
 ### [`voidfarer/__init__.py`](voidfarer/__init__.py)
 > *VoidFarer: Autonomous deep-space fleet, procedural galaxy, and holographic cockpit simulation engine.*
 
@@ -815,7 +884,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `2466` lines (`124947` bytes)
+**Size**: `2567` lines (`130897` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -848,6 +917,7 @@
 - `def cmd_streak(engine)` - *Display current expedition jump streak and active loss aversion multiplier.*
 - `def cmd_tutorial(engine, storage, parts)` - *Cadet Flight Academy progressive tutorial system.*
 - `def cmd_story(engine, storage, parts)` - *The Precursor Cipher: Branching episodic space opera campaign.*
+- `def cmd_void(engine, storage, parts)` - *The Hollow Between: void lane traversal between black-hole anchors.*
 - `def cmd_reactor(engine, storage, parts)` - *Inspect reactor telemetry and manage thermal doctrine.*
 - `def cmd_mapmods(engine)` - *Display active sector map modifiers and their simulation effects.*
 - `def _describe_ship_mod_effects(effects)`
@@ -935,7 +1005,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `4662` lines (`232853` bytes)
+**Size**: `5129` lines (`255890` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -963,6 +1033,11 @@
   - Method `._create_initial_state(seed)` - *Construct a fresh universe state rooted at Sol System.*
   - Property `.current_system`
   - Property `.orbiting_body`
+  - Method `._body_by_id(body_id)` - *Look up a celestial body anywhere in the known galaxy.*
+  - Method `._void_storm_chance()` - *Current void storm probability, calmed by open gateways.*
+  - Method `.void_dive(target_system_id)` - *Slip through a black-hole event horizon into the Hollow Between.*
+  - Method `.void_emerge()` - *Emergency surfacing from an active void traversal, back through the entry horizon.*
+  - Method `.void_status()` - *Void traversal readiness, lanes, and active traversal state (CLI/REST/cockpit parity).*
   - Method `._process_drone_cycle(ship)` - *Advance autonomous drone harvest cycle across star systems.*
   - Method `.jump(target_system_id)` - *Execute a hyperspace jump to an adjacent star system.*
   - Method `.compute_body_distance_au(target_body, origin_body)` - *Compute 2D polar Euclidean distance in AU between two bodies (or current orbit/star origin).*
@@ -1022,6 +1097,8 @@
   - Method `.step_orbits(delta_time)` - *Advance celestial bodies along orbital mechanics paths and cycle fleet drones.*
   - Method `.claim_contract(contract_id)` - *Claim rewards for a fulfilled contract and immediately draw a new assignment.*
   - Method `.unlock_talent(talent_id)` - *Unlock a Pilot Specialization Perk using available talent points.*
+  - Method `._story_unmet_requirements(requirements, *, chapter)` - *List human-readable unmet gating conditions for a chapter or choice.*
+  - Method `.story_status()` - *Objective snapshot of the narrative campaign for CLI, REST, and cockpit parity.*
   - Method `.make_story_choice(choice_id)` - *Resolve a branching story dilemma in the active campaign chapter.*
   - Method `.skip_tutorial()` - *Skip Cadet Flight Academy and unlock unrestricted operational status.*
   - Method `.reset_tutorial()` - *Reset Cadet Flight Academy to step 1 for revision or retraining.*
@@ -1144,7 +1221,7 @@
 ### [`voidfarer/galaxy.py`](voidfarer/galaxy.py)
 > *Procedural galaxy generator, celestial orbital mechanics, and market economy.*
 
-**Size**: `901` lines (`40435` bytes)
+**Size**: `907` lines (`40437` bytes)
 
 **Classes:**
 - `class GalaxyGenerator` - *Generates deterministic star systems, celestial bodies, and hyperlane corridors.*
@@ -1156,6 +1233,7 @@
   - Method `.get_random_anomaly(seed)` - *Select and instantiate a deep-space anomaly event.*
 
 **Functions:**
+- `def black_hole_body(sys_id, sys_name)` - *Construct the black-hole event horizon body for a void gate system.*
 - `def compute_habitability_index(body_type, gravity, temperature_c, atmosphere, hazards)` - *Compute a scientific Earth Similarity / Habitability Index in [0.0, 100.0].*
 - `def compute_scientific_planet_properties(body_type, spectral_type, orbit_radius_au, rad_sample, grav_sample, temp_jitter, hazards)` - *Derive physically consistent radius_km, gravity, atmosphere, temperature_c, and habitability.*
 - `def get_colony_tier(population)` - *Classify world or habitat population into sociological colony tiers.*
@@ -1215,7 +1293,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1709` lines (`62116` bytes)
+**Size**: `1803` lines (`66261` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*
@@ -1281,6 +1359,9 @@
   - Property `.current_step`
   - Method `.to_dict()`
   - Method `.from_dict(data)`
+- `class StoryRequirements` - *Gating conditions that must hold before a story choice or chapter unlocks.*
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
 - `class StoryChoice` - *Branching story decision impacting faction alignment, rewards, and narrative path.*
   - Property `.label`
   - Property `.consequence_summary`
@@ -1302,6 +1383,10 @@
   - Method `.to_dict()`
   - Method `.from_dict(data)`
 - `class TravelState` - *In-system transit between two celestial bodies.*
+  - Method `.progress(current_tick)`
+  - Method `.to_dict()`
+  - Method `.from_dict(data)`
+- `class VoidTraversalState` - *Transit through the Hollow Between along a void lane between black-hole anchors.*
   - Method `.progress(current_tick)`
   - Method `.to_dict()`
   - Method `.from_dict(data)`
@@ -1361,12 +1446,18 @@
 ### [`voidfarer/navigation.py`](voidfarer/navigation.py)
 > *Navigation routing, jump planning, and black-hole hazard helpers.*
 
-**Size**: `64` lines (`2131` bytes)
+**Size**: `182` lines (`6395` bytes)
 
 **Functions:**
 - `def shortest_route(systems, start_id, target_id)`
 - `def route_plan(systems, start_id, target_id, base_jump_fuel)`
 - `def system_has_black_hole(system)`
+- `def void_anchor_systems(systems)` - *Ids of systems holding a black-hole event horizon, sorted for determinism.*
+- `def system_distance_ly(a, b)`
+- `def generate_void_lanes(systems, galaxy_seed)` - *Deterministically derive the void-lane graph of the Hollow Between.*
+- `def void_shortest_route(lanes, start_id, target_id)`
+- `def void_lane_metrics(systems, first, second)` - *Fuel cost and duration for one void lane crossing.*
+- `def void_route_plan(systems, galaxy_seed, start_id, target_id)` - *Plan a multi-lane traversal through the Hollow Between.*
 
 ---
 
@@ -1423,7 +1514,7 @@
 ### [`voidfarer/retention.py`](voidfarer/retention.py)
 > *Psychological retention mechanics, Precursor relics, dynamic contracts, and pilot mastery.*
 
-**Size**: `385` lines (`13627` bytes)
+**Size**: `388` lines (`13747` bytes)
 
 **Functions:**
 - `def generate_contract(rng, category)` - *Procedurally instantiate a fresh BountyContract following Zeigarnik task loops.*
@@ -1436,7 +1527,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `1117` lines (`46691` bytes)
+**Size**: `1134` lines (`47451` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*
@@ -1508,11 +1599,14 @@
 ### [`voidfarer/story.py`](voidfarer/story.py)
 > *Interactive Cadet Flight Academy tutorial and branching narrative campaign systems.*
 
-**Size**: `254` lines (`10405` bytes)
+**Size**: `505` lines (`22710` bytes)
 
 **Functions:**
 - `def generate_initial_tutorial()` - *Construct a fresh Cadet Flight Academy tutorial state.*
 - `def generate_initial_story()` - *Construct fresh narrative campaign state.*
+- `def resolve_story_ending(story)` - *Deterministically resolve which ending variant the campaign resolves to.*
+- `def ending_transmission(ending_id, timestamp_system)` - *Build the final campaign transmission for a resolved ending.*
+- `def migrate_story_state(story)` - *Extend a legacy campaign save into the current chapter list, preserving all resolved state.*
 
 ---
 

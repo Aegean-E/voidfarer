@@ -75,7 +75,13 @@ from voidfarer.fleet import (
     get_escort_template,
     repair_fleet_ships,
 )
-from voidfarer.navigation import route_plan, shortest_route, system_has_black_hole
+from voidfarer.navigation import (
+    generate_void_lanes,
+    route_plan,
+    shortest_route,
+    system_has_black_hole,
+    void_route_plan,
+)
 from voidfarer.outposts import (
     OUTPOST_MAP,
     OUTPOST_MODULE_CATALOG,
@@ -102,7 +108,9 @@ from voidfarer.inventory import (
 from voidfarer.galaxy import (
     CANONICAL_COMMODITIES,
     COMMODITY_MAP,
+    VOID_GATE_SYSTEM_IDS,
     GalaxyGenerator,
+    black_hole_body,
     compute_scientific_planet_properties,
     get_colony_tier,
     step_population_dynamics,
@@ -162,6 +170,7 @@ from voidfarer.models import (
     StarSystem,
     StoryChapter,
     StoryChoice,
+    StoryRequirements,
     StoryState,
     StoryTransmission,
     SystemMarketState,
@@ -169,6 +178,7 @@ from voidfarer.models import (
     TravelState,
     TutorialState,
     TutorialStep,
+    VoidTraversalState,
     WarState,
 )
 from voidfarer.frontier import (
@@ -188,10 +198,15 @@ from voidfarer.retention import (
 )
 from voidfarer.story import (
     CAMPAIGN_CHAPTERS,
+    ENDING_VARIANTS,
     INITIAL_TUTORIAL_STEPS,
+    STORY_FLAG_GLOSSARY,
     STORY_RELICS,
+    ending_transmission,
     generate_initial_story,
     generate_initial_tutorial,
+    migrate_story_state,
+    resolve_story_ending,
 )
 from voidfarer.upgrades import (
     CATALOG_CHASSIS,
@@ -213,7 +228,7 @@ class SimulationEngine:
     """Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat."""
 
     def __init__(self, seed: int = 42, state: GameState | None = None) -> None:
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.seed = seed
         self.rng = random.Random(seed)
 
@@ -225,6 +240,8 @@ class SimulationEngine:
             st = ship.story
             if not st.chapters:
                 st = generate_initial_story()
+            else:
+                st = migrate_story_state(st)
             self.state = state
             new_ship = self._clone_ship(tutorial=tut, story=st) if (tut != ship.tutorial or st != ship.story) else ship
             econ = state.economy
@@ -313,6 +330,10 @@ class SimulationEngine:
                     )
                     body_changed = True
                 new_bodies.append(updated_body)
+            # Backfill black-hole event horizons for legacy saves predating void gates
+            if sys_id in VOID_GATE_SYSTEM_IDS and not any(b.body_type == "black_hole" for b in new_bodies):
+                new_bodies.append(black_hole_body(sys_id, sys_obj.name))
+                body_changed = True
             if body_changed:
                 updated_systems[sys_id] = replace(sys_obj, bodies=tuple(new_bodies))
                 systems_changed = True
@@ -367,6 +388,7 @@ class SimulationEngine:
             allies=kwargs.get("allies", cur.allies),
             landed_body_id=kwargs["landed_body_id"] if "landed_body_id" in kwargs else cur.landed_body_id,
             travel=kwargs["travel"] if "travel" in kwargs else cur.travel,
+            void_traversal=kwargs["void_traversal"] if "void_traversal" in kwargs else cur.void_traversal,
         )
 
     def _clone_state(self, **kwargs: Any) -> GameState:
@@ -693,6 +715,13 @@ class SimulationEngine:
             self.seed = int(state.galaxy_seed)
             self.rng = random.Random(self.seed)
             self.state = state
+            st = state.ship.story
+            if not st.chapters:
+                st = generate_initial_story()
+            else:
+                st = migrate_story_state(st)
+            if st != state.ship.story:
+                self.state = self._clone_state(ship=self._clone_ship(story=st))
             self._local_dock_purchases = dict(state.local_dock_purchases)
             self._bootstrap_frontier()
             return True, f"Loaded save at {state.time.current_date} (tick #{state.time.tick})."
@@ -796,6 +825,198 @@ class SimulationEngine:
             if b.id == b_id:
                 return b
         return None
+
+    def _body_by_id(self, body_id: str) -> CelestialBody | None:
+        """Look up a celestial body anywhere in the known galaxy."""
+        for system in self.state.systems.values():
+            for body in system.bodies:
+                if body.id == body_id:
+                    return body
+        return None
+
+    # ------------------------------------------------------------------
+    # Void traversal: the Hollow Between (G-012 parity and determinism)
+    # ------------------------------------------------------------------
+
+    VOID_STORM_BASE_CHANCE = 0.20
+    VOID_STORM_STABILITY_LOSS = 15.0
+    VOID_STORM_SHIELD_LOSS = 10
+    VOID_STORM_HULL_LOSS = 5
+    VOID_EMERGENCE_HULL_DAMAGE = 25
+    VOID_ARRIVAL_XP = 50
+    VOID_FIRST_VISIT_BONUS = 400
+
+    def _void_storm_chance(self) -> float:
+        """Current void storm probability, calmed by open gateways."""
+        chance = self.VOID_STORM_BASE_CHANCE
+        if self.state.ship.story.flags.get("gateways_open"):
+            chance *= 0.75
+        return chance
+
+    def void_dive(self, target_system_id: str) -> tuple[bool, str]:
+        """Slip through a black-hole event horizon into the Hollow Between."""
+        with self.lock:
+            target = str(target_system_id).strip()
+            if self.state.ship.void_traversal is not None:
+                return False, "Already traversing the Hollow Between."
+            if self.state.active_combat is not None:
+                return False, "Void drive locked by hostile enemy tractor field! Must resolve combat or flee."
+            if self.state.active_anomaly is not None:
+                return False, "Void drive locked: unresolved spatial anomaly in proximity!"
+            if self.state.ship.travel is not None:
+                return False, "Cannot dive while in sublight transit."
+
+            cur_sys = self.current_system
+            orbiting = self.orbiting_body
+            if orbiting is None or orbiting.body_type != "black_hole":
+                return False, "Void dive requires orbit around a black-hole event horizon."
+
+            if target == cur_sys.id:
+                return False, "Void lanes lead elsewhere: choose a destination system."
+            if target not in self.state.systems:
+                return False, f"Unknown system target '{target}'."
+
+            plan = void_route_plan(self.state.systems, self.state.galaxy_seed, cur_sys.id, target)
+            if not plan["reachable"]:
+                return False, f"No void lane leads from {cur_sys.name} to '{target}'."
+
+            fuel_cost = int(plan["fuel_estimate"])
+            if self.state.ship.fuel < fuel_cost:
+                return False, f"Insufficient Quantum Fuel: {fuel_cost} units required, {self.state.ship.fuel} available."
+
+            min_shield = max(10, int(self.state.ship.max_shield * 0.25))
+            if self.state.ship.shield < min_shield:
+                return False, f"Void shear demands {min_shield}+ MW shields ({self.state.ship.shield} available)."
+
+            passives = calculate_passive_multipliers(self.state.ship)
+            stability = min(130.0, 100.0 + float(passives.get("void_stability", 0.0)))
+            duration = int(plan["duration_ticks"])
+            started = self.state.time.tick
+            traversal = VoidTraversalState(
+                origin_system_id=cur_sys.id,
+                destination_system_id=target,
+                started_tick=started,
+                arrival_tick=started + duration,
+                duration_ticks=duration,
+                stability=stability,
+            )
+
+            new_stats = dict(self.state.stats)
+            new_stats["void_dives"] = int(new_stats.get("void_dives", 0)) + 1
+            dest_sys = self.state.systems[target]
+            log_entry = (
+                f"VOID DIVE: Hull slips beyond the {orbiting.name} into the Hollow Between, "
+                f"bound for {dest_sys.name} ({plan['lanes']} lane(s), ETA {duration} tick(s), fuel: {fuel_cost})."
+            )
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+
+            self.state = self._clone_state(
+                ship=self._clone_ship(
+                    fuel=self.state.ship.fuel - fuel_cost,
+                    orbiting_body_id=None,
+                    void_traversal=traversal,
+                    flight_log=tuple(new_log[-20:]),
+                ),
+                stats=new_stats,
+            )
+            self.emit_event(
+                "void",
+                "Void Dive Initiated",
+                f"The Hollow Between opens. Destination: {dest_sys.name}. Hold your shields steady.",
+            )
+            return True, f"Void dive initiated toward {dest_sys.name}. Estimated traversal: {duration} tick(s)."
+
+    def void_emerge(self) -> tuple[bool, str]:
+        """Emergency surfacing from an active void traversal, back through the entry horizon."""
+        with self.lock:
+            traversal = self.state.ship.void_traversal
+            if traversal is None:
+                return False, "Not currently traversing the void."
+
+            progress = traversal.progress(self.state.time.tick)
+            hull_damage = int(5 + progress * 15)
+            shield_damage = int(10 + progress * 25)
+            origin_sys = self.state.systems.get(traversal.origin_system_id)
+            origin_name = origin_sys.name if origin_sys else traversal.origin_system_id
+            horizon_id = None
+            if origin_sys is not None:
+                for body in origin_sys.bodies:
+                    if body.body_type == "black_hole":
+                        horizon_id = body.id
+                        break
+
+            log_entry = (
+                f"VOID EMERGENCE: Emergency surfacing at {origin_name} after "
+                f"{int(progress * 100)}% traversal. Hull stress -{hull_damage}, shield shear -{shield_damage}."
+            )
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+
+            self.state = self._clone_state(
+                ship=self._clone_ship(
+                    hull=max(1, self.state.ship.hull - hull_damage),
+                    shield=max(0, self.state.ship.shield - shield_damage),
+                    orbiting_body_id=horizon_id,
+                    void_traversal=None,
+                    flight_log=tuple(new_log[-20:]),
+                )
+            )
+            self.emit_event(
+                "void",
+                "Void Emergence",
+                f"The void releases you violently at {origin_name}. Shields and hull took shear damage.",
+            )
+            return True, f"Emergency emergence at {origin_name}. Hull -{hull_damage}, shields -{shield_damage}."
+
+    def void_status(self) -> dict[str, Any]:
+        """Void traversal readiness, lanes, and active traversal state (CLI/REST/cockpit parity)."""
+        with self.lock:
+            lanes = generate_void_lanes(self.state.systems, self.state.galaxy_seed)
+            cur_id = self.state.ship.current_system_id
+            traversal = self.state.ship.void_traversal
+
+            reasons: list[str] = []
+            if self.state.active_combat is not None:
+                reasons.append("Hostile tractor field locks the void drive")
+            if self.state.active_anomaly is not None:
+                reasons.append("Unresolved spatial anomaly in proximity")
+            if self.state.ship.travel is not None:
+                reasons.append("Sublight transit in progress")
+            orbiting = self.orbiting_body
+            if orbiting is None or orbiting.body_type != "black_hole":
+                reasons.append("Orbit a black-hole event horizon to dive")
+
+            destinations = []
+            if not reasons:
+                for sys_id in sorted(lanes.get(cur_id, ())):
+                    dest = self.state.systems.get(sys_id)
+                    if dest is None:
+                        continue
+                    destinations.append({
+                        "system_id": sys_id,
+                        "name": dest.name,
+                        "fuel_estimate": void_route_plan(self.state.systems, self.state.galaxy_seed, cur_id, sys_id)["fuel_estimate"],
+                    })
+
+            return {
+                "current_system_id": cur_id,
+                "anchors": [sid for sid in lanes if any(
+                    body.body_type == "black_hole" for body in self.state.systems[sid].bodies
+                )],
+                "lanes": {sid: list(neighbors) for sid, neighbors in lanes.items()},
+                "traversal": traversal.to_dict() if traversal else None,
+                "destination_name": (
+                    self.state.systems[traversal.destination_system_id].name
+                    if traversal and traversal.destination_system_id in self.state.systems
+                    else None
+                ),
+                "traversal_progress": round(traversal.progress(self.state.time.tick), 3) if traversal else None,
+                "dive_ready": not reasons,
+                "blockers": reasons,
+                "destinations": destinations,
+                "storm_chance": round(self._void_storm_chance(), 3),
+                "shield": self.state.ship.shield,
+                "fuel": self.state.ship.fuel,
+            }
 
     def _process_drone_cycle(self, ship: ShipState) -> tuple[FleetDrone, ...]:
         """Advance autonomous drone harvest cycle across star systems."""
@@ -3440,6 +3661,91 @@ class SimulationEngine:
             self.state = self._clone_state(ship=new_ship)
             return True, f"Specialization unlocked: {talent['name']}."
 
+    def _story_unmet_requirements(
+        self,
+        requirements: StoryRequirements | None,
+        *,
+        chapter: StoryChapter | None = None,
+    ) -> list[str]:
+        """List human-readable unmet gating conditions for a chapter or choice."""
+        if requirements is None and chapter is None:
+            return []
+        story = self.state.ship.story
+        unmet: list[str] = []
+        if chapter is not None:
+            if chapter.target_system_id and self.state.ship.current_system_id != chapter.target_system_id:
+                unmet.append(
+                    f"Travel to {chapter.target_system_id.title()} System "
+                    f"(currently in {self.state.ship.current_system_id.title()})"
+                )
+        if requirements is None:
+            return unmet
+        for flag in requirements.required_flags:
+            if not story.flags.get(flag):
+                gloss = STORY_FLAG_GLOSSARY.get(flag, flag)
+                unmet.append(f"Requires: {gloss}")
+        for flag in requirements.forbidden_flags:
+            if story.flags.get(flag):
+                gloss = STORY_FLAG_GLOSSARY.get(flag, flag)
+                unmet.append(f"Blocked by: {gloss}")
+        for faction, minimum in requirements.min_reputation.items():
+            if story.reputation.get(faction, 0) < minimum:
+                unmet.append(f"Requires {faction.title()} reputation {minimum}+ (currently {story.reputation.get(faction, 0)})")
+        for relic_id in requirements.required_relic_ids:
+            if relic_id not in {r.id for r in self.state.ship.relics}:
+                relic = STORY_RELICS.get(relic_id)
+                name = relic.name if relic else relic_id
+                unmet.append(f"Requires relic: {name}")
+        if requirements.orbit_body_id:
+            body = self._body_by_id(requirements.orbit_body_id)
+            if self.state.ship.orbiting_body_id != requirements.orbit_body_id:
+                body_name = body.name if body else requirements.orbit_body_id
+                unmet.append(f"Establish orbit around {body_name}")
+        return unmet
+
+    def story_status(self) -> dict[str, Any]:
+        """Objective snapshot of the narrative campaign for CLI, REST, and cockpit parity."""
+        with self.lock:
+            story = self.state.ship.story
+            if story.completed or story.current_chapter_index >= len(story.chapters):
+                ending = ENDING_VARIANTS.get(story.ending_id or "", ENDING_VARIANTS["ending_sentinel"])
+                return {
+                    "campaign_title": story.campaign_title,
+                    "completed": True,
+                    "ending": {"id": story.ending_id, "title": ending["title"], "epilogue": ending["epilogue"]},
+                    "flags": dict(story.flags),
+                    "reputation": dict(story.reputation),
+                    "transmissions": len(story.transmission_log),
+                }
+            chapter = story.chapters[story.current_chapter_index]
+            unmet = self._story_unmet_requirements(chapter.requirements, chapter=chapter)
+            choices = []
+            for choice in chapter.choices:
+                choice_unmet = self._story_unmet_requirements(choice.requirements)
+                choices.append({
+                    "id": choice.id,
+                    "text": choice.text,
+                    "faction_alignment": choice.faction_alignment,
+                    "cost_credits": choice.cost_credits,
+                    "locked": bool(choice_unmet),
+                    "lock_reason": choice.locked_text if choice.locked_text and choice_unmet else "; ".join(choice_unmet),
+                })
+            return {
+                "campaign_title": story.campaign_title,
+                "completed": False,
+                "active_act": story.active_act,
+                "chapter_id": chapter.id,
+                "title": chapter.title,
+                "objective": chapter.objective,
+                "target_system_id": chapter.target_system_id,
+                "unmet_requirements": unmet,
+                "ready": not unmet,
+                "choices": choices,
+                "flags": dict(story.flags),
+                "reputation": dict(story.reputation),
+                "transmissions": len(story.transmission_log),
+            }
+
     def make_story_choice(self, choice_id: str) -> tuple[bool, str]:
         """Resolve a branching story dilemma in the active campaign chapter."""
         with self.lock:
@@ -3451,8 +3757,9 @@ class SimulationEngine:
             if current_chapter.completed:
                 return False, f"Chapter '{current_chapter.title}' is already resolved."
 
-            if current_chapter.target_system_id and self.state.ship.current_system_id != current_chapter.target_system_id:
-                return False, f"Must be in {current_chapter.target_system_id.title()} System to resolve '{current_chapter.title}' (currently in {self.state.ship.current_system_id.title()})."
+            chapter_unmet = self._story_unmet_requirements(current_chapter.requirements, chapter=current_chapter)
+            if chapter_unmet:
+                return False, f"Objectives unmet for '{current_chapter.title}': {'; '.join(chapter_unmet)}."
 
             found_choice = None
             for ch in current_chapter.choices:
@@ -3463,6 +3770,11 @@ class SimulationEngine:
             if not found_choice:
                 avail = ", ".join(c.id for c in current_chapter.choices)
                 return False, f"Choice '{choice_id}' not found. Available choices: {avail}."
+
+            choice_unmet = self._story_unmet_requirements(found_choice.requirements)
+            if choice_unmet:
+                reason = found_choice.locked_text or "; ".join(choice_unmet)
+                return False, f"Choice '{choice_id}' is locked. {reason}."
 
             cost = getattr(found_choice, "cost_credits", 0)
             if cost > 0 and self.state.ship.credits < cost:
@@ -3514,15 +3826,57 @@ class SimulationEngine:
                 choices=current_chapter.choices,
                 completed=True,
                 chosen_id=choice_id,
+                requirements=current_chapter.requirements,
             )
 
-            next_idx = story.current_chapter_index + 1
-            is_campaign_done = next_idx >= len(story.chapters)
-            new_transmissions = list(story.transmission_log)
+            new_flags = dict(story.flags)
+            for flag in found_choice.sets_flags:
+                new_flags[flag] = True
 
+            # Advance past the resolved chapter, skipping chapters whose flag gates can no longer open
+            next_idx = story.current_chapter_index + 1
+            while next_idx < len(updated_chapters):
+                candidate = updated_chapters[next_idx]
+                gates = candidate.requirements.required_flags if candidate.requirements else ()
+                if gates and not all(new_flags.get(g) for g in gates):
+                    updated_chapters[next_idx] = StoryChapter(
+                        chapter_index=candidate.chapter_index,
+                        title=candidate.title,
+                        target_system_id=candidate.target_system_id,
+                        objective=candidate.objective,
+                        transmission=candidate.transmission,
+                        choices=candidate.choices,
+                        completed=candidate.completed,
+                        chosen_id=candidate.chosen_id,
+                        requirements=candidate.requirements,
+                        skipped=True,
+                    )
+                    next_idx += 1
+                else:
+                    break
+
+            is_campaign_done = next_idx >= len(updated_chapters)
+            new_transmissions = list(story.transmission_log)
+            if found_choice.follow_up is not None:
+                new_transmissions.append(found_choice.follow_up)
+
+            ending_id = None
             if not is_campaign_done:
                 next_ch = updated_chapters[next_idx]
                 new_transmissions.append(next_ch.transmission)
+            else:
+                ending_id = resolve_story_ending(
+                    StoryState(
+                        campaign_title=story.campaign_title,
+                        current_chapter_index=next_idx,
+                        chapters=tuple(updated_chapters),
+                        transmission_log=(),
+                        reputation=new_rep,
+                        completed=True,
+                        flags=new_flags,
+                    )
+                )
+                new_transmissions.append(ending_transmission(ending_id))
 
             new_story = StoryState(
                 campaign_title=story.campaign_title,
@@ -3531,6 +3885,8 @@ class SimulationEngine:
                 transmission_log=tuple(new_transmissions),
                 reputation=new_rep,
                 completed=is_campaign_done,
+                flags=new_flags,
+                ending_id=ending_id,
             )
 
             relic_msg = f" Acquired unique relic [{awarded_relic.name}]!" if awarded_relic else ""
@@ -3552,7 +3908,8 @@ class SimulationEngine:
             self.state = self._clone_state(ship=new_ship)
             msg = f"Decision resolved: {found_choice.outcome_text}{relic_msg}"
             if is_campaign_done:
-                msg += " CAMPAIGN FINALE: The Precursor Cipher storyline concluded!"
+                variant = ENDING_VARIANTS.get(ending_id or "", ENDING_VARIANTS["ending_sentinel"])
+                msg += f" CAMPAIGN FINALE: {variant['title']}!"
 
             return True, msg
 
@@ -3750,6 +4107,8 @@ class SimulationEngine:
                 "events": [e.to_dict() for e in self.state.events],
                 "undismissed_events": [e.to_dict() for e in self.state.events if not e.dismissed],
                 "travel": self.state.ship.travel.to_dict() if self.state.ship.travel else None,
+                "void": self.void_status(),
+                "story_status": self.story_status(),
                 "allies": list(self.state.ship.allies),
                 "quests": self.get_quests(),
                 "mercenary_catalog": MERCENARY_CATALOG,
@@ -4520,6 +4879,109 @@ class SimulationEngine:
                     )
                 )
 
+            # 8. Void traversal: storms, forced emergence, and arrival in the Hollow Between
+            new_void = cur_ship.void_traversal
+            new_current_system_id = cur_ship.current_system_id
+            new_visited_systems = self.state.visited_systems
+            new_mastery = cur_ship.mastery
+            new_credits_delta = 0
+            new_stats_tick = self.state.stats
+            if new_void is not None:
+                ticks_in_void = max(0, min(num_ticks, new_void.arrival_tick - cur_time.tick))
+                storm_chance = self._void_storm_chance()
+                storms_weathered = new_void.storms_weathered
+                stability = new_void.stability
+                forced_emergence = False
+                for _ in range(ticks_in_void):
+                    if stability <= 0:
+                        forced_emergence = True
+                        break
+                    if self.rng.random() < storm_chance:
+                        storms_weathered += 1
+                        stability -= self.VOID_STORM_STABILITY_LOSS
+                        new_shield = max(0, new_shield - self.VOID_STORM_SHIELD_LOSS)
+                        new_hull = max(1, new_hull - self.VOID_STORM_HULL_LOSS)
+                        if stability < 30:
+                            new_hull = max(1, new_hull - self.VOID_STORM_HULL_LOSS)
+                        new_flight_log.append(
+                            f"VOID STORM: Shear front weathered ({storms_weathered} total). "
+                            f"Stability {max(0.0, stability):.0f}%, shields -{self.VOID_STORM_SHIELD_LOSS}."
+                        )
+
+                if forced_emergence or stability <= 0:
+                    origin_sys = self.state.systems.get(new_void.origin_system_id)
+                    origin_name = origin_sys.name if origin_sys else new_void.origin_system_id
+                    horizon_id = None
+                    if origin_sys is not None:
+                        for body in origin_sys.bodies:
+                            if body.body_type == "black_hole":
+                                horizon_id = body.id
+                                break
+                    new_hull = max(1, new_hull - self.VOID_EMERGENCE_HULL_DAMAGE)
+                    new_orbiting_body_id = horizon_id
+                    new_void = None
+                    new_flight_log.append(
+                        f"VOID COLLAPSE: Stability lost. The Hollow expels the hull violently at {origin_name} "
+                        f"(hull -{self.VOID_EMERGENCE_HULL_DAMAGE})."
+                    )
+                    evt_id = f"evt_{new_tick}_{len(new_events) + 1}"
+                    new_events.append(
+                        GameEvent(
+                            id=evt_id,
+                            kind="void",
+                            title="Void Collapse",
+                            message=f"Stability collapsed mid-traversal. Emergency expulsion at {origin_name}.",
+                            tick=new_tick,
+                            dismissed=False,
+                        )
+                    )
+                elif new_tick >= new_void.arrival_tick:
+                    dest_id = new_void.destination_system_id
+                    dest_sys = self.state.systems.get(dest_id)
+                    dest_name = dest_sys.name if dest_sys else dest_id
+                    first_visit = dest_id not in set(self.state.visited_systems)
+                    visited = set(self.state.visited_systems)
+                    visited.add(dest_id)
+                    new_visited_systems = tuple(sorted(visited))
+                    new_current_system_id = dest_id
+                    new_mastery, xp_logs = self._award_pilot_xp(self.VOID_ARRIVAL_XP, cur_ship.mastery)
+                    new_flight_log.extend(xp_logs)
+                    if first_visit:
+                        new_credits_delta += self.VOID_FIRST_VISIT_BONUS
+                        new_flight_log.append(
+                            f"VOID ARRIVAL: First emergence into {dest_name}. Cartography bounty +{self.VOID_FIRST_VISIT_BONUS} cr."
+                        )
+                    else:
+                        new_flight_log.append(f"VOID ARRIVAL: Emerged into {dest_name} from the Hollow Between.")
+                    if stability < 60:
+                        new_hull = max(1, new_hull - 5)
+                        new_flight_log.append("Turbulent emergence: hull stress -5 from residual shear.")
+                    new_stats_void = dict(new_stats_tick)
+                    new_stats_void["void_arrivals"] = int(new_stats_void.get("void_arrivals", 0)) + 1
+                    new_stats_tick = new_stats_void
+                    new_void = None
+                    evt_id = f"evt_{new_tick}_{len(new_events) + 1}"
+                    new_events.append(
+                        GameEvent(
+                            id=evt_id,
+                            kind="void",
+                            title=f"Void Arrival: {dest_name}",
+                            message=f"The Hollow Between releases your hull into {dest_name}.",
+                            tick=new_tick,
+                            dismissed=False,
+                        )
+                    )
+                else:
+                    new_void = VoidTraversalState(
+                        origin_system_id=new_void.origin_system_id,
+                        destination_system_id=new_void.destination_system_id,
+                        started_tick=new_void.started_tick,
+                        arrival_tick=new_void.arrival_tick,
+                        duration_ticks=new_void.duration_ticks,
+                        stability=stability,
+                        storms_weathered=storms_weathered,
+                    )
+
             if new_flight_log_research:
                 new_flight_log.append(new_flight_log_research)
             new_flight_log.extend(faction_logs[-3:])
@@ -4527,12 +4989,15 @@ class SimulationEngine:
             new_ship = self._clone_ship(
                 hull=new_hull,
                 shield=new_shield,
-                credits=max(0, cur_ship.credits + outpost_credits - wage_cost),
+                credits=max(0, cur_ship.credits + outpost_credits - wage_cost + new_credits_delta),
                 crew=new_crew,
                 reactor=new_reactor,
+                current_system_id=new_current_system_id,
                 orbiting_body_id=new_orbiting_body_id,
                 landed_body_id=new_landed_body_id,
                 travel=new_travel,
+                void_traversal=new_void,
+                mastery=new_mastery,
                 fleet_drones=new_drones,
                 fleet_ships=new_fleet_ships,
                 flight_log=tuple(new_flight_log[-20:]),
@@ -4541,6 +5006,8 @@ class SimulationEngine:
             self.state = self._clone_state(
                 ship=new_ship,
                 systems=updated_systems,
+                visited_systems=new_visited_systems,
+                stats=new_stats_tick,
                 active_combat=new_combat,
                 time=new_time,
                 economy=new_econ,

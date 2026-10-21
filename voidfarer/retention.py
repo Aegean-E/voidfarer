@@ -329,6 +329,7 @@ def calculate_passive_multipliers(ship: ShipState) -> dict[str, float]:
         "trade_margin": 1.0 * streak_mult,
         "drone_yield": 1.0,
         "relic_find": 0.0,
+        "void_stability": 0.0,
     }
 
     # Apply pilot talents
@@ -381,5 +382,7 @@ def calculate_passive_multipliers(ship: ShipState) -> dict[str, float]:
         elif stat == "stellar_forge":
             multipliers["trade_margin"] += mult
             multipliers["shield_cap"] += 40.0
+        elif stat == "void_stability":
+            multipliers["void_stability"] += mult
 
     return multipliers

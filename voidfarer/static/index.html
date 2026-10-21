@@ -656,6 +656,15 @@
                             <p class="story-synopsis-text" id="storySynopsisText">Decrypting subspace telemetry...</p>
                         </div>
 
+                        <!-- Campaign Objective Checklist -->
+                        <div class="story-objectives-box" id="storyObjectivesBox" style="display: none;">
+                            <div class="objectives-header">
+                                <span class="choice-alert-icon">◎</span>
+                                <h4>CAMPAIGN OBJECTIVES</h4>
+                            </div>
+                            <ul class="objectives-list" id="storyObjectivesList"></ul>
+                        </div>
+
                         <!-- Critical Moral Choice Card -->
                         <div class="story-choice-container" id="storyChoiceContainer" style="display: none;">
                             <div class="choice-prompt-header">
@@ -663,6 +672,20 @@
                                 <h4>TACTICAL TRANSMISSION DECISION REQUIRED</h4>
                             </div>
                             <div class="story-choices-list" id="storyChoicesList"></div>
+                        </div>
+
+                        <!-- The Hollow Between: Void Traversal -->
+                        <div class="void-traverse-panel" id="voidTraversePanel">
+                            <div class="void-header-row">
+                                <div class="void-title-group">
+                                    <span class="choice-alert-icon void-icon">◍</span>
+                                    <h4>THE HOLLOW BETWEEN // VOID TRAVERSAL</h4>
+                                </div>
+                                <span class="badge-arch" id="voidStatusBadge">VOID DRIVE OFFLINE</span>
+                            </div>
+                            <div class="void-body" id="voidBody">
+                                <!-- Populated dynamically by app.js -->
+                            </div>
                         </div>
 
                         <!-- Radio Subspace Transmissions Log -->

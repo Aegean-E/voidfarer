@@ -47,6 +47,38 @@ SYSTEM_ARCHETYPES = [
     ("cyclops", "Cyclops Binary", -70.0, 30.0, "Binary", "#ffcc66", 0.45, "Sol Coalition", "hyperion_dynamics"),
 ]
 
+# Systems whose generator appends a black-hole event horizon (void traversal gates)
+VOID_GATE_SYSTEM_IDS = ("cygnus_x1", "golconda")
+
+
+def black_hole_body(sys_id: str, sys_name: str) -> CelestialBody:
+    """Construct the black-hole event horizon body for a void gate system."""
+    return CelestialBody(
+        id=f"{sys_id}_black_hole",
+        name=f"{sys_name} Event Horizon",
+        body_type="black_hole",
+        orbit_radius=0.45,
+        orbit_speed=0.11,
+        current_angle=math.pi * 0.5,
+        radius_km=28.0,
+        color="#0b0014",
+        hazards=("gravity_well", "tidal_shear", "radiation"),
+        station_dockable=False,
+        market_archetype="none",
+        scan_completed=False,
+        scan_discovery="Gravitational singularity with an accretion halo rich in exotic particles.",
+        gravity=999.0,
+        atmosphere="Event Horizon / Vacuum",
+        temperature_c=-270,
+        resources=("xenoliths",),
+        moons=(),
+        landable=False,
+        faction="Unclaimed",
+        population=0,
+        government="None",
+        habitability=0.0,
+    )
+
 ANOMALIES_CATALOG = [
     {
         "id": "derelict_cruiser",
@@ -704,34 +736,8 @@ class GalaxyGenerator:
                 )
             )
 
-        if sys_id in ("cygnus_x1", "golconda"):
-            bodies.append(
-                CelestialBody(
-                    id=f"{sys_id}_black_hole",
-                    name=f"{sys_name} Event Horizon",
-                    body_type="black_hole",
-                    orbit_radius=0.45,
-                    orbit_speed=0.11,
-                    current_angle=math.pi * 0.5,
-                    radius_km=28.0,
-                    color="#0b0014",
-                    hazards=("gravity_well", "tidal_shear", "radiation"),
-                    station_dockable=False,
-                    market_archetype="none",
-                    scan_completed=False,
-                    scan_discovery="Gravitational singularity with an accretion halo rich in exotic particles.",
-                    gravity=999.0,
-                    atmosphere="Event Horizon / Vacuum",
-                    temperature_c=-270,
-                    resources=("xenoliths",),
-                    moons=(),
-                    landable=False,
-                    faction="Unclaimed",
-                    population=0,
-                    government="None",
-                    habitability=0.0,
-                )
-            )
+        if sys_id in VOID_GATE_SYSTEM_IDS:
+            bodies.append(black_hole_body(sys_id, sys_name))
 
         if not any(b.landable for b in bodies[1:]):
             landable_index = len(bodies) - 2 if bodies[-1].station_dockable else len(bodies) - 1

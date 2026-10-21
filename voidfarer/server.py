@@ -167,7 +167,11 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         if path == "/api/story":
             with self.engine.lock:
                 story = self.engine.state.ship.story.to_dict()
-            self._send_json({"ok": True, "story": story})
+            self._send_json({"ok": True, "story": story, "status": self.engine.story_status()})
+            return
+
+        if path == "/api/void":
+            self._send_json({"ok": True, "void": self.engine.void_status()})
             return
 
         if path == "/api/time":
@@ -840,6 +844,19 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         if path == "/api/story/choice":
             choice_id = str(body.get("choice_id", ""))
             ok, msg = self.engine.make_story_choice(choice_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/void/dive":
+            target_system_id = str(body.get("target_system_id", ""))
+            ok, msg = self.engine.void_dive(target_system_id)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/void/emerge":
+            ok, msg = self.engine.void_emerge()
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return

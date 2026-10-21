@@ -2330,6 +2330,238 @@ body.cockpit-theme {
     border-radius: 4px;
 }
 
+/* --- Story branching: locked choices and objective checklist --- */
+.story-choice-locked {
+    opacity: 0.55;
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
+.story-choice-locked:hover {
+    border-color: rgba(0, 240, 255, 0.25);
+    background: rgba(10, 18, 38, 0.85);
+    transform: none;
+    box-shadow: none;
+}
+
+.choice-lock-badge {
+    font-size: 0.6rem;
+    font-family: var(--font-mono);
+    color: var(--neon-amber);
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.35);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.choice-lock-reason {
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    color: var(--neon-amber);
+}
+
+.story-objectives-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(0, 240, 255, 0.05);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+}
+
+.objectives-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.objectives-header h4 {
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    color: var(--neon-cyan);
+    letter-spacing: 1px;
+}
+
+.objectives-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.objectives-list li {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    padding-left: 1rem;
+    position: relative;
+}
+
+.objectives-list li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--neon-amber);
+}
+
+/* --- The Hollow Between: void traversal panel (G-012 cockpit parity) --- */
+.void-traverse-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    background: rgba(136, 51, 255, 0.06);
+    border: 1px solid rgba(136, 51, 255, 0.35);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    box-shadow: 0 0 14px rgba(136, 51, 255, 0.12);
+}
+
+.void-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.void-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.void-title-group h4 {
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    color: #b388ff;
+    letter-spacing: 1px;
+}
+
+.void-icon {
+    animation: voidPulse 2s ease infinite alternate;
+}
+
+@keyframes voidPulse {
+    from { opacity: 0.5; text-shadow: none; }
+    to { opacity: 1.0; text-shadow: 0 0 10px #8833ff; }
+}
+
+.void-badge-active {
+    color: #b388ff !important;
+    border-color: rgba(136, 51, 255, 0.55) !important;
+}
+
+.void-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.void-transit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.void-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    width: 82px;
+    flex-shrink: 0;
+}
+
+.void-value {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.void-meter {
+    flex: 1;
+    height: 6px;
+    background: rgba(136, 51, 255, 0.12);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.void-meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+.void-fill-progress { background: linear-gradient(90deg, #8833ff, #b388ff); }
+.void-fill-stable { background: linear-gradient(90deg, #00f088, #00f0c8); }
+.void-fill-critical { background: linear-gradient(90deg, #ff3355, #ff8866); }
+
+.void-destinations {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.void-dive-btn {
+    text-align: left;
+    font-size: 0.68rem;
+    border-color: rgba(136, 51, 255, 0.45);
+    color: #b388ff;
+}
+
+.void-dive-btn:hover {
+    border-color: #b388ff;
+    box-shadow: 0 0 10px rgba(136, 51, 255, 0.35);
+}
+
+.void-fuel-note {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.void-emerge-btn {
+    font-size: 0.68rem;
+    border-color: rgba(255, 51, 85, 0.5);
+    color: var(--neon-red);
+}
+
+.void-hint {
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+/* Radar void transit overlay */
+body.void-transit .radar-canvas,
+body.void-transit #radarCanvas {
+    filter: hue-rotate(-40deg) saturate(1.4) brightness(0.85);
+}
+
+body.void-transit::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(40, 0, 80, 0.35) 100%);
+    animation: voidShimmer 3s ease infinite alternate;
+    z-index: 5;
+}
+
+@keyframes voidShimmer {
+    from { opacity: 0.4; }
+    to { opacity: 0.75; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .void-icon, body.void-transit::after { animation: none; }
+}
+
 .choice-consequence-preview {
     font-size: 0.72rem;
     color: var(--text-secondary);

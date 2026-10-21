@@ -728,6 +728,38 @@ class TutorialState:
 
 
 @dataclass(frozen=True)
+class StoryRequirements:
+    """Gating conditions that must hold before a story choice or chapter unlocks."""
+
+    required_flags: tuple[str, ...] = ()
+    forbidden_flags: tuple[str, ...] = ()
+    min_reputation: dict[str, int] = field(default_factory=dict)
+    required_relic_ids: tuple[str, ...] = ()
+    orbit_body_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "required_flags": list(self.required_flags),
+            "forbidden_flags": list(self.forbidden_flags),
+            "min_reputation": dict(self.min_reputation),
+            "required_relic_ids": list(self.required_relic_ids),
+            "orbit_body_id": self.orbit_body_id,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> StoryRequirements | None:
+        if not data:
+            return None
+        return cls(
+            required_flags=tuple(data.get("required_flags", ())),
+            forbidden_flags=tuple(data.get("forbidden_flags", ())),
+            min_reputation={str(k): int(v) for k, v in dict(data.get("min_reputation", {})).items()},
+            required_relic_ids=tuple(data.get("required_relic_ids", ())),
+            orbit_body_id=data.get("orbit_body_id"),
+        )
+
+
+@dataclass(frozen=True)
 class StoryChoice:
     """Branching story decision impacting faction alignment, rewards, and narrative path."""
 
@@ -738,6 +770,10 @@ class StoryChoice:
     reward_relic_id: str | None = None
     outcome_text: str = ""
     cost_credits: int = 0
+    sets_flags: tuple[str, ...] = ()
+    requirements: StoryRequirements | None = None
+    locked_text: str = ""
+    follow_up: StoryTransmission | None = None
 
     @property
     def label(self) -> str:
@@ -758,6 +794,10 @@ class StoryChoice:
             "outcome_text": self.outcome_text,
             "consequence_summary": self.consequence_summary,
             "cost_credits": self.cost_credits,
+            "sets_flags": list(self.sets_flags),
+            "requirements": self.requirements.to_dict() if self.requirements else None,
+            "locked_text": self.locked_text,
+            "follow_up": self.follow_up.to_dict() if self.follow_up else None,
         }
 
     @classmethod
@@ -770,6 +810,10 @@ class StoryChoice:
             reward_relic_id=data.get("reward_relic_id"),
             outcome_text=str(data.get("outcome_text") or data.get("consequence_summary") or ""),
             cost_credits=int(data.get("cost_credits", 0)),
+            sets_flags=tuple(data.get("sets_flags", ())),
+            requirements=StoryRequirements.from_dict(data.get("requirements")),
+            locked_text=str(data.get("locked_text", "")),
+            follow_up=StoryTransmission.from_dict(data["follow_up"]) if data.get("follow_up") else None,
         )
 
 
@@ -809,6 +853,8 @@ class StoryChapter:
     choices: tuple[StoryChoice, ...] = ()
     completed: bool = False
     chosen_id: str | None = None
+    requirements: StoryRequirements | None = None
+    skipped: bool = False
 
     @property
     def id(self) -> str:
@@ -816,6 +862,8 @@ class StoryChapter:
             0: "act1_ghost_signal",
             1: "act2_sirius_forge",
             2: "act3_eternity_gate",
+            3: "act4_hollow_between",
+            4: "act5_first_voidfarers",
         }
         return chapter_ids.get(self.chapter_index, f"act{self.chapter_index + 1}")
 
@@ -835,6 +883,8 @@ class StoryChapter:
             "choices": [c.to_dict() for c in self.choices],
             "completed": self.completed,
             "chosen_id": self.chosen_id,
+            "requirements": self.requirements.to_dict() if self.requirements else None,
+            "skipped": self.skipped,
         }
 
     @classmethod
@@ -849,6 +899,8 @@ class StoryChapter:
             choices=tuple(StoryChoice.from_dict(c) for c in data.get("choices", ())),
             completed=bool(data.get("completed", False)),
             chosen_id=data.get("chosen_id"),
+            requirements=StoryRequirements.from_dict(data.get("requirements")),
+            skipped=bool(data.get("skipped", False)),
         )
 
 
@@ -862,6 +914,8 @@ class StoryState:
     transmission_log: tuple[StoryTransmission, ...] = ()
     reputation: dict[str, int] = field(default_factory=lambda: {"coalition": 0, "syndicate": 0, "precursor": 0})
     completed: bool = False
+    flags: dict[str, bool] = field(default_factory=dict)
+    ending_id: str | None = None
 
     @property
     def active_act(self) -> int:
@@ -900,6 +954,8 @@ class StoryState:
             "reputation": dict(self.reputation),
             "faction_reputation": dict(self.reputation),
             "completed": self.completed,
+            "flags": dict(self.flags),
+            "ending_id": self.ending_id,
         }
 
     @classmethod
@@ -920,6 +976,8 @@ class StoryState:
             transmission_log=transmission_log,
             reputation=dict(data.get("reputation") or data.get("faction_reputation") or {"coalition": 0, "syndicate": 0, "precursor": 0}),
             completed=bool(data.get("completed", False)),
+            flags={str(k): bool(v) for k, v in dict(data.get("flags") or {}).items()},
+            ending_id=data.get("ending_id"),
         )
 
 
@@ -953,6 +1011,39 @@ class TravelState:
             arrival_tick=int(data.get("arrival_tick", 0)),
             distance_au=float(data.get("distance_au", 0.0)),
             duration_ticks=int(data.get("duration_ticks", 1)),
+        )
+
+
+@dataclass(frozen=True)
+class VoidTraversalState:
+    """Transit through the Hollow Between along a void lane between black-hole anchors."""
+
+    origin_system_id: str
+    destination_system_id: str
+    started_tick: int = 0
+    arrival_tick: int = 0
+    duration_ticks: int = 1
+    stability: float = 100.0
+    storms_weathered: int = 0
+
+    def progress(self, current_tick: int) -> float:
+        total = max(1, self.arrival_tick - self.started_tick)
+        elapsed = max(0, min(total, current_tick - self.started_tick))
+        return elapsed / total
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VoidTraversalState:
+        return cls(
+            origin_system_id=str(data["origin_system_id"]),
+            destination_system_id=str(data["destination_system_id"]),
+            started_tick=int(data.get("started_tick", 0)),
+            arrival_tick=int(data.get("arrival_tick", 0)),
+            duration_ticks=int(data.get("duration_ticks", 1)),
+            stability=float(data.get("stability", 100.0)),
+            storms_weathered=int(data.get("storms_weathered", 0)),
         )
 
 
@@ -1311,6 +1402,7 @@ class ShipState:
     allies: tuple[str, ...] = ()
     landed_body_id: str | None = None
     travel: TravelState | None = None
+    void_traversal: VoidTraversalState | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1354,6 +1446,7 @@ class ShipState:
             "allies": list(self.allies),
             "landed_body_id": self.landed_body_id,
             "travel": self.travel.to_dict() if self.travel else None,
+            "void_traversal": self.void_traversal.to_dict() if self.void_traversal else None,
         }
 
     @classmethod
@@ -1419,6 +1512,7 @@ class ShipState:
             allies=tuple(data.get("allies", ())),
             landed_body_id=data.get("landed_body_id"),
             travel=TravelState.from_dict(data["travel"]) if data.get("travel") else None,
+            void_traversal=VoidTraversalState.from_dict(data["void_traversal"]) if data.get("void_traversal") else None,
         )
 
 

@@ -589,3 +589,50 @@ class TestArsenalParityAndBulkDepotUI(unittest.TestCase):
         self.assertIn(".chassis-card", self.css)
         self.assertIn(".weapon-card", self.css)
 
+
+class TestStoryAndVoidCockpit(unittest.TestCase):
+    """Story branching UI and the Hollow Between void traversal panel."""
+
+    @classmethod
+    def setUpClass(cls):
+        parser = _TreeBuilder()
+        parser.feed(INDEX_HTML.read_text(encoding="utf-8"))
+        parser.close()
+        cls.dom = parser.root
+        cls.html = INDEX_HTML.read_text(encoding="utf-8")
+        cls.js = APP_JS.read_text(encoding="utf-8")
+        cls.css = STYLE_CSS.read_text(encoding="utf-8")
+
+    def test_story_tab_holds_objectives_choices_and_void_panel(self):
+        story_tab = self.dom.find_by_id("tabContentStory")
+        self.assertIsNotNone(story_tab, "story tab (#tabContentStory) missing")
+        for element_id in ("storyObjectivesBox", "storyObjectivesList", "voidTraversePanel", "voidStatusBadge", "voidBody"):
+            node = story_tab.find_by_id(element_id)
+            self.assertIsNotNone(node, f"#{element_id} missing from the story tab")
+
+    def test_story_section_source_order(self):
+        order = []
+        for element_id in ("storySynopsisText", "storyObjectivesBox", "storyChoiceContainer", "voidTraversePanel", "transmissionsStream"):
+            index = self.html.find(f'id="{element_id}"')
+            self.assertGreaterEqual(index, 0, f"#{element_id} missing from index.html")
+            order.append(index)
+        self.assertEqual(order, sorted(order), "story tab sections are out of order")
+
+    def test_app_wires_void_endpoints_and_renders(self):
+        self.assertIn("renderVoid", self.js)
+        self.assertIn("handleVoidDive", self.js)
+        self.assertIn("handleVoidEmerge", self.js)
+        self.assertIn("/api/void/dive", self.js)
+        self.assertIn("/api/void/emerge", self.js)
+        self.assertIn("void-transit", self.js, "app.js must toggle the void transit radar overlay class")
+
+    def test_locked_story_choices_render_disabled_with_reasons(self):
+        self.assertIn("story-choice-locked", self.js)
+        self.assertIn("card.disabled = true", self.js)
+        self.assertIn("choice-lock-reason", self.js)
+        self.assertIn("story_status", self.js, "renderStory must consume the story_status objective payload")
+
+    def test_void_and_locked_choice_styles_exist(self):
+        for selector in (".void-traverse-panel", ".story-objectives-box", ".story-choice-locked", "body.void-transit"):
+            self.assertIn(selector, self.css, f"missing CSS rule for {selector}")
+

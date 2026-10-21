@@ -11,7 +11,15 @@ from unittest.mock import patch
 
 from voidfarer.cli import cmd_status, cmd_story, cmd_tutorial, main
 from voidfarer.engine import SimulationEngine
-from voidfarer.models import ShipState, StoryState, TutorialState
+from voidfarer.models import (
+    ShipState,
+    StoryChapter,
+    StoryChoice,
+    StoryRequirements,
+    StoryState,
+    StoryTransmission,
+    TutorialState,
+)
 from voidfarer.retention import calculate_passive_multipliers
 from voidfarer.server import ThreadedHTTPServer, VoidFarerHandler
 from voidfarer.storage import StorageManager
@@ -21,6 +29,8 @@ from voidfarer.story import (
     STORY_RELICS,
     create_initial_story_state,
     create_initial_tutorial_state,
+    migrate_story_state,
+    resolve_story_ending,
 )
 
 
@@ -201,7 +211,7 @@ class TestStoryAndTutorial(unittest.TestCase):
         # Act II target is Sirius; attempting choice in Sol must be rejected
         ok, msg = self.engine.make_story_choice("choice_salvage_core")
         self.assertFalse(ok)
-        self.assertIn("Must be in Sirius System", msg)
+        self.assertIn("Travel to Sirius System", msg)
 
         # Jump to Sirius
         ok, msg = self.engine.jump("sirius")
@@ -216,7 +226,7 @@ class TestStoryAndTutorial(unittest.TestCase):
         # Act III target is Vega; attempting choice in Sirius must be rejected
         ok, msg = self.engine.make_story_choice("choice_unleash_gateways")
         self.assertFalse(ok)
-        self.assertIn("Must be in Vega System", msg)
+        self.assertIn("Travel to Vega System", msg)
 
         # Ensure sufficient fuel for jump to Vega
         with self.engine.lock:
@@ -236,14 +246,65 @@ class TestStoryAndTutorial(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(self.engine.state.ship.current_system_id, "vega")
 
-        # Resolve Act III choice
+        # Resolve Act III choice: campaign extends into the new acts
         ok, msg = self.engine.make_story_choice("choice_unleash_gateways")
         self.assertTrue(ok)
+        self.assertFalse(self.engine.state.ship.story.completed)
+        self.assertEqual(self.engine.state.ship.story.active_act, 4)
+        self.assertTrue(self.engine.state.ship.story.flags.get("gateways_open"))
+
+        # Act IV requires orbiting the Cygnus event horizon
+        ok, msg = self.engine.make_story_choice("choice_first_dive")
+        self.assertFalse(ok)
+        self.assertIn("Objectives unmet", msg)
+        self.assertIn("orbit", msg.lower())
+
+        from voidfarer.navigation import shortest_route
+
+        def travel_to(destination: str) -> None:
+            path = shortest_route(self.engine.state.systems, self.engine.state.ship.current_system_id, destination)
+            for target in path[1:]:
+                with self.engine.lock:
+                    self.engine.state = self.engine.state.__class__(
+                        version=self.engine.state.version,
+                        galaxy_seed=self.engine.state.galaxy_seed,
+                        ship=self.engine._clone_ship(fuel=60),
+                        systems=self.engine.state.systems,
+                        visited_systems=self.engine.state.visited_systems,
+                        active_anomaly=None,
+                        active_combat=None,
+                        stats=self.engine.state.stats,
+                    )
+                ok, msg = self.engine.jump(target)
+                self.assertTrue(ok, msg)
+
+        travel_to("cygnus_x1")
+        ok, msg = self.engine.orbit("cygnus_x1_black_hole")
+        self.assertTrue(ok)
+        ok, msg = self.engine.make_story_choice("choice_first_dive")
+        self.assertTrue(ok)
+        self.assertEqual(self.engine.state.ship.story.active_act, 5)
+        self.assertTrue(self.engine.state.ship.story.flags.get("voidfarer_oath"))
+        self.assertIn("relic_void_compass", [r.id for r in self.engine.state.ship.relics])
+
+        # Act V finale: the claim-title choice stays unlocked for the oath path
+        travel_to("rift_station")
+        status = self.engine.story_status()
+        self.assertTrue(status["ready"])
+        by_id = {c["id"]: c for c in status["choices"]}
+        self.assertFalse(by_id["choice_claim_title"]["locked"])
+        self.assertTrue(by_id["choice_sell_echoes"]["locked"])
+
+        ok, msg = self.engine.make_story_choice("choice_claim_title")
+        self.assertTrue(ok)
         self.assertIn("CAMPAIGN FINALE", msg)
-        self.assertTrue(self.engine.state.ship.story.completed)
+        story = self.engine.state.ship.story
+        self.assertTrue(story.completed)
+        self.assertEqual(story.ending_id, "ending_first_voidfarer")
+        self.assertTrue(any(t.callsign == "Campaign-Epilogue" for t in story.transmission_log))
 
         # Further choices after completion are cleanly rejected
-        ok, msg = self.engine.make_story_choice("choice_safeguard_lock")
+        ok, msg = self.engine.make_story_choice("choice_archive_echoes")
         self.assertFalse(ok)
         self.assertIn("already complete", msg)
 
@@ -380,6 +441,233 @@ class TestServerStoryAndTutorial(unittest.TestCase):
         self.assertEqual(status, 200)
         json_data = json.loads(data.decode("utf-8"))
         self.assertTrue(json_data["ok"])
+
+
+class TestStoryBranchingMechanics(unittest.TestCase):
+    """Requirement-gated choices, persistent flags, endings, and legacy-save migration."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.storage = StorageManager(self.temp_dir.name)
+        self.engine = SimulationEngine(seed=42)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _travel_to(self, destination: str) -> None:
+        from voidfarer.navigation import shortest_route
+
+        path = shortest_route(self.engine.state.systems, self.engine.state.ship.current_system_id, destination)
+        for target in path[1:]:
+            with self.engine.lock:
+                self.engine.state = self.engine.state.__class__(
+                    version=self.engine.state.version,
+                    galaxy_seed=self.engine.state.galaxy_seed,
+                    ship=self.engine._clone_ship(fuel=60),
+                    systems=self.engine.state.systems,
+                    visited_systems=self.engine.state.visited_systems,
+                    active_anomaly=None,
+                    active_combat=None,
+                    stats=self.engine.state.stats,
+                )
+            ok, msg = self.engine.jump(target)
+            self.assertTrue(ok, msg)
+
+    def test_story_status_reports_objectives_and_locks(self):
+        status = self.engine.story_status()
+        self.assertEqual(status["campaign_title"], "The Precursor Cipher")
+        self.assertEqual(status["active_act"], 1)
+        self.assertTrue(status["ready"])
+        self.assertEqual(status["unmet_requirements"], [])
+        self.assertTrue(any(c["id"] == "choice_vance_telemetry" for c in status["choices"]))
+        self.assertTrue(all(not c["locked"] for c in status["choices"]))
+
+    def test_act_iv_requires_black_hole_orbit(self):
+        self.engine.make_story_choice("choice_vance_telemetry")
+        self._travel_to("sirius")
+        self.engine.make_story_choice("choice_colony_power")
+        self._travel_to("vega")
+        self.engine.make_story_choice("choice_safeguard_lock")
+        self._travel_to("cygnus_x1")
+
+        status = self.engine.story_status()
+        self.assertFalse(status["ready"])
+        self.assertTrue(any("orbit" in r.lower() for r in status["unmet_requirements"]))
+
+        ok, msg = self.engine.make_story_choice("choice_first_dive")
+        self.assertFalse(ok)
+        self.assertIn("Objectives unmet", msg)
+
+        ok, msg = self.engine.orbit("cygnus_x1_black_hole")
+        self.assertTrue(ok)
+        self.assertTrue(self.engine.story_status()["ready"])
+
+    def test_locked_choices_report_branch_resolvable_reasons(self):
+        # Coalition path: neither the oath flag nor the leaked-intel flag is set
+        self.engine.make_story_choice("choice_vance_telemetry")
+        self._travel_to("sirius")
+        self.engine.make_story_choice("choice_colony_power")
+        self._travel_to("vega")
+        self.engine.make_story_choice("choice_safeguard_lock")
+        self._travel_to("cygnus_x1")
+        self.engine.orbit("cygnus_x1_black_hole")
+        self.engine.make_story_choice("choice_horizon_witness")
+        self._travel_to("rift_station")
+
+        status = self.engine.story_status()
+        by_id = {c["id"]: c for c in status["choices"]}
+        self.assertTrue(by_id["choice_claim_title"]["locked"])
+        self.assertIn("Voidfarer's Oath", by_id["choice_claim_title"]["lock_reason"])
+        self.assertTrue(by_id["choice_sell_echoes"]["locked"])
+        self.assertIn("Act I", by_id["choice_sell_echoes"]["lock_reason"])
+
+        ok, msg = self.engine.make_story_choice("choice_claim_title")
+        self.assertFalse(ok)
+        self.assertIn("locked", msg)
+
+    def test_persistent_flags_drive_distinct_endings(self):
+        # Oath path ends as First VoidFarer
+        self.engine.make_story_choice("choice_cipher_leak")
+        self._travel_to("sirius")
+        self.engine.make_story_choice("choice_salvage_core")
+        self._travel_to("vega")
+        self.engine.make_story_choice("choice_unleash_gateways")
+        self._travel_to("cygnus_x1")
+        self.engine.orbit("cygnus_x1_black_hole")
+        self.engine.make_story_choice("choice_first_dive")
+        self._travel_to("rift_station")
+
+        ok, msg = self.engine.make_story_choice("choice_sell_echoes")
+        self.assertTrue(ok, msg)
+        story = self.engine.state.ship.story
+        self.assertTrue(story.completed)
+        self.assertEqual(story.ending_id, "ending_shadow_broker")
+        self.assertEqual(story.flags.get("echoes_sold"), True)
+
+    def test_follow_up_transmissions_persist(self):
+        self.engine.make_story_choice("choice_cipher_leak")
+        story = self.engine.state.ship.story
+        speakers = [(t.speaker, t.message) for t in story.transmission_log]
+        self.assertTrue(any(speaker == "Cipher" and "profitable exchange" in message for speaker, message in speakers))
+
+    def test_resolve_story_ending_variants(self):
+        def story_with_flags(flags):
+            return StoryState(
+                current_chapter_index=5,
+                chapters=CAMPAIGN_CHAPTERS,
+                transmission_log=(),
+                completed=True,
+                flags=flags,
+            )
+
+        self.assertEqual(resolve_story_ending(story_with_flags({"echoes_sold": True})), "ending_shadow_broker")
+        self.assertEqual(resolve_story_ending(story_with_flags({"title_claimed": True})), "ending_first_voidfarer")
+        self.assertEqual(resolve_story_ending(story_with_flags({"echoes_archived": True})), "ending_sentinel")
+        self.assertEqual(resolve_story_ending(story_with_flags({})), "ending_sentinel")
+
+    def test_chapter_flag_gating_skips_ineligible_chapters(self):
+        def chapter(idx, title, requirements=None):
+            return StoryChapter(
+                chapter_index=idx,
+                title=title,
+                target_system_id=None,
+                objective="",
+                transmission=StoryTransmission("A", "a", "c", "m"),
+                choices=(StoryChoice(id=f"c_{idx}", text="Proceed", faction_alignment="independent"),),
+                requirements=requirements,
+            )
+
+        custom = StoryState(
+            current_chapter_index=0,
+            chapters=(
+                chapter(0, "Gate"),
+                chapter(1, "Sealed Branch", StoryRequirements(required_flags=("never_earned",))),
+                chapter(2, "Open Branch"),
+            ),
+            transmission_log=(),
+        )
+        with self.engine.lock:
+            self.engine.state = self.engine._clone_state(ship=self.engine._clone_ship(story=custom))
+
+        ok, msg = self.engine.make_story_choice("c_0")
+        self.assertTrue(ok)
+        story = self.engine.state.ship.story
+        self.assertTrue(story.chapters[1].skipped)
+        self.assertEqual(story.current_chapter_index, 2)
+        self.assertEqual(story.current_chapter_id, "act3_eternity_gate")
+
+    def test_migrate_story_state_variants(self):
+        # Completed legacy campaign reopens at the first new act
+        legacy = StoryState(
+            current_chapter_index=3,
+            chapters=CAMPAIGN_CHAPTERS[:3],
+            transmission_log=(CAMPAIGN_CHAPTERS[0].transmission,),
+            reputation={"coalition": 25},
+            completed=True,
+        )
+        migrated = migrate_story_state(legacy)
+        self.assertEqual(len(migrated.chapters), 5)
+        self.assertFalse(migrated.completed)
+        self.assertEqual(migrated.current_chapter_index, 3)
+        self.assertTrue(any("Cygnus gate" in t.message for t in migrated.transmission_log))
+        self.assertEqual(migrated.reputation, {"coalition": 25})
+
+        # Mid-campaign legacy save resumes where it was, without the awakening transmission
+        mid = StoryState(
+            current_chapter_index=1,
+            chapters=CAMPAIGN_CHAPTERS[:3],
+            transmission_log=(CAMPAIGN_CHAPTERS[0].transmission,),
+        )
+        migrated_mid = migrate_story_state(mid)
+        self.assertEqual(len(migrated_mid.chapters), 5)
+        self.assertEqual(migrated_mid.current_chapter_index, 1)
+        self.assertFalse(migrated_mid.completed)
+        self.assertEqual(len(migrated_mid.transmission_log), 1)
+
+        # Already-current campaign passes through untouched
+        current = StoryState(current_chapter_index=5, chapters=CAMPAIGN_CHAPTERS, completed=True)
+        self.assertIs(migrate_story_state(current), current)
+
+    def test_engine_load_state_migrates_legacy_campaign(self):
+        legacy_story = StoryState(
+            current_chapter_index=3,
+            chapters=CAMPAIGN_CHAPTERS[:3],
+            transmission_log=(CAMPAIGN_CHAPTERS[0].transmission,),
+            completed=True,
+        )
+        with self.engine.lock:
+            legacy_state = self.engine._clone_state(
+                ship=self.engine._clone_ship(story=legacy_story)
+            )
+        ok, msg = self.engine.load_state(legacy_state)
+        self.assertTrue(ok)
+        story = self.engine.state.ship.story
+        self.assertEqual(len(story.chapters), 5)
+        self.assertFalse(story.completed)
+        self.assertEqual(story.current_chapter_index, 3)
+        self.assertEqual(story.current_chapter_id, "act4_hollow_between")
+
+        # Story status exposes the reopened objective
+        status = self.engine.story_status()
+        self.assertEqual(status["chapter_id"], "act4_hollow_between")
+
+    def test_serialization_roundtrip_preserves_flags_and_ending(self):
+        self.engine.make_story_choice("choice_cipher_leak")
+        story = self.engine.state.ship.story
+        self.assertEqual(story.flags.get("intel_leaked_syndicate"), True)
+
+        restored = ShipState.from_dict(self.engine.state.ship.to_dict())
+        self.assertEqual(restored.story.flags, story.flags)
+        self.assertIsNone(restored.story.ending_id)
+
+        # Requirements and follow-ups survive the roundtrip
+        act5 = [c for c in restored.story.chapters if c.id == "act5_first_voidfarers"][0]
+        claim = [c for c in act5.choices if c.id == "choice_claim_title"][0]
+        self.assertEqual(claim.requirements.required_flags, ("voidfarer_oath",))
+        act1 = [c for c in restored.story.chapters if c.id == "act1_ghost_signal"][0]
+        leak = [c for c in act1.choices if c.id == "choice_cipher_leak"][0]
+        self.assertIsNotNone(leak.follow_up)
+        self.assertIn("skipped", act5.to_dict())
 
 
 if __name__ == "__main__":

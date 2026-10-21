@@ -498,6 +498,13 @@ class CockpitApp {
         this.storyChoicesList = document.getElementById("storyChoicesList");
         this.transmissionsStream = document.getElementById("transmissionsStream");
         this.commsLogCount = document.getElementById("commsLogCount");
+        this.storyObjectivesBox = document.getElementById("storyObjectivesBox");
+        this.storyObjectivesList = document.getElementById("storyObjectivesList");
+
+        // Void Traversal Elements
+        this.voidTraversePanel = document.getElementById("voidTraversePanel");
+        this.voidStatusBadge = document.getElementById("voidStatusBadge");
+        this.voidBody = document.getElementById("voidBody");
 
         // Contracts & Mastery Containers
         this.contractsList = document.getElementById("contractsList");
@@ -1146,7 +1153,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         if (tabName === "codex") this.renderCodex();
         if (tabName === "fleet") this.renderFleet();
         if (tabName === "contracts") this.renderContracts();
-        if (tabName === "story") this.renderStory();
+        if (tabName === "story") { this.renderStory(); this.renderVoid(); }
         if (tabName === "factions") this.renderFactions();
         if (tabName === "quests") this.renderQuests();
         if (tabName === "ai") this.renderAICaptains();
@@ -1588,6 +1595,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.renderMastery();
         } else if (this.activeRightTab === "story") {
             this.renderStory();
+            this.renderVoid();
         } else if (this.activeRightTab === "factions") {
             this.renderFactions();
         } else if (this.activeRightTab === "quests") {
@@ -1603,6 +1611,10 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         this.renderSkillsQuickPanel();
         this.renderEventPopups();
         this.updateTargetCard();
+
+        // Void transit state: radar overlay + live panel refresh
+        document.body.classList.toggle("void-transit", !!(ship && ship.void_traversal));
+        this.renderVoid();
     }
 
     checkDeath() {
@@ -1704,6 +1716,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
     renderStory() {
         if (!this.state || !this.state.ship || !this.state.ship.story) return;
         const story = this.state.ship.story;
+        const status = this.state.story_status || null;
 
         // Resolve active chapter reliably across map, array, or embedded state
         let curChap = null;
@@ -1716,39 +1729,69 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         }
 
         if (story.completed) {
-            this.storyChapterTitle.textContent = "CAMPAIGN CONCLUDED: THE PRECURSOR CIPHER";
+            const ending = (status && status.ending) || null;
+            this.storyChapterTitle.textContent = ending
+                ? `CAMPAIGN CONCLUDED: ${ending.title.toUpperCase()}`
+                : "CAMPAIGN CONCLUDED: THE PRECURSOR CIPHER";
             this.storyTargetBadge.textContent = "⭐ ALL ACTS RESOLVED";
-            this.storySynopsisText.textContent = "The mysteries of the ancient Precursor network have been unveiled. Your legacy echoes across the hyperlane corridors as First VoidFarer of the New Age.";
+            this.storySynopsisText.textContent = ending
+                ? ending.epilogue
+                : "The mysteries of the ancient Precursor network have been unveiled. Your legacy echoes across the hyperlane corridors as First VoidFarer of the New Age.";
             this.storyChoiceContainer.style.display = "none";
         } else if (curChap) {
             this.storyChapterTitle.textContent = `ACT ${story.active_act}: ${curChap.title.toUpperCase()}`;
-            const targetText = curChap.completed 
-                ? "ACT OBJECTIVE COMPLETE" 
+            const targetText = curChap.completed
+                ? "ACT OBJECTIVE COMPLETE"
                 : (curChap.target_system_id ? `TARGET: ${curChap.target_system_id.toUpperCase()}` : "TARGET: DEEP SPACE");
             this.storyTargetBadge.textContent = targetText;
             this.storySynopsisText.textContent = curChap.synopsis || curChap.objective || "";
 
-            // Story Choices
+            // Story Choices (locked choices render with their reasons)
+            const choiceStatus = {};
+            if (status && Array.isArray(status.choices)) {
+                status.choices.forEach(c => { choiceStatus[c.id] = c; });
+            }
             if (!curChap.completed && curChap.choices && curChap.choices.length > 0) {
                 this.storyChoiceContainer.style.display = "flex";
                 this.storyChoicesList.innerHTML = "";
                 curChap.choices.forEach(c => {
+                    const st = choiceStatus[c.id] || {};
+                    const locked = !!st.locked;
                     const card = document.createElement("button");
-                    card.className = "story-choice-card";
+                    card.className = locked ? "story-choice-card story-choice-locked" : "story-choice-card";
+                    if (locked) card.disabled = true;
                     const costBadge = c.cost_credits > 0 ? `<span class="choice-cost-badge">COST: ${c.cost_credits} CR</span>` : "";
+                    const lockBadge = locked ? `<span class="choice-lock-badge">🔒 LOCKED</span>` : "";
+                    const consequence = locked
+                        ? `<span class="choice-lock-reason">${this.escapeHtml(st.lock_reason || "Requirements unmet.")}</span>`
+                        : this.escapeHtml(c.consequence_summary || c.outcome_text);
                     card.innerHTML = `
                         <div class="choice-header-row">
                             <span class="choice-label-text">${this.escapeHtml(c.label || c.text)}</span>
-                            ${costBadge}
+                            ${costBadge}${lockBadge}
                         </div>
-                        <p class="choice-consequence-preview">${this.escapeHtml(c.consequence_summary || c.outcome_text)}</p>
+                        <p class="choice-consequence-preview">${consequence}</p>
                     `;
-                    card.addEventListener("click", () => this.handleStoryChoice(c.id));
+                    if (!locked) card.addEventListener("click", () => this.handleStoryChoice(c.id));
                     this.storyChoicesList.appendChild(card);
                 });
             } else {
                 this.storyChoiceContainer.style.display = "none";
             }
+        }
+
+        // Campaign objective checklist
+        const unmet = (status && status.unmet_requirements) || [];
+        if (!story.completed && unmet.length > 0) {
+            this.storyObjectivesBox.style.display = "block";
+            this.storyObjectivesList.innerHTML = "";
+            unmet.forEach(req => {
+                const li = document.createElement("li");
+                li.textContent = req;
+                this.storyObjectivesList.appendChild(li);
+            });
+        } else {
+            this.storyObjectivesBox.style.display = "none";
         }
 
         // Faction alignment meters
@@ -1781,6 +1824,9 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             } else if (spk.includes("Archon")) {
                 avatarClass = "avatar-archon";
                 initials = "AP";
+            } else if (spk.includes("Echo")) {
+                avatarClass = "avatar-archon";
+                initials = "EF";
             }
 
             item.innerHTML = `
@@ -1799,6 +1845,123 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             stream.scrollTop = stream.scrollHeight;
         }
         this.storyTransmissionCount = logs.length;
+    }
+
+    renderVoid() {
+        if (!this.voidTraversePanel || !this.state) return;
+        const voidState = this.state.void;
+        if (!voidState) return;
+
+        const traversal = voidState.traversal;
+        if (traversal) {
+            this.voidStatusBadge.textContent = "IN THE HOLLOW BETWEEN";
+            this.voidStatusBadge.classList.add("void-badge-active");
+            const destName = voidState.destination_name || traversal.destination_system_id;
+            const progressPct = Math.round((voidState.traversal_progress || 0) * 100);
+            const stability = Math.max(0, Math.round(traversal.stability));
+            this.voidBody.innerHTML = `
+                <div class="void-transit-row">
+                    <span class="void-label">DESTINATION</span>
+                    <span class="void-value">${this.escapeHtml(destName)}</span>
+                </div>
+                <div class="void-transit-row">
+                    <span class="void-label">TRAVERSAL</span>
+                    <div class="void-meter"><div class="void-meter-fill void-fill-progress" style="width:${progressPct}%"></div></div>
+                    <span class="void-value">${progressPct}%</span>
+                </div>
+                <div class="void-transit-row">
+                    <span class="void-label">STABILITY</span>
+                    <div class="void-meter"><div class="void-meter-fill ${stability > 60 ? 'void-fill-stable' : 'void-fill-critical'}" style="width:${Math.min(100, stability)}%"></div></div>
+                    <span class="void-value">${stability}%</span>
+                </div>
+                <div class="void-transit-row">
+                    <span class="void-label">STORMS</span>
+                    <span class="void-value">${traversal.storms_weathered} weathered</span>
+                </div>
+                <button class="btn-hud void-emerge-btn" id="btnVoidEmerge">⚠ EMERGENCY EMERGE</button>
+            `;
+            const emergeBtn = document.getElementById("btnVoidEmerge");
+            if (emergeBtn) emergeBtn.addEventListener("click", () => this.handleVoidEmerge());
+        } else if (voidState.dive_ready) {
+            this.voidStatusBadge.textContent = "READY TO DIVE";
+            this.voidStatusBadge.classList.remove("void-badge-active");
+            const destinations = voidState.destinations || [];
+            const stormPct = Math.round((voidState.storm_chance || 0) * 100);
+            let html = `<div class="void-transit-row"><span class="void-label">STORM RISK</span><span class="void-value">${stormPct}% per tick</span></div>`;
+            if (destinations.length > 0) {
+                html += `<div class="void-destinations">`;
+                destinations.forEach(dest => {
+                    html += `
+                        <button class="btn-hud void-dive-btn" data-system="${this.escapeHtml(dest.system_id)}">
+                            DIVE ▸ ${this.escapeHtml(dest.name)} <span class="void-fuel-note">(~${dest.fuel_estimate} FUEL)</span>
+                        </button>
+                    `;
+                });
+                html += `</div>`;
+            } else {
+                html += `<div class="void-hint">No void lanes lead onward from this horizon.</div>`;
+            }
+            this.voidBody.innerHTML = html;
+            this.voidBody.querySelectorAll(".void-dive-btn").forEach(btn => {
+                btn.addEventListener("click", () => this.handleVoidDive(btn.dataset.system));
+            });
+        } else {
+            this.voidStatusBadge.textContent = "VOID DRIVE OFFLINE";
+            this.voidStatusBadge.classList.remove("void-badge-active");
+            const blockers = voidState.blockers || [];
+            let html = "";
+            blockers.forEach(b => { html += `<div class="void-hint">• ${this.escapeHtml(b)}</div>`; });
+            if (!blockers.length) html = `<div class="void-hint">Telemetry unavailable.</div>`;
+            this.voidBody.innerHTML = html;
+        }
+    }
+
+    async handleVoidDive(systemId) {
+        if (!systemId) return;
+        this.sound.init();
+        try {
+            const res = await fetch("/api/void/dive", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ target_system_id: systemId })
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.sound.playChime();
+                this.appendLog(`[VOID] ${json.message}`, "reward");
+                this.state = json.state;
+                this.renderHUD();
+                this.renderStory();
+                this.renderVoid();
+            } else {
+                this.appendLog(`[VOID] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Void dive failed: ${e.message}`, "hazard");
+        }
+    }
+
+    async handleVoidEmerge() {
+        this.sound.init();
+        try {
+            const res = await fetch("/api/void/emerge", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({})
+            });
+            const json = await res.json();
+            if (json.ok) {
+                this.appendLog(`[VOID] ${json.message}`, "hazard");
+                this.state = json.state;
+                this.renderHUD();
+                this.renderStory();
+                this.renderVoid();
+            } else {
+                this.appendLog(`[VOID] ${json.message}`, "hazard");
+            }
+        } catch (e) {
+            this.appendLog(`[ERROR] Void emergence failed: ${e.message}`, "hazard");
+        }
     }
 
     async handleStoryChoice(choiceId) {

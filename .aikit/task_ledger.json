@@ -3,20 +3,12 @@
   "active_task": {
     "task_id": "story-void-traversal-v1",
     "last_phase": "phase 4",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792614465.5973346
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792614465.5973346,
+    "completed_at": 1792614501.6017554
   },
   "checkpoints": [
-    {
-      "task_id": "cockpit-redesign-wiring-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'cockpit-redesign-wiring-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792587267.5755348,
-      "timestamp_str": "2026-10-21 15:54:27"
-    },
     {
       "task_id": "review-last-3-changes-v1",
       "phase": "phase 2",
@@ -222,6 +214,15 @@
       "status": "in_progress",
       "timestamp": 1792614465.5973346,
       "timestamp_str": "2026-10-21 23:27:45"
+    },
+    {
+      "task_id": "story-void-traversal-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'story-void-traversal-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792614501.6017568,
+      "timestamp_str": "2026-10-21 23:28:21"
     }
   ]
 }

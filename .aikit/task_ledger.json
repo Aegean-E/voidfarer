@@ -3,21 +3,12 @@
   "active_task": {
     "task_id": "layout-command-strip-v1",
     "last_phase": "phase 4",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792606035.9362154
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792606035.9362154,
+    "completed_at": 1792606072.1971872
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 6/6] Living documentation (ADR-031, README <=20k), codebase map sync, and 4/4 Phase 4 gates; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792516165.6545258,
-      "timestamp_str": "2026-10-20 20:09:25"
-    },
     {
       "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
       "phase": "completed",
@@ -222,6 +213,15 @@
       "status": "in_progress",
       "timestamp": 1792606035.9362154,
       "timestamp_str": "2026-10-21 21:07:15"
+    },
+    {
+      "task_id": "layout-command-strip-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'layout-command-strip-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792606072.197189,
+      "timestamp_str": "2026-10-21 21:07:52"
     }
   ]
 }

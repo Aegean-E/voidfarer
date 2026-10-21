@@ -83,7 +83,10 @@ voidfarer/
 │   └── static/               <- holographic web cockpit UI
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
-│       └── app.js            <- radar math, Web Audio synth & REST link
+│       ├── app.js            <- radar math, Web Audio synth & REST link
+│       ├── cursor-default.svg <- themed default cockpit cursor
+│       ├── cursor-pointer.svg <- themed pointer cursor for controls
+│       └── cursor-crosshair.svg <- themed radar crosshair cursor
 └── tests/                    <- unit & integration test suite
     ├── __init__.py
     ├── test_adaptive_ui_salvage.py

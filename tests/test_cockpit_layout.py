@@ -1,13 +1,15 @@
 """Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).
 
-Pins the cockpit layout rules (project guidelines G-001..G-003):
-  1. The TELEMETRY / Tactical Flight Log panel is anchored at the lower-right corner
-     and carries a HIDE/SHOW button.
+Pins the cockpit layout rules (project guidelines G-001..G-003, G-013):
+  1. The bottom command strip holds reactor distribution on the left, skills in
+     the middle, and radar settings above the Tactical Flight Log on the right, in
+     one row, each with an icon and a hotkey. The log keeps a HIDE/SHOW button.
   2. The Chrono tick/time settings deck sits at the right upper corner, as the last
      block of the top status bar.
   3. The Commerce/Arsenal/Fleet terminal runs vertically (up to down) on the left
      side: a vertical tab rail with the active tab's content beside it.
-The left-side radar and reactor move to the center column (radar first, reactor below).
+The radar remains the center-column map; the right strip column keeps a separate radar
+settings panel above the flight log.
 """
 
 import re
@@ -131,28 +133,82 @@ class TestCockpitLayout(unittest.TestCase):
         walk(self.dom)
         return order
 
-    # --- Rule 1: telemetry log at the lower-right corner, with a hide button ---
+    # --- Rule 1: telemetry log on the right of the top command strip, with a hide button ---
 
-    def test_telemetry_log_sits_in_the_lower_right_deck(self):
+    def test_telemetry_log_sits_in_the_right_of_the_bottom_command_strip(self):
         log_panel = self.dom.find_by_id("logPanel")
         self.assertIsNotNone(log_panel, "telemetry log panel (#logPanel) missing from index.html")
         self.assertTrue(log_panel.has_class("log-panel"))
-        self.assertIn("panelRight", self._ancestor_ids(log_panel),
-                      "telemetry log must live in the lower-right deck (#panelRight)")
+        self.assertIn("hudCommandStrip", self._ancestor_ids(log_panel),
+                      "telemetry log must live in the bottom command strip")
+        self.assertIn("hudStripRight", self._ancestor_ids(log_panel),
+                      "telemetry log must sit in the right strip column")
+        self.assertIsNone(log_panel.find_by_id("mapControlsPanel"),
+                          "radar settings must not be nested inside the log panel")
         self.assertIsNotNone(log_panel.find_by_id("flightLogStream"),
                              "flight log stream must be inside the log panel")
 
-    def test_lower_right_deck_contains_telemetry_log_and_map_controls(self):
-        right_deck = self.dom.find_by_id("panelRight")
-        self.assertIsNotNone(right_deck)
-        child_ids = [child.attrs.get("id") for child in right_deck.children]
-        self.assertIn("logPanel", child_ids, "telemetry log must be in right deck")
-        self.assertIn("mapControlsPanel", child_ids, "map controls must be in right deck")
+    def test_command_strip_holds_reactor_skills_and_right_column(self):
+        strip = self.dom.find_by_id("hudCommandStrip")
+        self.assertIsNotNone(strip, "command strip (#hudCommandStrip) missing")
+        child_ids = [child.attrs.get("id") for child in strip.children]
+        self.assertEqual(
+            child_ids,
+            ["panelReactor", "hudSkillsPanel", "hudStripRight"],
+            "strip order must be reactor, skills, radar/log column",
+        )
+        self.assertRegex(
+            self.css,
+            r"\.hud-command-strip\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)",
+            "reactor, skills, and radar/log must stretch equally",
+        )
+        self.assertRegex(
+            self._rule_body(".hud-command-strip"),
+            r"grid-template-columns",
+            "the command strip must lay its three columns out in one row",
+        )
+        self.assertRegex(
+            self.css,
+            r"\.hud-command-strip\s*\{[^}]*grid-row:\s*2",
+            "the command strip must occupy the bottom grid row",
+        )
 
-    def test_lower_right_deck_anchors_its_content_to_the_bottom(self):
-        deck_rule = self._rule_body(".panel-right")
-        self.assertIn("flex-end", deck_rule,
-                      "the right deck must pin its content to the bottom corner")
+    def test_source_order_keeps_the_strip_after_the_cockpit(self):
+        order = self._document_order()
+        self.assertLess(order.index("panelLeft"), order.index("panelCenter"))
+        self.assertLess(order.index("panelCenter"), order.index("hudCommandStrip"),
+                        "the strip must follow the cockpit in DOM order for accessibility")
+
+    def test_radar_settings_sit_above_the_flight_log_but_are_separate(self):
+        right = self.dom.find_by_id("hudStripRight")
+        self.assertIsNotNone(right)
+        child_ids = [child.attrs.get("id") for child in right.children]
+        self.assertEqual(child_ids, ["mapControlsPanel", "logPanel"])
+        self.assertIsNone(self.dom.find_by_id("panelRight"),
+                          "the old right deck must be removed")
+
+    def test_radar_zoom_controls_are_vertical_with_center_in_middle(self):
+        zoom = [child.attrs.get("id") for child in self.dom.find_by_id("mapControlsPanel")
+                .find_by_id("btnZoomIn").parent.children]
+        self.assertEqual(zoom, ["btnZoomIn", "btnResetView", "btnZoomOut"])
+        self.assertRegex(
+            self.css,
+            r"\.radar-zoom-stack\s*\{[^}]*flex-direction:\s*column",
+            "the circular zoom controls must stack vertically",
+        )
+        html = INDEX_HTML.read_text(encoding="utf-8")
+        self.assertIn(">+</button>", html)
+        self.assertIn(">−</button>", html)
+        self.assertNotIn("MOVE CLOSER", html)
+        self.assertNotIn("MOVE OUTSIDE", html)
+        self.assertRegex(
+            self.css,
+            r"\.radar-zoom-btn\s*\{[^}]*border-radius:\s*50%",
+            "zoom buttons must be circular",
+        )
+        for button_id in ("btnZoomIn", "btnResetView", "btnZoomOut"):
+            with self.subTest(button_id=button_id):
+                self.assertIn(f'getElementById("{button_id}").addEventListener', self.js)
 
     def test_telemetry_log_carries_a_hide_button(self):
         log_panel = self.dom.find_by_id("logPanel")
@@ -208,21 +264,20 @@ class TestCockpitLayout(unittest.TestCase):
         rail_rule = self._rule_body(".panel-left .deck-tabs-header")
         self.assertIn("column", rail_rule, "the tab rail must run vertically (up to down)")
 
-    # --- Center column: radar above reactor ---
+    # --- Center column: radar map; reactor moved to the top command strip ---
 
-    def test_center_column_stacks_radar_above_reactor(self):
-        order = self._document_order()
-        self.assertIn("panelNav", order, "radar sub-panel (#panelNav) missing")
-        self.assertIn("panelReactor", order, "reactor sub-panel (#panelReactor) missing")
-
+    def test_center_column_keeps_radar_and_reactor_moves_to_bottom_strip(self):
         radar = self.dom.find_by_id("panelNav")
         reactor = self.dom.find_by_id("panelReactor")
         self.assertIn("panelCenter", self._ancestor_ids(radar),
                       "the radar must live in the center column")
-        self.assertIn("panelCenter", self._ancestor_ids(reactor),
-                      "the reactor must live in the center column")
-        self.assertLess(order.index("panelNav"), order.index("panelReactor"),
-                        "the radar must sit above the reactor")
+        self.assertIn("hudCommandStrip", self._ancestor_ids(reactor),
+                      "the reactor must live in the bottom command strip")
+        self.assertRegex(
+            self.css,
+            r"\.panel-left\s*\{[^}]*grid-row:\s*1\s*/\s*span\s*2",
+            "the left deck must span both rows so the strip starts beside it",
+        )
 
     def test_context_alerts_live_in_the_center_column(self):
         for alert_id in ("combatCard", "anomalyCard"):
@@ -363,6 +418,19 @@ class TestSleekHUDDeclutter(unittest.TestCase):
             "NAV-radar header must float transparently on the map without a bulky box",
         )
 
+    def test_grid_and_label_buttons_are_bound_exactly_once(self):
+        self.assertEqual(self.js.count('this.btnToggleGrid.addEventListener("click"'), 1,
+                         "GRID must toggle once per click, not twice")
+        self.assertEqual(self.js.count('this.btnToggleLabels.addEventListener("click"'), 1,
+                         "LABELS must toggle once per click, not twice")
+
+    def test_quick_scan_is_bound_exactly_once(self):
+        self.assertEqual(
+            self.js.count('this.quickScanBtn.addEventListener("click"'),
+            1,
+            "a single sensor-scan click must dispatch exactly one scan action",
+        )
+
     def test_left_terminal_is_collapsible_drawer(self):
         self.assertRegex(
             self.css,
@@ -374,17 +442,45 @@ class TestSleekHUDDeclutter(unittest.TestCase):
         self.assertIn("drawer-collapsed", self.js)
         self.assertIn("this.panelLeft", self.js)
 
-    def test_tactical_flight_log_sits_directly_on_map_without_box(self):
+    def test_bottom_strip_log_is_compact_and_keeps_its_controls(self):
         self.assertRegex(
             self.css,
-            r"\.panel-right\s*\{[^}]*background:\s*transparent[^}]*border:\s*none",
-            "panel-right must be transparent without a containing box frame",
+            r"\.hud-command-strip\s+\.flight-log-stream\s*\{[^}]*height:\s*96px",
+            "the strip flight log must use the reduced 96px height",
         )
-        self.assertRegex(
-            self.css,
-            r"\.log-panel\s*\{[^}]*background:\s*transparent[^}]*border:\s*none",
-            "log-panel must be transparent directly on the map",
-        )
+        self.assertIn("btnToggleLog", self.js)
+        self.assertIn("clearLogBtn", self.js)
+
+    def test_skills_strip_has_icons_hotkeys_and_training_wiring(self):
+        self.assertIn('id="hudSkillsPanel"', self.html)
+        self.assertIn('id="hudSkillsGrid"', self.html)
+        self.assertIn("renderSkillsQuickPanel", self.js)
+        self.assertIn("trainSkillQuick", self.js)
+        self.assertIn("SKILL_HOTKEYS", self.js)
+        self.assertIn("SKILL_META", self.js)
+        self.assertNotIn('id="characterSkills"', self.html,
+                         "the PLAYER tab must no longer own a skills summary")
+
+    def test_reactor_mode_and_vent_buttons_are_wired(self):
+        self.assertIn('querySelectorAll(".reactor-mode-btn")', self.js)
+        self.assertIn('addEventListener("click", () => this.handleReactorMode', self.js)
+        self.assertIn('addEventListener("click", () => this.handleReactorVent', self.js)
+
+    def test_cockpit_uses_themed_cursor_assets(self):
+        for name in ("cursor-default.svg", "cursor-pointer.svg", "cursor-crosshair.svg"):
+            with self.subTest(asset=name):
+                self.assertTrue((STATIC_DIR / name).exists(), f"missing themed cursor {name}")
+        self.assertIn('url("cursor-default.svg")', self.css)
+        self.assertIn('url("cursor-pointer.svg")', self.css)
+        self.assertIn('url("cursor-crosshair.svg")', self.css)
+
+    def test_command_strip_hotkeys_are_wired(self):
+        for token in ('hotkey === "p"', 'hotkey === "k"', 'hotkey === "l"',
+                      'e.shiftKey && /^Digit[1-6]$/', 'KeyQ', 'KeyW', 'KeyE', 'KeyR'):
+            with self.subTest(token=token):
+                self.assertIn(token, self.js)
+        self.assertIn('this.btnToggleSkills.addEventListener', self.js)
+        self.assertIn('id="btnToggleSkills"', INDEX_HTML.read_text(encoding="utf-8"))
 
 class TestExpandableReactorAndVitalsAlignment(unittest.TestCase):
     @classmethod
@@ -400,6 +496,8 @@ class TestExpandableReactorAndVitalsAlignment(unittest.TestCase):
     def test_reactor_panel_has_toggle_button_and_collapse_wiring(self):
         reactor = self.dom.find_by_id("panelReactor")
         self.assertIsNotNone(reactor, "reactor sub-panel (#panelReactor) missing")
+        self.assertLess(self.html.index('id="hudCommandStrip"'), self.html.index('id="panelReactor"'),
+                        "the reactor must live in the top command strip")
         toggle = reactor.find_by_id("btnToggleReactor")
         self.assertIsNotNone(toggle, "reactor must have a HIDE/SHOW button (#btnToggleReactor)")
         self.assertRegex(

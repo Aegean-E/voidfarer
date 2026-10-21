@@ -410,3 +410,33 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   6. Fix the JavaScript parse error in `charStep`, restore the missing `renderStory` header, and make `checkDeath` idempotent so the death overlay opens once and only at zero hull.
   7. Update the layout regression expectations that encode the old contract: the right deck now also holds map controls, the left drawer starts expanded, the top bar wraps on narrow viewports, and the new PLAYER/SKILLS/CREW/SHIP DOM markers replace COMMANDER/SHIP MODS.
 - **Consequences**: The redesign is functional and truthful: every button reaches a real endpoint, every panel reads a persisted field, and all 375 tests pass. The cockpit exposes commander creation and death flows without inventing unsupported attributes or perks. Layout tests now assert the new tab contract instead of the previous single-purpose deck.
+
+### ADR-033: Post-Redesign Correctness Hardening
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: A review of ADR-031 and ADR-032 found five defects: non-laser combat actions crashed with `UnboundLocalError` when the enemy evaded; faction standing was applied twice to purchases because the new quote and the legacy tier multiplier both scaled the price; the same double application let local resale beat the purchase price under friendly standing, reopening the arbitrage loop; `_local_dock_purchases` was cleared by a same-station orbit and leaked across reset/load; and `/api/ship/module` uninstalled by slot, so a mismatched module id could remove a different installed module. The cockpit also bound the sensor scan click twice and rendered ship cargo as unit count instead of hold volume.
+- **Decision**:
+  1. Define `faction_standing_price_factor` in the economy module as the single source for quote-level standing pricing; engine trade and the CLI market view consume that value without reapplying `calculate_faction_market_modifier`.
+  2. Track local dock purchases as `(quantity, total_cost)` and cap resale of local lots at the actual cost basis, not the current quote, so no price movement or margin stack can profit from a same-station round trip.
+  3. Move the dock-purchase reset to successful hyperspace execution, clear it on reset and load, and stop clearing it on same-station orbit.
+  4. Initialize `weapon_miss = False` before combat branches so drone and subsystem strikes can report enemy evasion safely.
+  5. Accept an optional `expected_mod_id` on `remove_ship_mod` and pass the requested module from `/api/ship/module`, rejecting a slot/id mismatch.
+  6. Bind quick scan once, reset commander creation between attempts, render the new state immediately, show cargo volume in the ship and depot panels, remove the dead refit panel, and escape portrait initials.
+  7. Document the dual legacy rank / fractional bonus contract of `scoop_yield` without changing its call sites.
+  8. Persist dock purchase cost basis in `GameState` with a backward-compatible empty default, so save/load cannot clear the guard and reopen same-station arbitrage.
+  9. Enforce the cockpit's starting-skill ceiling server-side via `MAX_STARTING_SKILL_TOTAL` (six skills at base 5 plus 20 creation points = 50), rejecting over-budget `/api/new-game` profiles before any state mutation.
+  10. Publish the creation budget in the status snapshot (`character_creation`) so the cockpit renders the same base, point pool, max rank, and skill list as the server instead of duplicating constants.
+- **Consequences**: Combat no longer crashes on evasive enemies, market quotes and charges agree, the arbitrage guard survives re-orbit and save/load, module uninstall cannot remove the wrong hardware, the cockpit performs one scan per click, and commander creation cannot bypass its budget through the API. The regression suite grows to 386 tests.
+
+### ADR-034: Top Command Strip Layout & Skills Relocation
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: The user requires a single bottom command row between the left terminal and the right corner: reactor distribution on the left, skills in the middle, and radar settings above the tactical flight log on the right. The PLAYER tab still duplicated a skills summary, and the log was too tall. The user also asked for icons, hotkeys, working radar buttons, vertical zoom controls, and for the layout to be recorded in the guide.
+- **Decision**:
+  1. Place `#hudCommandStrip` as the bottom row of `.cockpit-grid`, spanning columns 2-3 with three equal columns: `panelReactor`, `hudSkillsPanel`, and `hudStripRight`; the left deck spans both rows, so the strip starts beside it and ends at the right corner.
+  2. Remove the old right deck. Stack a separate `mapControlsPanel` above `logPanel` inside `hudStripRight`; remove the PLAYER tab's `characterSkills` summary.
+  3. Render six icon-bearing quick-skill chips with visible hotkeys (`SHIFT+1..6`), skill points, and a DETAILS link to the full SKILLS tab. Clicking a chip trains it.
+  4. Add panel hotkeys (`P` reactor, `K` skills, `L` log) and reactor channel hotkeys (`Q/W/E/R` bump a channel by 5% and rebalance the other channels to keep 100%).
+  5. Reduce the strip flight log to 96px and keep its HIDE/SHOW and CLEAR controls. Add circular +, center, and − zoom buttons in a vertical stack with CENTER in the middle; remove the duplicate overlay buttons and the duplicate GRID/LABELS listeners that made those toggles cancel themselves. Use themed SVG cursors for default, pointer, and radar crosshair.
+  6. Record the layout in `G-001`, `G-005`, `G-006`, new guideline `G-013`, and README section 19.
+- **Consequences**: The map owns the center, the PLAYER tab is a pure dossier, skills are one hotkey away in the bottom strip, radar settings sit above the compact log, and all radar toggles respond once per click. Existing layout tests were updated to the new user-approved contract (PRINCIPLE-014 R2 approval recorded here). The regression suite grows to 393 tests.

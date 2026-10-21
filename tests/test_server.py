@@ -70,6 +70,11 @@ class TestServer(unittest.TestCase):
         json_data = json.loads(data.decode("utf-8"))
         self.assertTrue(json_data["ok"])
         self.assertEqual(json_data["data"]["ship"]["commander_name"], "Astraea")
+        creation = json_data["data"]["character_creation"]
+        self.assertEqual(creation["skill_base"], 5)
+        self.assertEqual(creation["skill_points"], 20)
+        self.assertEqual(creation["max_skill"], 10)
+        self.assertEqual(len(creation["skills"]), 6)
 
     def test_get_api_galaxy(self):
         status, data = self._get("/api/galaxy")
@@ -130,6 +135,14 @@ class TestServer(unittest.TestCase):
         self.assertEqual(character["skills"]["engineering"], 9)
         self.assertEqual(character["skills"]["combat"], 2)
         self.assertEqual(payload["state"]["ship"]["commander_name"], "Nova")
+
+    def test_new_game_rejects_over_budget_commander_profile(self):
+        skills = {skill: 10 for skill in ("piloting", "engineering", "science", "combat", "diplomacy", "trade")}
+        status, data = self._post("/api/new-game", {"seed": 7, "profile": {"skills": skills}})
+        self.assertEqual(status, 200)
+        payload = json.loads(data.decode("utf-8"))
+        self.assertFalse(payload["ok"])
+        self.assertIn("budget", payload["message"])
 
     def test_character_research_fleet_diplomacy_endpoints(self):
         for path in ("/api/character", "/api/research", "/api/outposts", "/api/diplomacy", "/api/fleet/ships"):

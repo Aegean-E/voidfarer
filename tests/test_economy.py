@@ -9,6 +9,7 @@ from voidfarer.economy import (
     get_galactic_trade_routes,
     tick_global_economy,
 )
+from voidfarer.factions import get_faction_id_from_name
 from voidfarer.galaxy import COMMODITY_MAP
 
 
@@ -122,6 +123,96 @@ class TestDynamicMarketQuotes(unittest.TestCase):
         ok, _ = self.engine.trade("titanium", 2, is_buy=False)
         self.assertTrue(ok)
         # Immediate round-trip sale at the same station must not generate a net profit
+        self.assertLess(self.engine.state.ship.credits, credits_before)
+
+    def test_same_station_reorbit_keeps_the_arbitrage_guard(self):
+        station = next(b for b in self.engine.current_system.bodies if b.station_dockable)
+        self.engine.orbit(station.id)
+        ok, _ = self.engine.trade("titanium", 2, is_buy=True)
+        self.assertTrue(ok)
+        tag = (self.engine.current_system.id, station.id, "titanium")
+        self.assertIn(tag, self.engine._local_dock_purchases)
+        guard_before = dict(self.engine._local_dock_purchases)
+        self.engine.orbit(station.id)
+        self.assertEqual(self.engine._local_dock_purchases, guard_before)
+
+    def test_new_game_clears_and_load_preserves_the_arbitrage_guard(self):
+        station = next(b for b in self.engine.current_system.bodies if b.station_dockable)
+        self.engine.orbit(station.id)
+        self.engine.trade("titanium", 1, is_buy=True)
+        self.assertTrue(self.engine._local_dock_purchases)
+        persisted = dict(self.engine.state.local_dock_purchases)
+        self.assertEqual(persisted, self.engine._local_dock_purchases)
+
+        self.engine.load_state(self.engine.state)
+        self.assertEqual(self.engine._local_dock_purchases, persisted)
+
+        self.engine.reset(seed=7)
+        self.assertEqual(self.engine._local_dock_purchases, {})
+
+    def test_load_does_not_reopen_same_station_arbitrage(self):
+        from dataclasses import replace
+
+        self.engine.skip_tutorial()
+        station = next(b for b in self.engine.current_system.bodies if b.station_dockable)
+        self.engine.orbit(station.id)
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(credits=100000, cargo={})
+        )
+        ok, msg = self.engine.buy_ship_chassis("orion_hauler")
+        self.assertTrue(ok, msg)
+        self.engine.state = self.engine._clone_state(
+            character=replace(
+                self.engine.state.character,
+                skills={**self.engine.state.character.skills, "trade": 10},
+            )
+        )
+        credits_before = self.engine.state.ship.credits
+        ok, msg = self.engine.trade("titanium", 10, is_buy=True)
+        self.assertTrue(ok, msg)
+        self.engine.load_state(self.engine.state)
+        ok, msg = self.engine.trade("titanium", 10, is_buy=False)
+        self.assertTrue(ok, msg)
+        self.assertLess(self.engine.state.ship.credits, credits_before)
+
+    def test_friendly_standing_is_applied_once_on_purchase(self):
+        station = next(b for b in self.engine.current_system.bodies if b.station_dockable)
+        self.engine.orbit(station.id)
+        self.engine.skip_tutorial()
+        faction_id = get_faction_id_from_name(self.engine.current_system.faction)
+        standings = dict(self.engine.state.ship.faction_standings)
+        standings[faction_id] = 60
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(credits=100000, cargo={}, faction_standings=standings)
+        )
+        quote = calculate_dynamic_market_quote(
+            self.engine.current_system,
+            station,
+            COMMODITY_MAP["titanium"],
+            self.engine.state.economy,
+            faction_standing=60,
+        )
+        credits_before = self.engine.state.ship.credits
+        ok, msg = self.engine.trade("titanium", 1, is_buy=True)
+        self.assertTrue(ok, msg)
+        self.assertEqual(credits_before - self.engine.state.ship.credits, quote.buy_price)
+
+    def test_friendly_standing_cannot_arbitrage_locally(self):
+        self.engine.buy_ship_chassis("orion_hauler")
+        self.engine.skip_tutorial()
+        station = next(b for b in self.engine.current_system.bodies if b.station_dockable)
+        self.engine.orbit(station.id)
+        faction_id = get_faction_id_from_name(self.engine.current_system.faction)
+        standings = dict(self.engine.state.ship.faction_standings)
+        standings[faction_id] = 60
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(credits=100000, cargo={}, faction_standings=standings)
+        )
+        credits_before = self.engine.state.ship.credits
+        ok, msg = self.engine.trade("titanium", 10, is_buy=True)
+        self.assertTrue(ok, msg)
+        ok, msg = self.engine.trade("titanium", 10, is_buy=False)
+        self.assertTrue(ok, msg)
         self.assertLess(self.engine.state.ship.credits, credits_before)
 
     def test_sell_from_depot_uses_dynamic_quote_and_updates_stockpiles(self):

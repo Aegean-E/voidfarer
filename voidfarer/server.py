@@ -403,7 +403,8 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             slot = resolve_slot_name(body.get("slot"))
             profile = body.get("profile") if isinstance(body.get("profile"), dict) else None
             ok, msg = self.engine.reset(seed, profile=profile)
-            self.storage.save(self.engine.state, slot=slot)
+            if ok:
+                self.storage.save(self.engine.state, slot=slot)
             self._send_json({
                 "ok": ok,
                 "slot": slot,
@@ -637,7 +638,7 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
             elif action in ("uninstall", "remove"):
                 mod = get_ship_mod(module_id)
                 ok, msg = (
-                    self.engine.remove_ship_mod(mod.slot)
+                    self.engine.remove_ship_mod(mod.slot, expected_mod_id=mod.id)
                     if mod is not None
                     else (False, "Unknown ship module.")
                 )

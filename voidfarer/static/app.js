@@ -3,6 +3,16 @@
  * Master Web Client: Canvas Radar, Procedural Web Audio Synth, Fleet/Arsenal Controller, and REST Link.
  */
 
+const SKILL_META = {
+    piloting: { name: "Piloting", icon: "✈", desc: "Improves sublight maneuverability, warp efficiency, and evasion." },
+    engineering: { name: "Engineering", icon: "⚙", desc: "Boosts repair speed, shield recharge, and module efficiency." },
+    science: { name: "Science", icon: "🔬", desc: "Increases scan range, research speed, and anomaly rewards." },
+    combat: { name: "Combat", icon: "⚔", desc: "Enhances weapon damage, targeting, and combat abilities." },
+    diplomacy: { name: "Diplomacy", icon: "⚖", desc: "Improves standing gains, trade prices, and crew morale." },
+    trade: { name: "Trade", icon: "💱", desc: "Increases cargo capacity, buy/sell margins, and depot efficiency." }
+};
+const SKILL_HOTKEYS = ["⇧1", "⇧2", "⇧3", "⇧4", "⇧5", "⇧6"];
+
 class SoundController {
     constructor() {
         this.ctx = null;
@@ -467,7 +477,6 @@ class CockpitApp {
         this.viewGalaxyBtn = document.getElementById("viewGalaxyBtn");
         this.btnToggleGrid = document.getElementById("btnToggleGrid");
         this.btnToggleLabels = document.getElementById("btnToggleLabels");
-        this.quickScanBtn = document.getElementById("quickScanBtn");
 
         // Death Overlay
         this.deathOverlay = document.getElementById("deathOverlay");
@@ -514,12 +523,16 @@ class CockpitApp {
         this.fleetShipRoster = document.getElementById("fleetShipRoster");
         this.escortShopGrid = document.getElementById("escortShopGrid");
         this.characterProfile = document.getElementById("characterProfile");
-        this.characterSkills = document.getElementById("characterSkills");
         this.characterAbilities = document.getElementById("characterAbilities");
         this.characterPerks = document.getElementById("characterPerks");
         this.skillsGrid = document.getElementById("skillsGrid");
         this.skillsPointsAvailable = document.getElementById("skillsPointsAvailable");
         this.skillsPerksList = document.getElementById("skillsPerksList");
+        this.hudSkillsPanel = document.getElementById("hudSkillsPanel");
+        this.hudSkillsGrid = document.getElementById("hudSkillsGrid");
+        this.hudSkillsPoints = document.getElementById("hudSkillsPoints");
+        this.btnOpenSkillsTab = document.getElementById("btnOpenSkillsTab");
+        this.btnToggleSkills = document.getElementById("btnToggleSkills");
         this.crewAssignments = document.getElementById("crewAssignments");
         this.shipVisual = document.getElementById("shipVisual");
         this.shipModulesGrid = document.getElementById("shipModulesGrid");
@@ -629,6 +642,16 @@ class CockpitApp {
             this.sound.playBeep(1050);
         });
 
+        // Reactor doctrine modes and emergency vent
+        if (this.reactorModeRow) {
+            this.reactorModeRow.querySelectorAll(".reactor-mode-btn").forEach(btn => {
+                btn.addEventListener("click", () => this.handleReactorMode(btn.getAttribute("data-mode")));
+            });
+        }
+        if (this.btnVentReactor) {
+            this.btnVentReactor.addEventListener("click", () => this.handleReactorVent());
+        }
+
         // Station Services
         this.btnDrydockRepair.addEventListener("click", () => this.handleRepair());
         this.btnRefuelTanks.addEventListener("click", () => this.handleRefuel());
@@ -666,7 +689,6 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.saveSettings();
             this.btnToggleLabels.classList.toggle("active", this.radarLabels);
         });
-        this.quickScanBtn.addEventListener("click", () => this.handleScan());
 
         // Main menu, settings, perks, and frontier actions
         document.getElementById("btnMainMenu")?.addEventListener("click", () => this.toggleMainMenu());
@@ -698,14 +720,6 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         this.btnLandTarget?.addEventListener("click", () => this.handleLandAction());
         this.btnSalvageTarget?.addEventListener("click", () => this.handleSalvage());
         this.btnScoopFuel?.addEventListener("click", () => this.handleScoop());
-        document.getElementById("btnToggleGrid")?.addEventListener("click", () => {
-            this.radarGrid = !this.radarGrid;
-            this.saveSettings();
-        });
-        document.getElementById("btnToggleLabels")?.addEventListener("click", () => {
-            this.radarLabels = !this.radarLabels;
-            this.saveSettings();
-        });
         ["settingSound", "settingGrid", "settingLabels", "settingAnimation", "settingStarDensity", "settingDensity", "settingUiScale"].forEach(id => {
             document.getElementById(id)?.addEventListener("input", () => this.applySettingsFromUI());
         });
@@ -732,6 +746,24 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         this.openCharacterCreation = function() {
             this.closeMainMenu();
+            const meta = this.state?.character_creation || {};
+            const base = Number(meta.skill_base) || 5;
+            const points = Number(meta.skill_points) || 20;
+            const maxSkill = Number(meta.max_skill) || 10;
+            const skillIds = Array.isArray(meta.skills) && meta.skills.length
+                ? meta.skills
+                : ["piloting", "engineering", "science", "combat", "diplomacy", "trade"];
+            this.charPoints2 = points;
+            this.charMaxSkill = maxSkill;
+            this.charAttrs = Object.fromEntries(skillIds.map(id => [id, base]));
+            const budgetLabel = document.getElementById("charSkillBudgetLabel");
+            if (budgetLabel) budgetLabel.textContent = `STARTING SKILLS (${points} points, max ${maxSkill})`;
+            const nameInput = document.getElementById("charName");
+            const ageInput = document.getElementById("charAge");
+            const backgroundInput = document.getElementById("charBackground");
+            if (nameInput) nameInput.value = "";
+            if (ageInput) ageInput.value = "30";
+            if (backgroundInput) backgroundInput.value = "Navigator";
             this.charCreationOverlay.style.display = "flex";
             this.charStep(0, 1);
             this.renderAttrGrid();
@@ -739,6 +771,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         this.closeCharacterCreation = function() {
             this.charCreationOverlay.style.display = "none";
+            if (!this.gameStarted) this.openMainMenu();
         }.bind(this);
 
         this.charStep = function(from, to) {
@@ -752,13 +785,14 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             const grid = document.getElementById("attrGrid");
             if (!grid) return;
             const attrLabels = { piloting: "PILOTING", engineering: "ENGINEERING", science: "SCIENCE", combat: "COMBAT", diplomacy: "DIPLOMACY", trade: "TRADE" };
+            const maxSkill = this.charMaxSkill || 10;
             grid.innerHTML = Object.entries(this.charAttrs).map(([attr, val]) => `
                 <div class="attr-item">
-                    <label>${attrLabels[attr]}</label>
+                    <label>${this.escapeHtml(attrLabels[attr] || attr.toUpperCase())}</label>
                     <div class="attr-controls">
                         <button class="attr-btn" id="attrMinus-${attr}" ${val <= 1 ? "disabled" : ""}>−</button>
                         <span class="attr-value" id="attrVal-${attr}">${val}</span>
-                        <button class="attr-btn" id="attrPlus-${attr}" ${val >= 10 || this.charPoints2 <= 0 ? "disabled" : ""}>+</button>
+                        <button class="attr-btn" id="attrPlus-${attr}" ${val >= maxSkill || this.charPoints2 <= 0 ? "disabled" : ""}>+</button>
                     </div>
                 </div>
             `).join("");
@@ -767,8 +801,9 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         this.adjustAttr = function(attr, delta) {
             const current = this.charAttrs[attr];
+            const maxSkill = this.charMaxSkill || 10;
             if (delta > 0) {
-                if (current >= 10 || this.charPoints2 <= 0) return;
+                if (current >= maxSkill || this.charPoints2 <= 0) return;
                 this.charAttrs[attr]++;
                 this.charPoints2--;
             } else {
@@ -778,7 +813,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             }
             document.getElementById(`attrVal-${attr}`).textContent = this.charAttrs[attr];
             document.getElementById(`attrMinus-${attr}`).disabled = this.charAttrs[attr] <= 1;
-            document.getElementById(`attrPlus-${attr}`).disabled = this.charAttrs[attr] >= 10 || this.charPoints2 <= 0;
+            document.getElementById(`attrPlus-${attr}`).disabled = this.charAttrs[attr] >= maxSkill || this.charPoints2 <= 0;
             document.getElementById("charPointsRemaining2").textContent = this.charPoints2;
         }.bind(this);
 
@@ -787,15 +822,21 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             const age = parseInt(document.getElementById("charAge").value) || 30;
             const background = document.getElementById("charBackground").value;
             const slot = this.getSelectedSaveSlot();
+            const wasStarted = this.gameStarted;
 
+            this.gameStarted = true;
             const json = await this.postAction("/api/new-game", {
                 profile: { name, age, background, skills: this.charAttrs },
                 slot
             }, null);
             if (json.ok) {
-                this.gameStarted = true;
+                this.viewMode = "ORBITS";
+                this.selectedTarget = null;
                 this.closeCharacterCreation();
                 this.closeMainMenu();
+                this.fetchGalaxy();
+            } else {
+                this.gameStarted = wasStarted;
             }
         }.bind(this);
         this.btnCombatFire.addEventListener("click", () => this.handleCombat("fire_lasers"));
@@ -903,22 +944,21 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.flightLogStream.innerHTML = `<div class="log-line log-system">[SYS] Telemetry stream cleared.</div>`;
         });
 
-        // Collapse / expand the telemetry log (layout rule G-001)
-        if (this.btnToggleLog && this.logPanel) {
-            this.btnToggleLog.addEventListener("click", () => {
-                const collapsed = this.logPanel.classList.toggle("log-collapsed");
-                this.btnToggleLog.textContent = collapsed ? "SHOW" : "HIDE";
-                this.btnToggleLog.setAttribute("aria-expanded", String(!collapsed));
-            });
+        // Collapse / expand the telemetry log (G-013 top command strip)
+        if (this.btnToggleLog) {
+            this.btnToggleLog.addEventListener("click", () => this.toggleLogPanel());
         }
 
-        // Collapse / expand the reactor power routing panel (layout rule G-006)
-        if (this.btnToggleReactor && this.panelReactor) {
-            this.btnToggleReactor.addEventListener("click", () => {
-                const collapsed = this.panelReactor.classList.toggle("reactor-collapsed");
-                this.btnToggleReactor.textContent = collapsed ? "SHOW" : "HIDE";
-                this.btnToggleReactor.setAttribute("aria-expanded", String(!collapsed));
-            });
+        // Collapse / expand the reactor power routing panel (G-013 top command strip)
+        if (this.btnToggleReactor) {
+            this.btnToggleReactor.addEventListener("click", () => this.toggleReactorPanel());
+        }
+
+        if (this.btnOpenSkillsTab) {
+            this.btnOpenSkillsTab.addEventListener("click", () => this.switchRightTab("skills"));
+        }
+        if (this.btnToggleSkills) {
+            this.btnToggleSkills.addEventListener("click", () => this.toggleSkillsPanel());
         }
 
         // Time & Ticks Chrono Controls
@@ -969,7 +1009,24 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 || (settings && settings.style.display !== "none")
                 || (perks && perks.style.display !== "none");
             if (overlayOpen) return;
-            if (e.code === "Space") {
+            const hotkey = String(e.key || "").toLowerCase();
+            if (hotkey === "p") {
+                e.preventDefault();
+                this.toggleReactorPanel();
+            } else if (hotkey === "k") {
+                e.preventDefault();
+                this.toggleSkillsPanel();
+            } else if (hotkey === "l") {
+                e.preventDefault();
+                this.toggleLogPanel();
+            } else if (e.shiftKey && /^Digit[1-6]$/.test(e.code)) {
+                e.preventDefault();
+                const skillId = Object.keys(SKILL_META)[Number(e.code.slice(-1)) - 1];
+                this.trainSkillQuick(skillId);
+            } else if (!e.shiftKey && ["KeyQ", "KeyW", "KeyE", "KeyR"].includes(e.code)) {
+                e.preventDefault();
+                this.nudgeReactorPower({ KeyQ: "engines", KeyW: "shields", KeyE: "sensors", KeyR: "weapons" }[e.code]);
+            } else if (e.code === "Space") {
                 e.preventDefault();
                 this.handleToggleTimePause();
             } else if (e.key === "1") {
@@ -980,7 +1037,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 this.handleSetTimeSpeed(5.0);
             } else if (e.key === "4") {
                 this.handleSetTimeSpeed(10.0);
-            } else if (e.key.toLowerCase() === "t") {
+            } else if (hotkey === "t") {
                 this.handleTimeStep(1);
             }
         });
@@ -1136,6 +1193,58 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.powerTotal.style.color = "var(--neon-green)";
             this.applyPowerBtn.disabled = false;
         }
+    }
+
+    toggleReactorPanel() {
+        if (!this.panelReactor) return;
+        const collapsed = this.panelReactor.classList.toggle("reactor-collapsed");
+        if (this.btnToggleReactor) {
+            this.btnToggleReactor.textContent = collapsed ? "SHOW" : "HIDE";
+            this.btnToggleReactor.setAttribute("aria-expanded", String(!collapsed));
+        }
+    }
+
+    toggleSkillsPanel() {
+        if (!this.hudSkillsPanel) return;
+        this.hudSkillsPanel.classList.toggle("skills-collapsed");
+    }
+
+    toggleLogPanel() {
+        if (!this.logPanel) return;
+        const collapsed = this.logPanel.classList.toggle("log-collapsed");
+        if (this.btnToggleLog) {
+            this.btnToggleLog.textContent = collapsed ? "SHOW" : "HIDE";
+            this.btnToggleLog.setAttribute("aria-expanded", String(!collapsed));
+        }
+    }
+
+    nudgeReactorPower(channel) {
+        const sliders = {
+            engines: this.sliderEng,
+            shields: this.sliderShd,
+            sensors: this.sliderSen,
+            weapons: this.sliderWep,
+        };
+        const target = sliders[channel];
+        if (!target) return;
+        const current = parseInt(target.value, 10) || 0;
+        let bump = Math.min(5, 100 - current);
+        if (bump <= 0) return;
+        target.value = current + bump;
+        const donors = Object.entries(sliders)
+            .filter(([key]) => key !== channel)
+            .sort((a, b) => parseInt(b[1].value, 10) - parseInt(a[1].value, 10));
+        for (const [, donor] of donors) {
+            if (bump <= 0) break;
+            const value = parseInt(donor.value, 10) || 0;
+            const take = Math.min(value, bump);
+            donor.value = value - take;
+            bump -= take;
+        }
+        this.powerDirty = true;
+        this.updatePowerAllocationDisplay();
+        this.sound.init();
+        this.sound.playBeep(720, 0.04);
     }
 
     async refreshState(silent = false) {
@@ -1491,6 +1600,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.renderMessages();
         }
 
+        this.renderSkillsQuickPanel();
         this.renderEventPopups();
         this.updateTargetCard();
     }
@@ -1939,7 +2049,6 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const xp = ch.xp || 0;
         const nextXp = ch.next_level_xp || 400;
         const xpPct = Math.min(100, (xp / nextXp) * 100);
-        const skills = ch.skills || {};
         const traits = ch.traits || [];
 
         this.characterProfile.innerHTML = `
@@ -1977,17 +2086,6 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             btn.addEventListener("click", () => this.postAction("/api/character/ability", { ability_id: btn.getAttribute("data-use-ability") }, "character"))
         );
 
-        if (this.characterSkills) {
-            this.characterSkills.innerHTML = `
-                <h4>SKILLS</h4>
-                <div class="skills-summary-grid">
-                    ${Object.entries(skills).map(([id, level]) => `
-                        <span class="skill-summary-chip">${this.escapeHtml(id.toUpperCase())} ${level}</span>
-                    `).join("")}
-                </div>
-            `;
-        }
-
         this.characterPerks.innerHTML = `
             <h4>TRAITS</h4>
             <div class="perks-list">
@@ -2003,33 +2101,27 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const ch = this.state.character || {};
         const skillPoints = ch.skill_points || 0;
         const skills = ch.skills || { piloting: 0, engineering: 0, science: 0, combat: 0, diplomacy: 0, trade: 0 };
-        const skillNames = { piloting: "Piloting", engineering: "Engineering", science: "Science", combat: "Combat", diplomacy: "Diplomacy", trade: "Trade" };
-        const skillDescs = {
-            piloting: "Improves sublight maneuverability, warp efficiency, and evasion.",
-            engineering: "Boosts repair speed, shield recharge, and module efficiency.",
-            science: "Increases scan range, research speed, and anomaly rewards.",
-            combat: "Enhances weapon damage, targeting, and combat abilities.",
-            diplomacy: "Improves standing gains, trade prices, and crew morale.",
-            trade: "Increases cargo capacity, buy/sell margins, and depot efficiency."
-        };
         const maxRank = 10;
 
-        this.skillsGrid.innerHTML = Object.entries(skills).map(([id, level]) => `
+        this.skillsGrid.innerHTML = Object.entries(skills).map(([id, level]) => {
+            const meta = SKILL_META[id] || { name: id, icon: "✦", desc: "" };
+            return `
             <div class="skill-card">
                 <div class="skill-header">
-                    <span class="skill-name">${this.escapeHtml(skillNames[id])}</span>
+                    <span class="skill-name"><span class="skill-icon">${meta.icon}</span> ${this.escapeHtml(meta.name)}</span>
                     <span class="skill-level">${level}/${maxRank}</span>
                 </div>
                 <div class="skill-bar">
                     <div class="skill-bar-fill" style="width: ${(level / maxRank) * 100}%"></div>
                 </div>
-                <div class="skill-desc">${this.escapeHtml(skillDescs[id])}</div>
+                <div class="skill-desc">${this.escapeHtml(meta.desc)}</div>
                 <div class="skill-train-row">
                     <span class="skill-train-cost">Cost: 1 SP</span>
                     <button class="btn-train-skill" data-train-skill="${this.escapeHtml(id)}" ${skillPoints <= 0 || level >= maxRank ? "disabled" : ""}>TRAIN</button>
                 </div>
             </div>
-        `).join("");
+        `;
+        }).join("");
 
         this.skillsGrid.querySelectorAll("[data-train-skill]").forEach(btn =>
             btn.addEventListener("click", () => this.postAction("/api/character/train", { skill: btn.getAttribute("data-train-skill") }, "character"))
@@ -2045,6 +2137,46 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 ? traits.map(t => `<span class="skill-perk-badge active">${this.escapeHtml(String(t).replace(/_/g, " "))}</span>`).join("")
                 : `<span class="skill-perk-badge">NO TRAITS RECORDED</span>`;
         }
+    }
+
+    renderSkillsQuickPanel() {
+        if (!this.state || !this.hudSkillsGrid) return;
+        const ch = this.state.character || {};
+        const skillPoints = ch.skill_points || 0;
+        const skills = ch.skills || { piloting: 0, engineering: 0, science: 0, combat: 0, diplomacy: 0, trade: 0 };
+        const maxRank = 10;
+
+        if (this.hudSkillsPoints) this.hudSkillsPoints.textContent = String(skillPoints);
+        this.hudSkillsGrid.innerHTML = Object.entries(skills).map(([id, level], index) => {
+            const meta = SKILL_META[id] || { name: id, icon: "✦" };
+            const canTrain = skillPoints > 0 && level < maxRank;
+            return `
+                <button class="skill-quick-chip ${canTrain ? "" : "is-locked"}"
+                        data-quick-skill="${this.escapeHtml(id)}"
+                        title="${this.escapeHtml(meta.name)} rank ${level}/${maxRank} // ${SKILL_HOTKEYS[index] || ""} to train"
+                        ${canTrain ? "" : "disabled"}>
+                    <span class="skill-quick-hotkey">${SKILL_HOTKEYS[index] || "—"}</span>
+                    <span class="skill-quick-icon">${meta.icon}</span>
+                    <span class="skill-quick-name">${this.escapeHtml(meta.name)}</span>
+                    <span class="skill-quick-rank">${level}/${maxRank}</span>
+                    <span class="skill-quick-bar"><i style="width:${(level / maxRank) * 100}%"></i></span>
+                </button>
+            `;
+        }).join("");
+
+        this.hudSkillsGrid.querySelectorAll("[data-quick-skill]").forEach(btn =>
+            btn.addEventListener("click", () => this.trainSkillQuick(btn.getAttribute("data-quick-skill")))
+        );
+    }
+
+    async trainSkillQuick(skillId) {
+        if (!skillId || !this.state) return;
+        const ch = this.state.character || {};
+        const level = Number((ch.skills || {})[skillId] || 0);
+        if ((ch.skill_points || 0) <= 0 || level >= 10) return;
+        this.sound.init();
+        await this.postAction("/api/character/train", { skill: skillId }, null);
+        this.renderSkillsQuickPanel();
     }
 
     renderShip() {
@@ -2097,8 +2229,10 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 ? `${mod.name}: ${mod.description}`
                 : `${labels[slot] || slot} ? pick a compatible module below`;
             slotDiv.addEventListener("click", () => {
-                if (mod) {
+                if (mod && docked) {
                     this.handleModuleAction(mod.id, "uninstall");
+                } else if (mod) {
+                    this.appendLog("[SHIP] Dock at a station or colony drydock to remove structural modules.", "system");
                 } else {
                     this.appendLog(`[SHIP] Select a ${labels[slot] || slot} module from the list below.`, "system");
                 }
@@ -2135,7 +2269,10 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         }
 
         if (this.shipStatsPanel) {
-            const cargo = Object.values(ship.cargo || {}).reduce((sum, quantity) => sum + Number(quantity || 0), 0);
+            const cargo = (this.state.inventory_manifest || []).reduce(
+                (sum, item) => sum + Number(item.total_volume || 0),
+                0
+            );
             const rows = [
                 ["Hull", `${ship.hull || 0}/${ship.max_hull || 0}`],
                 ["Shield", `${ship.shield || 0}/${ship.max_shield || 0}`],
@@ -2236,7 +2373,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             <circle cx="20" cy="20" r="18" fill="rgba(0,0,0,.55)" stroke="${color}" stroke-width="1.5"></circle>
             <circle cx="20" cy="15" r="6" fill="${color}" opacity="0.8"></circle>
             <path d="M8 34 Q20 22 32 34" fill="none" stroke="${color}" stroke-width="2" opacity="0.7"></path>
-            <text x="20" y="26" text-anchor="middle" font-size="${fontSize}" fill="#fff" font-family="monospace">${initials}</text>
+            <text x="20" y="26" text-anchor="middle" font-size="${fontSize}" fill="#fff" font-family="monospace">${this.escapeHtml(initials)}</text>
         </svg>`;
     }
 
@@ -4083,8 +4220,10 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.depotList.innerHTML = "";
             return;
         }
-        const used = Object.values(depot.cargo || {}).reduce((a, b) => a + b, 0);
-        this.depotSummary.textContent = `${depot.name} // STORED UNITS: ${used}/${depot.capacity}`;
+        const used = Number.isFinite(depot.used_volume)
+            ? depot.used_volume
+            : Object.values(depot.cargo || {}).reduce((a, b) => a + b, 0);
+        this.depotSummary.textContent = `${depot.name} // STORED VOLUME: ${used}/${depot.capacity}`;
         const depotRows = Object.entries(depot.cargo || {}).map(([item, qty]) => `
             <div class="depot-card">
                 <h4>${this.escapeHtml(item)} x${qty}</h4>
@@ -4100,7 +4239,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             const itemQty = item.total_quantity || item.quantity || 0;
             return `
             <div class="depot-card">
-                <h4>SHIP: ${this.escapeHtml(item.name || item.id)} x${itemQty}</h4>
+                <h4>HOLD: ${this.escapeHtml(item.name || item.id)} x${itemQty}</h4>
                 <div class="depot-actions">
                     <button class="btn-hud" data-action="deposit" data-qty="1" data-item="${this.escapeHtml(item.id)}">DEPOSIT 1</button>
                     ${itemQty > 1 ? `<button class="btn-hud" data-action="deposit" data-qty="${itemQty}" data-item="${this.escapeHtml(item.id)}">DEPOSIT ALL</button>` : ""}

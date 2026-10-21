@@ -101,7 +101,11 @@ def scoop_profile(body: CelestialBody) -> dict[str, Any] | None:
 
 
 def scoop_yield(body: CelestialBody, effective_sensor_power: float, science_skill: float = 1.0) -> int:
-    """Compute fuel recovered by a single scoop pass."""
+    """Compute fuel recovered by a single scoop pass.
+
+    ``science_skill`` is the fractional bonus from ``character.skill_bonus``
+    (0.0 at rank 1); values of 1.0 or more are treated as a raw legacy rank.
+    """
     profile = scoop_profile(body)
     if profile is None:
         return 0

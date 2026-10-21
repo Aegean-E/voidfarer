@@ -106,6 +106,17 @@ class DepotTest(unittest.TestCase):
         depot = next(d for d in self.engine.state.depots if d.system_id == "sol")
         self.assertEqual(depot.cargo.get("titanium", 0), 0)
 
+    def test_snapshot_reports_depot_used_volume(self):
+        self.engine.state = self.engine._clone_state(
+            ship=self.engine._clone_ship(cargo={"titanium": 5}, credits=100)
+        )
+        ok, msg = self.engine.deposit_cargo("titanium", 3)
+        self.assertTrue(ok, msg)
+        snapshot = self.engine.get_status_snapshot()
+        depot = next(d for d in snapshot["depots"] if d["system_id"] == "sol")
+        self.assertEqual(depot["used_volume"], 6)
+        self.assertEqual(depot["capacity"], 200)
+
 
 class QuantumMessageTest(unittest.TestCase):
     def setUp(self):

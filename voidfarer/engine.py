@@ -16,7 +16,6 @@ from voidfarer.enemies import (
 from voidfarer.factions import (
     CANONICAL_CORPORATIONS,
     CANONICAL_FACTIONS,
-    calculate_faction_market_modifier,
     get_corporation,
     get_faction,
     get_faction_id_from_name,
@@ -34,7 +33,10 @@ from voidfarer.crew import (
 )
 from voidfarer.character import (
     ABILITY_CATALOG,
+    MAX_STARTING_SKILL_TOTAL,
     SKILL_CATALOG,
+    STARTING_SKILL_BASE,
+    STARTING_SKILL_POINTS,
     ability_ready,
     advance_age,
     award_character_xp,
@@ -54,6 +56,7 @@ from voidfarer.economy import (
     MAX_STOCK,
     MIN_STOCK,
     calculate_dynamic_market_quote,
+    faction_standing_price_factor,
     generate_initial_economy,
     get_galactic_trade_routes,
     tick_global_economy,
@@ -231,7 +234,9 @@ class SimulationEngine:
                 self.state = self._clone_state(ship=new_ship, economy=econ)
         else:
             self.state = self._create_initial_state(seed)
-        self._local_dock_purchases: dict[tuple[str, str, str], int] = {}
+        self._local_dock_purchases: dict[tuple[str, str, str], tuple[int, int]] = dict(
+            self.state.local_dock_purchases
+        )
         self._bootstrap_frontier()
 
     def _bootstrap_frontier(self) -> None:
@@ -389,6 +394,7 @@ class SimulationEngine:
             wars=kwargs.get("wars", cur.wars),
             eliminated_factions=kwargs.get("eliminated_factions", cur.eliminated_factions),
             codex=kwargs.get("codex", cur.codex),
+            local_dock_purchases=kwargs.get("local_dock_purchases", cur.local_dock_purchases),
         )
 
     def _research_bonuses(self) -> dict[str, float]:
@@ -629,12 +635,35 @@ class SimulationEngine:
     def reset(self, seed: int = 42, profile: dict[str, Any] | None = None) -> tuple[bool, str]:
         """Reset the simulation to a fresh galaxy with an isolated deterministic RNG stream."""
         with self.lock:
+            if profile:
+                error = self._validate_commander_profile(profile)
+                if error:
+                    return False, error
             self.seed = int(seed)
             self.rng = random.Random(self.seed)
             self.state = self._create_initial_state(self.seed)
+            self._local_dock_purchases = {}
             if profile:
                 self._apply_commander_profile(profile)
             return True, "Simulation reset to factory state."
+
+    @staticmethod
+    def _validate_commander_profile(profile: dict[str, Any]) -> str | None:
+        """Reject commander profiles whose starting skills exceed the creation budget."""
+        raw_skills = profile.get("skills") if isinstance(profile.get("skills"), dict) else {}
+        total = 0
+        for skill in SKILL_CATALOG:
+            try:
+                level = int(raw_skills.get(skill, 1))
+            except (TypeError, ValueError):
+                level = 1
+            total += max(1, min(10, level))
+        if total > MAX_STARTING_SKILL_TOTAL:
+            return (
+                f"Starting skills exceed the {MAX_STARTING_SKILL_TOTAL}-point budget "
+                f"(requested {total}). Lower one or more skills and try again."
+            )
+        return None
 
     def _apply_commander_profile(self, profile: dict[str, Any]) -> None:
         """Apply the commander name, age, background and starting skills chosen at creation."""
@@ -664,6 +693,7 @@ class SimulationEngine:
             self.seed = int(state.galaxy_seed)
             self.rng = random.Random(self.seed)
             self.state = state
+            self._local_dock_purchases = dict(state.local_dock_purchases)
             self._bootstrap_frontier()
             return True, f"Loaded save at {state.time.current_date} (tick #{state.time.tick})."
 
@@ -812,7 +842,6 @@ class SimulationEngine:
             if self.state.active_anomaly is not None:
                 return False, "Hyperspace drive locked: unresolved spatial anomaly in proximity!"
 
-            self._local_dock_purchases.clear()
             cur_sys = self.current_system
             if target_system_id not in cur_sys.connections:
                 return False, f"System '{target_system_id}' is not linked via hyperlane corridor."
@@ -843,6 +872,7 @@ class SimulationEngine:
                 return False, f"Insufficient Quantum Fuel: {fuel_cost} units required, {self.state.ship.fuel} available."
 
             # Execute jump
+            self._local_dock_purchases.clear()
             new_fuel = self.state.ship.fuel - fuel_cost
             visited = set(self.state.visited_systems)
             visited.add(target_system_id)
@@ -1058,6 +1088,7 @@ class SimulationEngine:
                 stats=stats,
                 time=transit_time,
                 economy=new_econ,
+                local_dock_purchases={},
             )
 
             msg = f"Jump successful: arrived in {target_sys.name}."
@@ -1084,7 +1115,6 @@ class SimulationEngine:
     def orbit(self, body_id: str) -> tuple[bool, str]:
         """Establish orbital trajectory around a celestial body in the current system."""
         with self.lock:
-            self._local_dock_purchases.clear()
             cur_sys = self.current_system
             matched = None
             for b in cur_sys.bodies:
@@ -1475,16 +1505,21 @@ class SimulationEngine:
             self.state = self._clone_state(ship=new_ship)
             return True, log_entry
 
-    def remove_ship_mod(self, slot: str) -> tuple[bool, str]:
+    def remove_ship_mod(self, slot: str, expected_mod_id: str | None = None) -> tuple[bool, str]:
         """Remove a structural modification and recover part of its cost."""
         with self.lock:
             ok, msg = self._require_docked()
             if not ok:
                 return False, msg
             installed = dict(self.state.ship.ship_mods)
-            mod_id = installed.pop(str(slot), None)
+            mod_id = installed.get(str(slot))
             if not mod_id:
                 return False, f"No structural modification installed in {slot_label(str(slot))}."
+            if expected_mod_id is not None and mod_id != expected_mod_id:
+                expected = get_ship_mod(expected_mod_id)
+                expected_name = expected.name if expected else expected_mod_id
+                return False, f"{expected_name} is not installed in {slot_label(str(slot))}."
+            installed.pop(str(slot), None)
             mod = get_ship_mod(mod_id)
             refund = get_ship_mod_sell_value(mod_id)
             total_hull, total_shield, total_capacity, total_fuel = self._recompute_caps(self.state.ship, ship_mods=installed)
@@ -2142,6 +2177,7 @@ class SimulationEngine:
             quote = calculate_dynamic_market_quote(
                 self.current_system, body, comm, self.state.economy, faction_standing=standing
             )
+            standing_factor = faction_standing_price_factor(standing)
             vol_per_unit = comm.volume
 
             cargo = dict(self.state.ship.cargo)
@@ -2151,15 +2187,12 @@ class SimulationEngine:
             equipment = self._combined_equipment()
 
             # Geopolitical faction & corporate commercial mechanics
-            sys_faction_id = get_faction_id_from_name(self.current_system.faction)
-            standing = self.state.ship.faction_standings.get(sys_faction_id, 0)
-            faction_mod = calculate_faction_market_modifier(sys_faction_id, standing)
             faction_perks = get_faction_service_perks(sys_faction_id, standing)
             new_faction_standings = dict(self.state.ship.faction_standings)
             new_corp_standings = dict(self.state.ship.corp_standings)
 
             if is_buy:
-                unit_price = int(quote.buy_price * faction_mod)
+                unit_price = quote.buy_price
                 total_cost = unit_price * quantity
                 if self.state.ship.credits < total_cost:
                     return False, f"Insufficient credits: {total_cost} cr required, {self.state.ship.credits} cr available."
@@ -2170,14 +2203,15 @@ class SimulationEngine:
                     return False, f"Cargo hold capacity exceeded: cannot load {needed_space} units."
 
                 dock_tag = (self.current_system.id, body.id, commodity_id)
-                self._local_dock_purchases[dock_tag] = self._local_dock_purchases.get(dock_tag, 0) + quantity
+                bought_qty, bought_cost = self._local_dock_purchases.get(dock_tag, (0, 0))
+                self._local_dock_purchases[dock_tag] = (bought_qty + quantity, bought_cost + total_cost)
                 new_credits = self.state.ship.credits - total_cost
                 cargo[commodity_id] = cargo.get(commodity_id, 0) + quantity
                 tariff_note = ""
-                if faction_mod > 1.0:
-                    tariff_note = f" (+{int((faction_mod - 1.0)*100)}% {self.current_system.faction} tariff)"
-                elif faction_mod < 1.0:
-                    tariff_note = f" (-{int((1.0 - faction_mod)*100)}% {self.current_system.faction} discount)"
+                if standing_factor > 1.0:
+                    tariff_note = f" (+{round((standing_factor - 1.0)*100)}% {self.current_system.faction} tariff)"
+                elif standing_factor < 1.0:
+                    tariff_note = f" (-{round((1.0 - standing_factor)*100)}% {self.current_system.faction} discount)"
                 msg = f"Purchased {quantity}x {quote.name} for {total_cost} cr{tariff_note}."
             else:
                 owned = cargo.get(commodity_id, 0)
@@ -2208,13 +2242,18 @@ class SimulationEngine:
                 new_faction_standings[sys_faction_id] = min(100, new_faction_standings.get(sys_faction_id, 0) + 1)
 
                 dock_tag = (self.current_system.id, body.id, commodity_id)
-                local_bought = self._local_dock_purchases.get(dock_tag, 0)
+                local_bought, local_cost = self._local_dock_purchases.get(dock_tag, (0, 0))
                 bonus_sell = int(quote.sell_price * margin_mult * corp_mult)
-                capped_sell = min(max(1, quote.buy_price - 1), bonus_sell)
                 if local_bought > 0:
                     resold_local = min(quantity, local_bought)
                     resold_import = quantity - resold_local
-                    self._local_dock_purchases[dock_tag] = local_bought - resold_local
+                    remaining_qty = local_bought - resold_local
+                    if remaining_qty:
+                        remaining_cost = local_cost * remaining_qty // local_bought
+                        self._local_dock_purchases[dock_tag] = (remaining_qty, remaining_cost)
+                    else:
+                        self._local_dock_purchases.pop(dock_tag, None)
+                    capped_sell = min(bonus_sell, max(1, local_cost // local_bought - 1))
                     revenue = (resold_local * capped_sell) + (resold_import * bonus_sell)
                     unit_sell_price = revenue // quantity
                 else:
@@ -2277,7 +2316,12 @@ class SimulationEngine:
                 last_updated_tick=self.state.economy.last_updated_tick,
             )
 
-            self.state = self._clone_state(ship=new_ship, stats=stats, economy=new_economy)
+            self.state = self._clone_state(
+                ship=new_ship,
+                stats=stats,
+                economy=new_economy,
+                local_dock_purchases=dict(self._local_dock_purchases),
+            )
 
             return True, msg
 
@@ -2736,6 +2780,7 @@ class SimulationEngine:
             enemy_guard = 0.55 if intent == "brace" else 1.0
             damaging_actions = {"fire_lasers", "drone_strike", "target_subsystem", "target_weapons", "target_shields"}
             enemy_miss = action in damaging_actions and intent == "evade" and self.rng.random() < 0.35
+            weapon_miss = False
             enemy_hull_before = enemy_rem_hull
             enemy_shield_before = enemy_rem_shield
             fleet_ships = self.state.ship.fleet_ships
@@ -3616,6 +3661,12 @@ class SimulationEngine:
                     "modes": {mid: dict(profile) for mid, profile in REACTOR_MODES.items()},
                 },
                 "character": self.state.character.to_dict(),
+                "character_creation": {
+                    "skill_base": STARTING_SKILL_BASE,
+                    "skill_points": STARTING_SKILL_POINTS,
+                    "max_skill": 10,
+                    "skills": list(SKILL_CATALOG),
+                },
                 "character_abilities": {
                     aid: {
                         **info,
@@ -3691,7 +3742,10 @@ class SimulationEngine:
                 "available_chassis": [c.to_dict() for c in get_available_chassis(self.current_chassis_id)],
                 "catalog_weapons": weapon_catalog(),
                 "ai_captains": [c.to_dict() for c in self.state.ai_captains],
-                "depots": [d.to_dict() for d in self.state.depots],
+                "depots": [
+                    {**d.to_dict(), "used_volume": calculate_cargo_volume(d.cargo)}
+                    for d in self.state.depots
+                ],
                 "messages": [m.to_dict() for m in self.state.messages],
                 "events": [e.to_dict() for e in self.state.events],
                 "undismissed_events": [e.to_dict() for e in self.state.events if not e.dismissed],

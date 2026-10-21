@@ -16,6 +16,10 @@ SKILL_CATALOG: dict[str, dict[str, Any]] = {
     "trade": {"name": "Trade", "description": "Market margins and convoy income."},
 }
 
+STARTING_SKILL_BASE = 5
+STARTING_SKILL_POINTS = 20
+MAX_STARTING_SKILL_TOTAL = len(SKILL_CATALOG) * STARTING_SKILL_BASE + STARTING_SKILL_POINTS
+
 ABILITY_CATALOG: dict[str, dict[str, Any]] = {
     "overclock": {
         "name": "Reactor Overclock",

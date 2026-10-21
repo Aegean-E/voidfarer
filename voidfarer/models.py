@@ -1617,6 +1617,7 @@ class GameState:
     wars: tuple[WarState, ...] = ()
     eliminated_factions: tuple[str, ...] = ()
     codex: CodexState = field(default_factory=CodexState)
+    local_dock_purchases: dict[tuple[str, str, str], tuple[int, int]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1641,6 +1642,10 @@ class GameState:
             "wars": [w.to_dict() for w in self.wars],
             "eliminated_factions": list(self.eliminated_factions),
             "codex": self.codex.to_dict(),
+            "local_dock_purchases": {
+                "|".join(tag): [quantity, cost]
+                for tag, (quantity, cost) in self.local_dock_purchases.items()
+            },
         }
 
     @classmethod
@@ -1659,6 +1664,17 @@ class GameState:
             if data.get("active_combat")
             else None
         )
+        dock_purchases: dict[tuple[str, str, str], tuple[int, int]] = {}
+        for raw_tag, raw_lot in (data.get("local_dock_purchases") or {}).items():
+            parts = str(raw_tag).split("|")
+            if len(parts) != 3 or not isinstance(raw_lot, (list, tuple)) or len(raw_lot) != 2:
+                continue
+            try:
+                quantity, cost = int(raw_lot[0]), int(raw_lot[1])
+            except (TypeError, ValueError):
+                continue
+            if quantity > 0 and cost >= 0:
+                dock_purchases[(parts[0], parts[1], parts[2])] = (quantity, cost)
         return cls(
             version=int(data.get("version", 1)),
             galaxy_seed=int(data.get("galaxy_seed", 42)),
@@ -1688,5 +1704,6 @@ class GameState:
             wars=tuple(WarState.from_dict(w) for w in data.get("wars", ())),
             eliminated_factions=tuple(data.get("eliminated_factions", ())),
             codex=CodexState.from_dict(data.get("codex", {})),
+            local_dock_purchases=dock_purchases,
         )
 

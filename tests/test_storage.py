@@ -25,6 +25,22 @@ class TestStorage(unittest.TestCase):
         self.assertEqual(loaded_state.ship.commander_name, self.engine.state.ship.commander_name)
         self.assertEqual(loaded_state.ship.credits, self.engine.state.ship.credits)
 
+    def test_dock_purchase_cost_basis_round_trips(self):
+        station = next(b for b in self.engine.current_system.bodies if b.station_dockable)
+        self.engine.orbit(station.id)
+        ok, msg = self.engine.trade("titanium", 2, is_buy=True)
+        self.assertTrue(ok, msg)
+        lots = dict(self.engine.state.local_dock_purchases)
+        self.assertTrue(lots)
+
+        self.storage.save(self.engine.state)
+        loaded = self.storage.load()
+        self.assertIsNotNone(loaded)
+        self.assertEqual(loaded.local_dock_purchases, lots)
+
+        reloaded_engine = SimulationEngine(state=loaded)
+        self.assertEqual(reloaded_engine._local_dock_purchases, lots)
+
     def test_corrupt_file_quarantine_and_backup_recovery(self):
         # 1. Save valid state
         self.storage.save(self.engine.state)

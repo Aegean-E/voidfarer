@@ -169,6 +169,14 @@ class ShipModificationTest(unittest.TestCase):
         self.assertEqual(self.engine.state.ship.max_hull, self.baseline_hull)
         self.assertEqual(self.engine.state.ship.cargo_capacity, self.baseline_cargo)
 
+    def test_remove_rejects_module_id_that_is_not_installed(self):
+        ok, _ = self.engine.install_ship_mod("reinforced_spine")
+        self.assertTrue(ok)
+        ok, msg = self.engine.remove_ship_mod("frame", expected_mod_id="expanded_hangar")
+        self.assertFalse(ok)
+        self.assertIn("not installed", msg.lower())
+        self.assertEqual(self.engine.state.ship.ship_mods["frame"], "reinforced_spine")
+
     def test_slot_conflict_rejected(self):
         self.assertTrue(self.engine.install_ship_mod("reinforced_spine")[0])
         ok, msg = self.engine.install_ship_mod("expanded_hangar")

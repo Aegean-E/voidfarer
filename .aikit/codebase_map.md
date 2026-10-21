@@ -8,9 +8,9 @@
 ## 📊 Codebase Metrics
 - **Total Python Modules**: `54`
 - **Total Classes**: `134`
-- **Total Top-Level Functions**: `159`
-- **Total Class Methods**: `711`
-- **Total Source Lines**: `21481`
+- **Total Top-Level Functions**: `160`
+- **Total Class Methods**: `730`
+- **Total Source Lines**: `21821`
 
 ---
 
@@ -176,7 +176,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `493` lines (`20993` bytes)
+**Size**: `591` lines (`26164` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -195,16 +195,18 @@
   - Method `._rule_body(selector)`
   - Method `._ancestor_ids(node)`
   - Method `._document_order()`
-  - Method `.test_telemetry_log_sits_in_the_lower_right_deck()`
-  - Method `.test_lower_right_deck_contains_telemetry_log_and_map_controls()`
-  - Method `.test_lower_right_deck_anchors_its_content_to_the_bottom()`
+  - Method `.test_telemetry_log_sits_in_the_right_of_the_bottom_command_strip()`
+  - Method `.test_command_strip_holds_reactor_skills_and_right_column()`
+  - Method `.test_source_order_keeps_the_strip_after_the_cockpit()`
+  - Method `.test_radar_settings_sit_above_the_flight_log_but_are_separate()`
+  - Method `.test_radar_zoom_controls_are_vertical_with_center_in_middle()`
   - Method `.test_telemetry_log_carries_a_hide_button()`
   - Method `.test_log_collapse_style_and_toggle_wiring_exist()`
   - Method `.test_chrono_deck_is_the_last_block_of_the_top_bar()`
   - Method `.test_chrono_deck_is_pushed_to_the_right_edge()`
   - Method `.test_terminal_lives_in_the_left_deck()`
   - Method `.test_terminal_uses_a_vertical_rail_beside_the_content()`
-  - Method `.test_center_column_stacks_radar_above_reactor()`
+  - Method `.test_center_column_keeps_radar_and_reactor_moves_to_bottom_strip()`
   - Method `.test_context_alerts_live_in_the_center_column()`
 - `class TestCockpitRuntimeContracts` - *Static regression checks for runtime wiring that the DOM structure cannot exercise.*
   - Method `.setUpClass()`
@@ -232,8 +234,14 @@
 - `class TestSleekHUDDeclutter`
   - Method `.setUpClass()`
   - Method `.test_nav_radar_header_is_transparent_on_map_label()`
+  - Method `.test_grid_and_label_buttons_are_bound_exactly_once()`
+  - Method `.test_quick_scan_is_bound_exactly_once()`
   - Method `.test_left_terminal_is_collapsible_drawer()`
-  - Method `.test_tactical_flight_log_sits_directly_on_map_without_box()`
+  - Method `.test_bottom_strip_log_is_compact_and_keeps_its_controls()`
+  - Method `.test_skills_strip_has_icons_hotkeys_and_training_wiring()`
+  - Method `.test_reactor_mode_and_vent_buttons_are_wired()`
+  - Method `.test_cockpit_uses_themed_cursor_assets()`
+  - Method `.test_command_strip_hotkeys_are_wired()`
 - `class TestExpandableReactorAndVitalsAlignment`
   - Method `.setUpClass()`
   - Method `.test_reactor_panel_has_toggle_button_and_collapse_wiring()`
@@ -256,7 +264,7 @@
 ### [`tests/test_economy.py`](tests/test_economy.py)
 > *Unit tests for the dynamic galactic economy, stockpiles, events, and trade routes.*
 
-**Size**: `142` lines (`6403` bytes)
+**Size**: `233` lines (`10832` bytes)
 
 **Classes:**
 - `class TestInitialEconomy` - *Verify baseline economy generation across the galaxy.*
@@ -276,6 +284,11 @@
   - Method `.test_trade_routes_are_sorted_and_cross_system()`
   - Method `.test_faction_standing_influences_quote()`
   - Method `.test_same_station_trade_cannot_arbitrage()`
+  - Method `.test_same_station_reorbit_keeps_the_arbitrage_guard()`
+  - Method `.test_new_game_clears_and_load_preserves_the_arbitrage_guard()`
+  - Method `.test_load_does_not_reopen_same_station_arbitrage()`
+  - Method `.test_friendly_standing_is_applied_once_on_purchase()`
+  - Method `.test_friendly_standing_cannot_arbitrage_locally()`
   - Method `.test_sell_from_depot_uses_dynamic_quote_and_updates_stockpiles()`
 
 ---
@@ -283,7 +296,7 @@
 ### [`tests/test_empire_character_fleet.py`](tests/test_empire_character_fleet.py)
 > *Regression tests for character, research, outposts, factions, fleet, and travel additions.*
 
-**Size**: `221` lines (`10234` bytes)
+**Size**: `221` lines (`10258` bytes)
 
 **Classes:**
 - `class CharacterResearchOutpostTest`
@@ -426,7 +439,7 @@
 ### [`tests/test_frontier_systems.py`](tests/test_frontier_systems.py)
 > *Coverage for frontier systems: AI captains, depots, messages, landing, and fleets.*
 
-**Size**: `253` lines (`10977` bytes)
+**Size**: `264` lines (`11497` bytes)
 
 **Classes:**
 - `class FrontierBootstrapTest`
@@ -443,6 +456,7 @@
 - `class DepotTest`
   - Method `.setUp()`
   - Method `.test_deposit_withdraw_and_sell_from_depot()`
+  - Method `.test_snapshot_reports_depot_used_volume()`
 - `class QuantumMessageTest`
   - Method `.setUp()`
   - Method `.test_send_and_read_message()`
@@ -508,7 +522,7 @@
 ### [`tests/test_messaging_crew_quantum.py`](tests/test_messaging_crew_quantum.py)
 > *Regression tests for message trees, crew, portraits, weapons, quantum tech, and megastructures.*
 
-**Size**: `196` lines (`9152` bytes)
+**Size**: `215` lines (`9835` bytes)
 
 **Classes:**
 - `class MessageTreeTest`
@@ -527,6 +541,7 @@
   - Method `.test_weapon_variety_and_install()`
   - Method `.test_weapon_requires_credits()`
   - Method `.test_combat_misfire_telemetry_preserves_weapon_misfire_description()`
+  - Method `.test_non_weapon_strike_reports_enemy_evasion()`
 - `class QuantumAndObjectsTest`
   - Method `.test_quantum_research_projects_exist()`
   - Method `.test_dyson_sphere_relay_wormhole_and_collector_exist()`
@@ -587,7 +602,7 @@
 ### [`tests/test_reactor_map_shipmods.py`](tests/test_reactor_map_shipmods.py)
 > *Regression tests for reactor simulation, sector map modifiers, and ship modifications.*
 
-**Size**: `261` lines (`11163` bytes)
+**Size**: `269` lines (`11583` bytes)
 
 **Classes:**
 - `class ReactorSimulationTest`
@@ -610,6 +625,7 @@
   - Method `.setUp()`
   - Method `.test_catalog_declares_valid_slots_and_effects()`
   - Method `.test_install_and_remove_mod_recomputes_capacities()`
+  - Method `.test_remove_rejects_module_id_that_is_not_installed()`
   - Method `.test_slot_conflict_rejected()`
   - Method `.test_overcharged_core_raises_reactor_output()`
   - Method `.test_ship_mods_require_dock()`
@@ -625,7 +641,7 @@
 ### [`tests/test_server.py`](tests/test_server.py)
 > *Unit and integration tests for embedded HTTP server REST endpoints.*
 
-**Size**: `385` lines (`16858` bytes)
+**Size**: `398` lines (`17586` bytes)
 
 **Classes:**
 - `class TestServer`
@@ -640,6 +656,7 @@
   - Method `.test_get_api_galaxy()`
   - Method `.test_reactor_map_and_shipmod_endpoints()`
   - Method `.test_new_game_applies_commander_profile()`
+  - Method `.test_new_game_rejects_over_budget_commander_profile()`
   - Method `.test_character_research_fleet_diplomacy_endpoints()`
   - Method `.test_crew_weapon_and_message_tree_endpoints()`
   - Method `.test_post_power()`
@@ -667,12 +684,13 @@
 ### [`tests/test_storage.py`](tests/test_storage.py)
 > *Unit tests for atomic persistence, crash safety, and shadow backup recovery.*
 
-**Size**: `137` lines (`5803` bytes)
+**Size**: `153` lines (`6485` bytes)
 
 **Classes:**
 - `class TestStorage`
   - Method `.setUp()`
   - Method `.test_save_and_load()`
+  - Method `.test_dock_purchase_cost_basis_round_trips()`
   - Method `.test_corrupt_file_quarantine_and_backup_recovery()`
   - Method `.test_failed_atomic_replace_raises_and_preserves_previous_save()`
   - Method `.test_schema_invalid_primary_falls_back_to_backup()`
@@ -780,7 +798,7 @@
 ### [`voidfarer/character.py`](voidfarer/character.py)
 > *Commander character progression, skills, and activatable abilities.*
 
-**Size**: `126` lines (`4942` bytes)
+**Size**: `130` lines (`5086` bytes)
 
 **Functions:**
 - `def skill_level(character, skill)`
@@ -797,7 +815,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `2466` lines (`124967` bytes)
+**Size**: `2466` lines (`124947` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -889,11 +907,12 @@
 ### [`voidfarer/economy.py`](voidfarer/economy.py)
 > *Dynamic Global Economy, supply/demand simulation, economic events, and galactic trade network.*
 
-**Size**: `395` lines (`14862` bytes)
+**Size**: `399` lines (`15039` bytes)
 
 **Functions:**
 - `def generate_initial_economy(systems, rng)` - *Construct baseline economy state with localized stockpiles and initial macroeconomic conditions.*
 - `def tick_global_economy(state, num_ticks, systems, rng)` - *Advance economic simulation: update stockpiles, decrement event clocks, spawn emergent news.*
+- `def faction_standing_price_factor(faction_standing)` - *Return the single diplomatic price multiplier for a faction standing value.*
 - `def calculate_dynamic_market_quote(system, body, commodity, economy, faction_standing)` - *Compute precision localized pricing reflecting global stockpile supply/demand and macroeconomic events.*
 - `def get_galactic_trade_routes(systems, economy)` - *Compute the most profitable interstellar trade routes across all explored star systems.*
 
@@ -916,7 +935,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `4608` lines (`230413` bytes)
+**Size**: `4662` lines (`232853` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -938,6 +957,7 @@
   - Method `._award_pilot_xp(amount, current_mastery)` - *Award experience points and compute level promotions and talent points.*
   - Method `._progress_contracts(category, amount)` - *Advance matching active contracts toward completion objectives.*
   - Method `.reset(seed, profile)` - *Reset the simulation to a fresh galaxy with an isolated deterministic RNG stream.*
+  - Method `._validate_commander_profile(profile)` - *Reject commander profiles whose starting skills exceed the creation budget.*
   - Method `._apply_commander_profile(profile)` - *Apply the commander name, age, background and starting skills chosen at creation.*
   - Method `.load_state(state)` - *Replace the live universe with a loaded save and reseed its RNG stream.*
   - Method `._create_initial_state(seed)` - *Construct a fresh universe state rooted at Sol System.*
@@ -955,7 +975,7 @@
   - Method `.repair_reactor()` - *Repair reactor core integrity at an orbital drydock.*
   - Method `.get_reactor_report()` - *Detailed reactor telemetry derived from current ship and sector conditions.*
   - Method `.install_ship_mod(mod_id)` - *Install a structural ship modification at an orbital drydock.*
-  - Method `.remove_ship_mod(slot)` - *Remove a structural modification and recover part of its cost.*
+  - Method `.remove_ship_mod(slot, expected_mod_id)` - *Remove a structural modification and recover part of its cost.*
   - Method `.get_ship_mod_report()` - *Serializable structural modification catalog and installed layout.*
   - Method `.get_simulation_report()` - *Unified simulation telemetry: reactor, environment, and structural refits.*
   - Method `.get_codex_report()` - *Captain's log and discovery codex derived from the saved game state.*
@@ -1039,7 +1059,7 @@
 ### [`voidfarer/exploration.py`](voidfarer/exploration.py)
 > *Derelict salvage sites, fuel scooping profiles, and crew training drills.*
 
-**Size**: `116` lines (`4242` bytes)
+**Size**: `120` lines (`4402` bytes)
 
 **Classes:**
 - `class DerelictSite` - *A deterministic, once-per-body salvage site with a risk/reward profile.*
@@ -1195,7 +1215,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1692` lines (`61191` bytes)
+**Size**: `1709` lines (`62116` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*
@@ -1416,7 +1436,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `1116` lines (`46644` bytes)
+**Size**: `1117` lines (`46691` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*

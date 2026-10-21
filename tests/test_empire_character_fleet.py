@@ -209,10 +209,10 @@ class NewSystemsSerializationAndCLITest(unittest.TestCase):
         style = (static / "style.css").read_text(encoding="utf-8")
         for element_id in (
             "fleetShipRoster", "escortShopGrid", "tabContentPlayer", "tabContentCrew",
-            "tabContentEmpire", "characterSkills", "researchProjects", "outpostList", "diplomacyList",
+            "tabContentEmpire", "hudSkillsGrid", "researchProjects", "outpostList", "diplomacyList",
         ):
             self.assertIn(f'id="{element_id}"', html)
-        for symbol in ("renderPlayer", "renderCrew", "renderEmpire", "renderFleetManager", "orbitFade", "fadeOuter"):
+        for symbol in ("renderPlayer", "renderCrew", "renderEmpire", "renderFleetManager", "renderSkillsQuickPanel", "orbitFade", "fadeOuter"):
             self.assertIn(symbol, script)
         self.assertIn("height: 44px", style)
 

@@ -237,6 +237,11 @@ def tick_global_economy(
     return new_state, news_logs
 
 
+def faction_standing_price_factor(faction_standing: int) -> float:
+    """Return the single diplomatic price multiplier for a faction standing value."""
+    return 1.0 - max(-0.15, min(0.10, int(faction_standing) * 0.0015))
+
+
 def calculate_dynamic_market_quote(
     system: StarSystem,
     body: CelestialBody,
@@ -316,8 +321,7 @@ def calculate_dynamic_market_quote(
 
     # 4b. Faction diplomatic discount or tariff
     if faction_standing != 0:
-        standing_factor = 1.0 - max(-0.15, min(0.10, faction_standing * 0.0015))
-        base = max(2, int(base * standing_factor))
+        base = max(2, int(base * faction_standing_price_factor(faction_standing)))
 
     # 5. Spread calculation
     spread = max(2, int(base * 0.12))

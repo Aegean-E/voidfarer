@@ -1,164 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "cockpit-redesign-wiring-v1",
+    "task_id": "layout-command-strip-v1",
     "last_phase": "phase 4",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792587233.4456792,
-    "completed_at": 1792587267.5755336
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792606035.9362154
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 5/5] README, ADR-029, G-011/G-012, codebase map, 342-test suite and 4/4 Phase 4 gates; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792506187.9868574,
-      "timestamp_str": "2026-10-20 17:23:07"
-    },
-    {
-      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-adaptive-ui-salvage-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792506203.735764,
-      "timestamp_str": "2026-10-20 17:23:23"
-    },
-    {
-      "task_id": "task-voidfarer-captains-log-codex-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/6] Plan: captain's log and discovery codex with persistent claimed milestones, derived statistics, achievement rewards, and CLI/REST/cockpit parity",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792511586.1608772,
-      "timestamp_str": "2026-10-20 18:53:06",
-      "impact_assessment": {
-        "why": "User chose a persistent discovery journal, codex entries, statistics and achievement rewards as the next Voidfarer feature.",
-        "benefits": "Gives long-term goals across exploration, command, commerce, combat and story; rewards existing play; surfaces progress the game already tracks but never displays.",
-        "risks": "contract: GameState save schema and existing G-001..G-012 layout rules must hold; dependency: stdlib and vanilla JS only; concurrency: engine lock and server ticker preserved; state: legacy saves need a defaulted CodexState and claimed milestones must persist atomically.",
-        "mitigation": "Add a defaulted frozen CodexState, derive progress from existing GameState/stats, persist only claimed ids and dates, add failing-first tests, and append CSS without altering base layout rules."
-      }
-    },
-    {
-      "task_id": "task-voidfarer-captains-log-codex-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 2/6] Frozen CodexState model, deterministic metrics engine, rewards catalog, and CLI log/codex commands; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792512511.793255,
-      "timestamp_str": "2026-10-20 19:08:31"
-    },
-    {
-      "task_id": "task-voidfarer-captains-log-codex-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 3/6] REST API /api/codex/claim and server test integration; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792512606.18024,
-      "timestamp_str": "2026-10-20 19:10:06"
-    },
-    {
-      "task_id": "task-voidfarer-captains-log-codex-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 4/6] Cockpit UI: Captain's log tab, statistics grid, milestone cards, claim flow, badges, and adaptive CSS; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792512934.1100166,
-      "timestamp_str": "2026-10-20 19:15:34"
-    },
-    {
-      "task_id": "task-voidfarer-captains-log-codex-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 5/6] Full test suite verification across backend, CLI, REST and cockpit assets; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792512954.4697733,
-      "timestamp_str": "2026-10-20 19:15:54"
-    },
-    {
-      "task_id": "task-voidfarer-captains-log-codex-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[milestone 6/6] Living documentation (ADR-030, README, codebase map) and 4/4 Phase 4 gates; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792513121.320896,
-      "timestamp_str": "2026-10-20 19:18:41"
-    },
-    {
-      "task_id": "task-voidfarer-captains-log-codex-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'task-voidfarer-captains-log-codex-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792513130.0319278,
-      "timestamp_str": "2026-10-20 19:18:50"
-    },
-    {
-      "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/6] Plan: Economy arbitrage guard, faction quotes, storage overflow checks, quantum fuel efficiency, cockpit shipyard/weapons parity, and combat fixes",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792514425.4430394,
-      "timestamp_str": "2026-10-20 19:40:25",
-      "impact_assessment": {
-        "why": "User requested bugfixes, closing feature gaps, economic sense, cargo/depot storage logic, and mechanical improvements.",
-        "benefits": "Prevents same-station infinite money exploits, makes faction standing affect visible quotes, stops cargo hold overflow on ship downgrades or refits, honors quantum fuel booster upgrades, fixes science skill fuel scooping, adds cockpit shipyard and weapons parity, and provides bulk depot actions.",
-        "risks": "contract: Save schema and G-001..G-012 cockpit rules must hold; dependency: stdlib only; concurrency: engine lock must guard all mutations; state: legacy saves must load cleanly without schema errors.",
-        "mitigation": "Preserve existing save structure with backward-compatible defaults, validate hold capacity before purchases/refits, keep base layout untouched while adding shipyard/weapons cards into existing ARSENAL drawer, and write failing-first tests for every fix."
-      }
-    },
-    {
-      "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 2/6] Economy arbitrage guard, faction quotes, and depot stockpile sync; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792515205.5593686,
-      "timestamp_str": "2026-10-20 19:53:25"
-    },
-    {
-      "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 3/6] Storage overflow guards, quantum fuel efficiency, and science scoop scaling; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792515530.9225366,
-      "timestamp_str": "2026-10-20 19:58:50"
-    },
-    {
-      "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 4/6] Combat weapon misfire telemetry and stance-aware escort volley; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792515676.2536774,
-      "timestamp_str": "2026-10-20 20:01:16"
-    },
-    {
-      "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 5/6] Web Cockpit parity: Shipyard Showroom, Weapons Bay, and bulk depot controls; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792516065.5248852,
-      "timestamp_str": "2026-10-20 20:07:45"
-    },
     {
       "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
       "phase": "phase 4",
@@ -222,6 +71,157 @@
       "status": "completed",
       "timestamp": 1792587267.5755348,
       "timestamp_str": "2026-10-21 15:54:27"
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/4] Review last three commits: reproduce combat, trade-quote, dock-tracking, module-uninstall and UI defects; plan regression tests",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792599575.5774562,
+      "timestamp_str": "2026-10-21 19:19:35",
+      "impact_assessment": {
+        "why": "The last three commits introduced a combat crash, an applied-twice faction price modifier, dock tracking that resets on same-station orbit and leaks across reset/load, an uninstall adapter that can remove a different installed module, and duplicate UI bindings",
+        "benefits": "Restores crash-free combat, single-source market pricing, a durable same-station arbitrage guard, truthful uninstall behavior, and a single scan action per cockpit click",
+        "risks": "contract: unchanged public routes; dependency: none; concurrency: engine lock already held; state: in-memory dock ledger lifecycle changes only",
+        "mitigation": "Add failing-first tests per defect, keep legacy shipmod routes, run all 375+ tests and the project gates"
+      }
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/4] Backend hardening: combat evade crash, single-source faction pricing, cost-basis arbitrage guard, dock ledger lifecycle, module uninstall id check; CLI parity",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792599955.4604979,
+      "timestamp_str": "2026-10-21 19:25:55"
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[3/4] Cockpit fixes: single scan binding, commander creation reset/immediate render, cargo volume display, escaped portraits, drydock-gated slot removal; regressions added",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792599956.622026,
+      "timestamp_str": "2026-10-21 19:25:56"
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "phase 5",
+      "phase_num": 5,
+      "description": "[4/4] Verification: 382 tests pass; node --check app.js; aikit check voidfarer 4/4 gates; ADR-033 and codebase map synchronized; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792599960.1894894,
+      "timestamp_str": "2026-10-21 19:26:00"
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[5/5] Follow-up polish: depot volume telemetry and UI, removed dead refit panel, scoop_yield contract doc, 383 tests; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792600289.9637647,
+      "timestamp_str": "2026-10-21 19:31:29"
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[6/6] Persistence hardening: dock cost basis serialized in GameState, save/load preserves guard, legacy default empty, reload-arbitrage regression; 385 tests, 4/4 gates, checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792600531.9661896,
+      "timestamp_str": "2026-10-21 19:35:31"
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[7/7] Limitations closed: server-enforced creation budget with atomic rejection, snapshot-published budget drives cockpit constants, full suite 386, 4/4 gates, checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792600963.65659,
+      "timestamp_str": "2026-10-21 19:42:43"
+    },
+    {
+      "task_id": "review-last-3-changes-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'review-last-3-changes-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792602896.4166703,
+      "timestamp_str": "2026-10-21 20:14:56"
+    },
+    {
+      "task_id": "layout-command-strip-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/3] Planning: top-of-map command strip with reactor left, skills center, flight log right; icons, hotkeys, compact log, guide updates",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792602902.0502179,
+      "timestamp_str": "2026-10-21 20:15:02",
+      "impact_assessment": {
+        "why": "The user requires skills out of the PLAYER tab and a single hotkey-driven command row above the map",
+        "benefits": "Map keeps focus, skills train from anywhere, reactor and telemetry stay visible, log height drops",
+        "risks": "contract: layout guidelines G-001/G-005 change; dependency: none; concurrency: UI refresh only; state: no engine/schema change",
+        "mitigation": "Update G-013/README/ADR, keep all IDs wired, add layout and hotkey regression assertions, run 388 tests and 4 gates"
+      }
+    },
+    {
+      "task_id": "layout-command-strip-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/3] Implemented: hudCommandStrip (reactor/skills/log), PLAYER skills removed, icon skill chips with SHIFT+1..6, P/K/L and Q/W/E/R hotkeys, 108px log, G-013/README/ADR-034, layout tests updated",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792602906.147506,
+      "timestamp_str": "2026-10-21 20:15:06"
+    },
+    {
+      "task_id": "layout-command-strip-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[3/3] Verified: 388 tests pass, 8 subtests, app.js syntax clean, DOM IDs unique/no missing refs, 4/4 project gates, checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792602907.4026852,
+      "timestamp_str": "2026-10-21 20:15:07"
+    },
+    {
+      "task_id": "layout-command-strip-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[4/4] Revision: strip moved to bottom row (equal 3 columns from left panel to right edge); separate radar settings panel above log; circular +/center/\u2212 zoom stack; reactor mode/vent bindings fixed; themed SVG cursors; G-013/README/ADR-034 synced; 392 tests, 4/4 gates, checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792603760.4312453,
+      "timestamp_str": "2026-10-21 20:29:20"
+    },
+    {
+      "task_id": "layout-command-strip-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[5/5] Review pass: fixed DOM source order (strip after cockpit), responsive 2/1-column breaks, disabled/select cursors, dead renderPlayer var; added source-order/K-toggle/cursor/reactor-binding regressions; served-asset check confirms image/svg+xml; 393 tests, 4/4 gates, checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792604187.8683727,
+      "timestamp_str": "2026-10-21 20:36:27"
+    },
+    {
+      "task_id": "layout-command-strip-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[6/6] Resume delivery: re-verified 393 tests and 4/4 gates (test, hygiene, guidelines, secrets) after the interruption; fixed stale README top-strip wording and CSS comment to the bottom-row G-013 contract; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792606035.9362154,
+      "timestamp_str": "2026-10-21 21:07:15"
     }
   ]
 }

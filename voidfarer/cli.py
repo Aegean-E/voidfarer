@@ -23,7 +23,6 @@ from voidfarer.engine import SimulationEngine
 from voidfarer.factions import (
     CANONICAL_CORPORATIONS,
     CANONICAL_FACTIONS,
-    calculate_faction_market_modifier,
     get_faction_id_from_name,
     get_faction_standing_tier,
 )
@@ -43,6 +42,7 @@ from voidfarer.server import BackgroundServer, run_server, start_background_serv
 from voidfarer.storage import StorageManager
 from voidfarer.economy import (
     calculate_dynamic_market_quote,
+    faction_standing_price_factor,
     get_galactic_trade_routes,
 )
 from voidfarer.inventory import (
@@ -317,24 +317,24 @@ def cmd_market(engine: SimulationEngine) -> int:
         print(f"{YELLOW}Fix:{RESET} Run `voidfarer orbit <body_id>` to enter orbit first.")
         return 1
 
+    sys_faction_id = get_faction_id_from_name(engine.current_system.faction)
+    standing = engine.state.ship.faction_standings.get(sys_faction_id, 0)
     quotes = [
-        calculate_dynamic_market_quote(engine.current_system, body, comm, engine.state.economy)
+        calculate_dynamic_market_quote(
+            engine.current_system, body, comm, engine.state.economy, faction_standing=standing
+        )
         for comm in COMMODITY_MAP.values()
     ]
-    sys_faction_id = get_faction_id_from_name(engine.current_system.faction)
-    faction_mod = calculate_faction_market_modifier(
-        sys_faction_id, engine.state.ship.faction_standings.get(sys_faction_id, 0)
-    )
+    standing_factor = faction_standing_price_factor(standing)
     print(f"\n{BOLD}{CYAN}=== LOCAL COMMODITY EXCHANGE: {body.name.upper()} ==={RESET}")
-    print(f"Market Archetype: {BOLD}{body.market_archetype.upper()}{RESET} | Credits: {YELLOW}{engine.state.ship.credits} cr{RESET} | Trade Modifier: {BOLD}x{faction_mod:.2f}{RESET}")
+    print(f"Market Archetype: {BOLD}{body.market_archetype.upper()}{RESET} | Credits: {YELLOW}{engine.state.ship.credits} cr{RESET} | Standing: {BOLD}x{standing_factor:.2f}{RESET}")
     print(f"{'-' * 70}")
     print(f"{'COMMODITY':<22} {'BUY':>8} {'SELL':>8} {'SUPPLY':>8} {'DEMAND':>8} {'HOLD':>8}")
     print(f"{'-' * 70}")
     cargo = engine.state.ship.cargo
     for q in quotes:
         hold_qty = cargo.get(q.commodity_id, 0)
-        effective_buy = int(q.buy_price * faction_mod)
-        print(f"{q.name:<22} {GREEN}{effective_buy:>6} cr{RESET} {YELLOW}{q.sell_price:>6} cr{RESET} {q.supply:>8} {q.demand:>8} {BOLD}{hold_qty:>8}{RESET}")
+        print(f"{q.name:<22} {GREEN}{q.buy_price:>6} cr{RESET} {YELLOW}{q.sell_price:>6} cr{RESET} {q.supply:>8} {q.demand:>8} {BOLD}{hold_qty:>8}{RESET}")
     print(f"{'-' * 70}")
     return 0
 

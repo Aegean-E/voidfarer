@@ -148,6 +148,25 @@ class CrewWeaponTest(unittest.TestCase):
         self.assertTrue(ok2)
         self.assertIn("aggressive stance", msg2)
 
+    def test_non_weapon_strike_reports_enemy_evasion(self):
+        combat = CombatEncounter(
+            id="combat_evade",
+            enemy_name="Rogue Pirate",
+            enemy_class="Raider",
+            enemy_hull=200,
+            enemy_max_hull=200,
+            enemy_damage=5,
+            bounty_credits=100,
+            enemy_shield=50,
+            enemy_max_shield=50,
+            enemy_intent="evade",
+        )
+        self.engine.state = self.engine._clone_state(active_combat=combat)
+        self.engine.rng.random = lambda: 0.0
+        ok, msg = self.engine.combat_action("target_subsystem")
+        self.assertTrue(ok)
+        self.assertIn("Enemy AI jinked", msg)
+
 
 class QuantumAndObjectsTest(unittest.TestCase):
     def test_quantum_research_projects_exist(self):

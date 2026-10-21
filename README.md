@@ -380,16 +380,16 @@ python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Top Status Bar & Chronometer (`G-007`, `G-011`)**: Responsive vitals plus the chrono deck, wrapping cleanly on narrow viewports.
-- **Background Radar HUD (`G-004`, `G-005`)**: Full-viewport orbital/galaxy canvas, collapsible right-expanding left terminal, and boxless flight log.
+- **Background Radar HUD (`G-004`, `G-005`, `G-013`)**: Full map, left terminal, and an equal three-column bottom strip: reactor, skills, separate radar settings above the compact log; circular zoom icons and themed cursors.
 - **Main Menu & Saves (`ESC`)**: Settings plus create, load, list, and delete named save slots.
 - **Planet Inspector**: Gravity, atmosphere, temperature, habitability, orbit distance, moons, resources, and colony tiers.
 - **Transit, Landing & Fleet**: Tick-synchronized sublight/quantum transit, surface survey rewards, and drone/mercenary commands.
 - **Living Galaxy**: Procedural worlds, AI traders, dynamic markets, faction perks, and reputation.
 - **Mission Panels**: Quests, contracts, diplomacy, depots, messages, COMMS, factions, perks, relics, and combat.
 - **REPL Server Lifecycle**: `serve` runs the HTTP server and simulation ticker; `serve stop` or REPL exit saves and shuts down.
-- **Reactor Power Matrix & Thermal Simulation (`G-006`)**: Allocation sliders, live heat meter, output/cooling/integrity telemetry, four doctrine modes, and an emergency VENT control.
+- **Reactor Power Matrix (`G-006`, `G-013`)**: Bottom-left strip panel with sliders, `Q/W/E/R` hotkeys, thermal telemetry, four modes, and VENT.
 - **Sector Map Modifiers**: Generated environmental conditions displayed as radar chips and applied to fuel, scans, encounters, trade, and reactor heat.
-- **Player, Skills & Crew Tabs**: Character dossier with XP and traits, six trainable skills, and crew roster with live bonuses, drills, and dismissals.
+- **Player, Skills & Crew Tabs**: PLAYER is a pure dossier; six icon/hotkey skills live in the bottom command strip (`SHIFT+1..6`), while SKILLS keeps full training and perks. Crew keeps bonuses and drills.
 - **Ship Configuration Tab**: Chassis silhouette with five structural slot markers, trade-off catalogue cards, live capacity recomputation, and drydock install/salvage-remove controls through `/api/ship/module`.
 - **Commander Creation & Death Flow**: Name, age, background, and starting-skill allocation wired into new games; a death overlay summarizes the run and offers a fresh commander or save load.
 - **Resolution-Adaptive HUD**: ultrawide/tablet/phone/short-height breakpoints, density and HUD-scale settings, DPR-correct radar, ResizeObserver, touch pan/pinch, reduced motion, and safe-area insets.
@@ -414,6 +414,6 @@ python -m voidfarer.cli codex claim first_light
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 375-test suite runs in about 6 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 393-test suite runs in about 6 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.

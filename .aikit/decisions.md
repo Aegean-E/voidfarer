@@ -397,4 +397,16 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   7. Preserve weapon-specific misfire telemetry in `combat_action` and log stance-modified escort volley damage with active stance annotations.
   8. Upgrade the Web Cockpit ARSENAL tab with a Shipyard Chassis Showroom (`/api/shipyard/chassis`) and Weapons & Ordnance Bay (`/api/weapons/install`, `/api/weapons/set`), add "DEPOSIT ALL" / "WITHDRAW ALL" / "SELL ALL" bulk controls to the Cargo Depot, and style with glassmorphic cards.
 - **Consequences**: Economic exploits and inventory bugs are eradicated. Market dynamics, shipyard physics, cargo hold capacity, fuel math, and combat logging are realistic, coherent, and fully verified across 374 unit and regression tests.
-
+### ADR-032: Cockpit Tab Redesign, Visual Ship Configuration, Commander Creation, and Death Flow
+- **Date**: 2026-10-21
+- **Status**: Accepted
+- **Context**: The holographic cockpit still grouped the commander sheet, ship refits, crew roster, and map controls into crowded legacy tabs. An in-flight redesign split the left terminal into PLAYER, SKILLS, CREW, and SHIP tabs, moved radar settings into the lower-right deck, and added commander creation and death overlays. The first pass was disconnected from the simulation: `app.js` did not parse, ship modules were read from a non-existent array with invented catalog IDs, the crew tab called an unimplemented `/api/crew/assign`, and no server route existed for `/api/ship/module`.
+- **Decision**:
+  1. Keep the split terminal tabs and map-control relocation, but bind every panel to the authoritative status snapshot: `state.character`, `state.crew`/`crew_bonuses`/`crew_roles`, and `state.ship_mods`.
+  2. Render the SHIP tab from the five real structural slots (`frame`, `reactor_core`, `thermal`, `drive`, `ops`) and the `CATALOG_SHIP_MODS` catalogue, with chassis silhouettes, drydock and credit gating, and live capacity/stat telemetry.
+  3. Add `POST /api/ship/module` (`module_id`, `action: install|uninstall`) as the cockpit-facing adapter over the existing `install_ship_mod`/`remove_ship_mod` engine methods; keep the legacy `/api/shipmods/*` routes.
+  4. Replace the cosmetic crew-assignment prototype with a read-only ACTIVE CREW BONUSES and AVAILABLE ROLES summary derived from `calculate_crew_bonuses` and `crew_catalog`; drills and dismissals remain the only crew mutations.
+  5. Extend `SimulationEngine.reset` with an optional commander profile (name, age, background, starting skills) and pass it from `/api/new-game`, so creation choices persist; drop the unsupported gender/race/perk steps rather than storing inert data.
+  6. Fix the JavaScript parse error in `charStep`, restore the missing `renderStory` header, and make `checkDeath` idempotent so the death overlay opens once and only at zero hull.
+  7. Update the layout regression expectations that encode the old contract: the right deck now also holds map controls, the left drawer starts expanded, the top bar wraps on narrow viewports, and the new PLAYER/SKILLS/CREW/SHIP DOM markers replace COMMANDER/SHIP MODS.
+- **Consequences**: The redesign is functional and truthful: every button reaches a real endpoint, every panel reads a persisted field, and all 375 tests pass. The cockpit exposes commander creation and death flows without inventing unsupported attributes or perks. Layout tests now assert the new tab contract instead of the previous single-purpose deck.

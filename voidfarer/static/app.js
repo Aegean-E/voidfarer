@@ -264,19 +264,20 @@ class CockpitApp {
         this.travelAnimation = null;
         this.savesList = [];
         this.activeSaveSlot = "default";
+        this.gameStarted = false;
         this.loadSettings();
 
         this.initDOMElements();
         this.bindEvents();
         this.applyViewportProfile();
         this.startAnimationLoop();
-        this.refreshState();
         this.fetchGalaxy();
         this.fetchSaves();
+        this.openMainMenu(); // Show main menu on startup
 
         // Polling interval for live sync (1000ms for responsive tick progression)
         setInterval(() => {
-            if (!document.hidden) this.refreshState(true);
+            if (!document.hidden && this.gameStarted && this.state) this.refreshState(true);
         }, 1000);
     }
 
@@ -408,11 +409,13 @@ class CockpitApp {
         this.panelLeft = document.getElementById("panelLeft");
         this.tabBtnMarket = document.getElementById("tabBtnMarket");
         this.tabBtnArsenal = document.getElementById("tabBtnArsenal");
-        this.tabBtnShipMods = document.getElementById("tabBtnShipMods");
+        this.tabBtnShip = document.getElementById("tabBtnShip");
         this.tabBtnFleet = document.getElementById("tabBtnFleet");
         this.tabBtnContracts = document.getElementById("tabBtnContracts");
         this.tabBtnMastery = document.getElementById("tabBtnMastery");
-        this.tabBtnCharacter = document.getElementById("tabBtnCharacter");
+        this.tabBtnPlayer = document.getElementById("tabBtnPlayer");
+        this.tabBtnSkills = document.getElementById("tabBtnSkills");
+        this.tabBtnCrew = document.getElementById("tabBtnCrew");
         this.tabBtnEmpire = document.getElementById("tabBtnEmpire");
         this.tabBtnCodex = document.getElementById("tabBtnCodex");
         this.codexBadge = document.getElementById("codexBadge");
@@ -436,11 +439,13 @@ class CockpitApp {
 
         this.tabContentMarket = document.getElementById("tabContentMarket");
         this.tabContentArsenal = document.getElementById("tabContentArsenal");
-        this.tabContentShipMods = document.getElementById("tabContentShipMods");
+        this.tabContentShip = document.getElementById("tabContentShip");
         this.tabContentFleet = document.getElementById("tabContentFleet");
         this.tabContentContracts = document.getElementById("tabContentContracts");
         this.tabContentMastery = document.getElementById("tabContentMastery");
-        this.tabContentCharacter = document.getElementById("tabContentCharacter");
+        this.tabContentPlayer = document.getElementById("tabContentPlayer");
+        this.tabContentSkills = document.getElementById("tabContentSkills");
+        this.tabContentCrew = document.getElementById("tabContentCrew");
         this.tabContentEmpire = document.getElementById("tabContentEmpire");
         this.tabContentStory = document.getElementById("tabContentStory");
         this.tabContentFactions = document.getElementById("tabContentFactions");
@@ -449,12 +454,29 @@ class CockpitApp {
         this.tabContentDepot = document.getElementById("tabContentDepot");
         this.tabContentMessages = document.getElementById("tabContentMessages");
         this.questsList = document.getElementById("questsList");
+        this.questsCompletedList = document.getElementById("questsCompletedList");
         this.aiList = document.getElementById("aiList");
         this.depotSummary = document.getElementById("depotSummary");
         this.depotList = document.getElementById("depotList");
         this.messageList = document.getElementById("messageList");
         this.factionsGrid = document.getElementById("factionsGrid");
         this.corpsGrid = document.getElementById("corpsGrid");
+
+        // Map Controls (moved to right panel)
+        this.viewOrbitBtn = document.getElementById("viewOrbitBtn");
+        this.viewGalaxyBtn = document.getElementById("viewGalaxyBtn");
+        this.btnToggleGrid = document.getElementById("btnToggleGrid");
+        this.btnToggleLabels = document.getElementById("btnToggleLabels");
+        this.quickScanBtn = document.getElementById("quickScanBtn");
+
+        // Death Overlay
+        this.deathOverlay = document.getElementById("deathOverlay");
+        this.deathTitle = document.getElementById("deathTitle");
+        this.deathMessage = document.getElementById("deathMessage");
+        this.deathStats = document.getElementById("deathStats");
+        this.btnDeathNewGame = document.getElementById("btnDeathNewGame");
+        this.btnDeathLoadSave = document.getElementById("btnDeathLoadSave");
+        this.btnDeathMainMenu = document.getElementById("btnDeathMainMenu");
 
         // Story Comms Elements
         this.storyChapterTitle = document.getElementById("storyChapterTitle");
@@ -488,14 +510,20 @@ class CockpitApp {
         this.arsenalList = document.getElementById("arsenalList");
         this.shipyardChassisList = document.getElementById("shipyardChassisList");
         this.weaponsBayList = document.getElementById("weaponsBayList");
-        this.shipModsList = document.getElementById("shipModsList");
-        this.shipModSlotGrid = document.getElementById("shipModSlotGrid");
         this.fleetRoster = document.getElementById("fleetRoster");
         this.fleetShipRoster = document.getElementById("fleetShipRoster");
         this.escortShopGrid = document.getElementById("escortShopGrid");
-        this.characterSummary = document.getElementById("characterSummary");
+        this.characterProfile = document.getElementById("characterProfile");
         this.characterSkills = document.getElementById("characterSkills");
         this.characterAbilities = document.getElementById("characterAbilities");
+        this.characterPerks = document.getElementById("characterPerks");
+        this.skillsGrid = document.getElementById("skillsGrid");
+        this.skillsPointsAvailable = document.getElementById("skillsPointsAvailable");
+        this.skillsPerksList = document.getElementById("skillsPerksList");
+        this.crewAssignments = document.getElementById("crewAssignments");
+        this.shipVisual = document.getElementById("shipVisual");
+        this.shipModulesGrid = document.getElementById("shipModulesGrid");
+        this.shipStatsPanel = document.getElementById("shipStatsPanel");
         this.researchSummary = document.getElementById("researchSummary");
         this.researchProjects = document.getElementById("researchProjects");
         this.outpostSummary = document.getElementById("outpostSummary");
@@ -608,21 +636,14 @@ class CockpitApp {
         // Right Deck Tabs
         this.tabBtnMarket.addEventListener("click", () => this.switchRightTab("market"));
         this.tabBtnArsenal.addEventListener("click", () => this.switchRightTab("arsenal"));
-        if (this.tabBtnShipMods) this.tabBtnShipMods.addEventListener("click", () => this.switchRightTab("shipmods"));
+        this.tabBtnShip.addEventListener("click", () => this.switchRightTab("ship"));
         this.tabBtnFleet.addEventListener("click", () => this.switchRightTab("fleet"));
 
-        // Reactor simulation controls
-        if (this.reactorModeRow) {
-            this.reactorModeRow.querySelectorAll(".reactor-mode-btn").forEach(btn => {
-                btn.addEventListener("click", () => this.handleReactorMode(btn.getAttribute("data-mode")));
-            });
-        }
-        if (this.btnVentReactor) {
-            this.btnVentReactor.addEventListener("click", () => this.handleReactorVent());
-        }
         this.tabBtnContracts.addEventListener("click", () => this.switchRightTab("contracts"));
         this.tabBtnMastery.addEventListener("click", () => this.switchRightTab("mastery"));
-        if (this.tabBtnCharacter) this.tabBtnCharacter.addEventListener("click", () => this.switchRightTab("character"));
+        this.tabBtnPlayer.addEventListener("click", () => this.switchRightTab("player"));
+        this.tabBtnSkills.addEventListener("click", () => this.switchRightTab("skills"));
+        this.tabBtnCrew.addEventListener("click", () => this.switchRightTab("crew"));
         if (this.tabBtnEmpire) this.tabBtnEmpire.addEventListener("click", () => this.switchRightTab("empire"));
         if (this.tabBtnCodex) this.tabBtnCodex.addEventListener("click", () => this.switchRightTab("codex"));
         this.tabBtnStory.addEventListener("click", () => this.switchRightTab("story"));
@@ -632,14 +653,29 @@ class CockpitApp {
         if (this.tabBtnQuests) this.tabBtnQuests.addEventListener("click", () => this.switchRightTab("quests"));
         if (this.tabBtnAI) this.tabBtnAI.addEventListener("click", () => this.switchRightTab("ai"));
         if (this.tabBtnDepot) this.tabBtnDepot.addEventListener("click", () => this.switchRightTab("depot"));
-        if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => this.switchRightTab("messages"));
+if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => this.switchRightTab("messages"));
+
+        // Map Controls (in right panel)
+        this.btnToggleGrid.addEventListener("click", () => {
+            this.radarGrid = !this.radarGrid;
+            this.saveSettings();
+            this.btnToggleGrid.classList.toggle("active", this.radarGrid);
+        });
+        this.btnToggleLabels.addEventListener("click", () => {
+            this.radarLabels = !this.radarLabels;
+            this.saveSettings();
+            this.btnToggleLabels.classList.toggle("active", this.radarLabels);
+        });
+        this.quickScanBtn.addEventListener("click", () => this.handleScan());
 
         // Main menu, settings, perks, and frontier actions
         document.getElementById("btnMainMenu")?.addEventListener("click", () => this.toggleMainMenu());
         document.getElementById("btnOpenPerks")?.addEventListener("click", () => this.openPerksWindow());
         document.getElementById("btnClosePerks")?.addEventListener("click", () => this.closePerksWindow());
         document.getElementById("btnCloseSettings")?.addEventListener("click", () => this.closeSettings());
-        document.getElementById("btnMenuResume")?.addEventListener("click", () => this.closeMainMenu());
+        document.getElementById("btnMenuResume")?.addEventListener("click", () => {
+            this.menuAction("/api/load", "Game loaded.");
+        });
         document.getElementById("btnMenuSave")?.addEventListener("click", () => this.menuAction("/api/save", "Game saved."));
         document.getElementById("btnMenuLoad")?.addEventListener("click", () => this.menuAction("/api/load", "Game loaded."));
         document.getElementById("btnMenuDelete")?.addEventListener("click", () => {
@@ -647,8 +683,7 @@ class CockpitApp {
             if (window.confirm(`Delete save slot '${slot}' permanently?`)) this.menuAction("/api/delete-save", "Save deleted.");
         });
         document.getElementById("btnMenuNew")?.addEventListener("click", () => {
-            const slot = this.getSelectedSaveSlot();
-            if (window.confirm(`Start a new game in slot '${slot}'?`)) this.menuAction("/api/new-game", "New game started.");
+            this.openCharacterCreation();
         });
         document.getElementById("btnMenuSettings")?.addEventListener("click", () => this.openSettings());
         document.getElementById("saveSlotInput")?.addEventListener("input", (e) => {
@@ -660,7 +695,6 @@ class CockpitApp {
                 this.setSelectedSaveSlot(slot, true);
             });
         });
-        document.getElementById("btnSendMessage")?.addEventListener("click", () => this.handleSendMessage());
         this.btnLandTarget?.addEventListener("click", () => this.handleLandAction());
         this.btnSalvageTarget?.addEventListener("click", () => this.handleSalvage());
         this.btnScoopFuel?.addEventListener("click", () => this.handleScoop());
@@ -680,7 +714,90 @@ class CockpitApp {
             this.btnResetCadetAcademy.addEventListener("click", () => this.handleResetCadet());
         }
 
+        // Character Creation Functions (defined before use)
+        this.setupCharacterCreation = function() {
+            this.charCreationOverlay = document.getElementById("characterCreationOverlay");
+            this.charPoints2 = 20;
+            this.charAttrs = { piloting: 5, engineering: 5, science: 5, combat: 5, diplomacy: 5, trade: 5 };
+
+            document.getElementById("btnCloseCharCreation")?.addEventListener("click", () => this.closeCharacterCreation());
+            document.getElementById("btnCharNext1")?.addEventListener("click", () => this.charStep(1, 2));
+            document.getElementById("btnCharBack2")?.addEventListener("click", () => this.charStep(2, 1));
+            document.getElementById("btnCharCreate")?.addEventListener("click", () => this.createCharacter());
+        }.bind(this);
+
+        this.setupCharacterCreation();
+
         // Combat Buttons
+
+        this.openCharacterCreation = function() {
+            this.closeMainMenu();
+            this.charCreationOverlay.style.display = "flex";
+            this.charStep(0, 1);
+            this.renderAttrGrid();
+        }.bind(this);
+
+        this.closeCharacterCreation = function() {
+            this.charCreationOverlay.style.display = "none";
+        }.bind(this);
+
+        this.charStep = function(from, to) {
+            const fromStep = document.getElementById(`charStep${from}`);
+            const toStep = document.getElementById(`charStep${to}`);
+            if (fromStep) fromStep.style.display = "none";
+            if (toStep) toStep.style.display = "flex";
+        }.bind(this);
+
+        this.renderAttrGrid = function() {
+            const grid = document.getElementById("attrGrid");
+            if (!grid) return;
+            const attrLabels = { piloting: "PILOTING", engineering: "ENGINEERING", science: "SCIENCE", combat: "COMBAT", diplomacy: "DIPLOMACY", trade: "TRADE" };
+            grid.innerHTML = Object.entries(this.charAttrs).map(([attr, val]) => `
+                <div class="attr-item">
+                    <label>${attrLabels[attr]}</label>
+                    <div class="attr-controls">
+                        <button class="attr-btn" id="attrMinus-${attr}" ${val <= 1 ? "disabled" : ""}>−</button>
+                        <span class="attr-value" id="attrVal-${attr}">${val}</span>
+                        <button class="attr-btn" id="attrPlus-${attr}" ${val >= 10 || this.charPoints2 <= 0 ? "disabled" : ""}>+</button>
+                    </div>
+                </div>
+            `).join("");
+            document.getElementById("charPointsRemaining2").textContent = this.charPoints2;
+        }.bind(this);
+
+        this.adjustAttr = function(attr, delta) {
+            const current = this.charAttrs[attr];
+            if (delta > 0) {
+                if (current >= 10 || this.charPoints2 <= 0) return;
+                this.charAttrs[attr]++;
+                this.charPoints2--;
+            } else {
+                if (current <= 1) return;
+                this.charAttrs[attr]--;
+                this.charPoints2++;
+            }
+            document.getElementById(`attrVal-${attr}`).textContent = this.charAttrs[attr];
+            document.getElementById(`attrMinus-${attr}`).disabled = this.charAttrs[attr] <= 1;
+            document.getElementById(`attrPlus-${attr}`).disabled = this.charAttrs[attr] >= 10 || this.charPoints2 <= 0;
+            document.getElementById("charPointsRemaining2").textContent = this.charPoints2;
+        }.bind(this);
+
+        this.createCharacter = async function() {
+            const name = document.getElementById("charName").value.trim() || "Commander";
+            const age = parseInt(document.getElementById("charAge").value) || 30;
+            const background = document.getElementById("charBackground").value;
+            const slot = this.getSelectedSaveSlot();
+
+            const json = await this.postAction("/api/new-game", {
+                profile: { name, age, background, skills: this.charAttrs },
+                slot
+            }, null);
+            if (json.ok) {
+                this.gameStarted = true;
+                this.closeCharacterCreation();
+                this.closeMainMenu();
+            }
+        }.bind(this);
         this.btnCombatFire.addEventListener("click", () => this.handleCombat("fire_lasers"));
         if (this.btnCombatDrone) {
             this.btnCombatDrone.addEventListener("click", () => this.handleCombat("drone_strike"));
@@ -923,17 +1040,17 @@ class CockpitApp {
         }
 
         const tabButtons = {
-            market: this.tabBtnMarket, arsenal: this.tabBtnArsenal, shipmods: this.tabBtnShipMods, fleet: this.tabBtnFleet,
+            market: this.tabBtnMarket, arsenal: this.tabBtnArsenal, ship: this.tabBtnShip, fleet: this.tabBtnFleet,
             contracts: this.tabBtnContracts, story: this.tabBtnStory, factions: this.tabBtnFactions,
             quests: this.tabBtnQuests, ai: this.tabBtnAI, depot: this.tabBtnDepot, messages: this.tabBtnMessages,
-            character: this.tabBtnCharacter, empire: this.tabBtnEmpire, codex: this.tabBtnCodex,
+            player: this.tabBtnPlayer, skills: this.tabBtnSkills, crew: this.tabBtnCrew, empire: this.tabBtnEmpire, codex: this.tabBtnCodex,
         };
 
         const tabContents = {
-            market: this.tabContentMarket, arsenal: this.tabContentArsenal, shipmods: this.tabContentShipMods, fleet: this.tabContentFleet,
+            market: this.tabContentMarket, arsenal: this.tabContentArsenal, ship: this.tabContentShip, fleet: this.tabContentFleet,
             contracts: this.tabContentContracts, story: this.tabContentStory, factions: this.tabContentFactions,
             quests: this.tabContentQuests, ai: this.tabContentAI, depot: this.tabContentDepot, messages: this.tabContentMessages,
-            character: this.tabContentCharacter, empire: this.tabContentEmpire, codex: this.tabContentCodex,
+            player: this.tabContentPlayer, skills: this.tabContentSkills, crew: this.tabContentCrew, empire: this.tabContentEmpire, codex: this.tabContentCodex,
         };
 
         // If clicking the already open tab, toggle the drawer closed
@@ -964,8 +1081,10 @@ class CockpitApp {
 
         if (tabName === "market") this.renderMarketTable();
         if (tabName === "arsenal") this.renderArsenal();
-        if (tabName === "shipmods") this.renderShipMods();
-        if (tabName === "character") this.renderCharacter();
+        if (tabName === "ship") this.renderShip();
+        if (tabName === "player") this.renderPlayer();
+        if (tabName === "skills") this.renderSkills();
+        if (tabName === "crew") this.renderCrew();
         if (tabName === "empire") this.renderEmpire();
         if (tabName === "codex") this.renderCodex();
         if (tabName === "fleet") this.renderFleet();
@@ -1020,7 +1139,7 @@ class CockpitApp {
     }
 
     async refreshState(silent = false) {
-        if (this.refreshInFlight || document.hidden) return;
+        if (this.refreshInFlight || document.hidden || !this.gameStarted) return;
         this.refreshInFlight = true;
         try {
             const res = await fetch("/api/state");
@@ -1053,6 +1172,16 @@ class CockpitApp {
 
     renderHUD() {
         if (!this.state) return;
+        
+        // Safety: if state somehow loaded but game not started, show menu
+        if (!this.gameStarted) {
+            this.openMainMenu();
+            return;
+        }
+        
+        // Check for death
+        this.checkDeath();
+        
         const ship = this.state.ship;
         const curSys = this.state.current_system;
         const orbBody = this.state.orbiting_body;
@@ -1330,10 +1459,14 @@ class CockpitApp {
             }
         } else if (this.activeRightTab === "arsenal") {
             this.renderArsenal();
-        } else if (this.activeRightTab === "shipmods") {
-            this.renderShipMods();
-        } else if (this.activeRightTab === "character") {
-            this.renderCharacter();
+        } else if (this.activeRightTab === "ship") {
+            this.renderShip();
+        } else if (this.activeRightTab === "player") {
+            this.renderPlayer();
+        } else if (this.activeRightTab === "skills") {
+            this.renderSkills();
+        } else if (this.activeRightTab === "crew") {
+            this.renderCrew();
         } else if (this.activeRightTab === "codex") {
             this.renderCodex();
         } else if (this.activeRightTab === "empire") {
@@ -1360,6 +1493,102 @@ class CockpitApp {
 
         this.renderEventPopups();
         this.updateTargetCard();
+    }
+
+    checkDeath() {
+        if (!this.state || !this.state.ship || !this.deathOverlay) return;
+        const ship = this.state.ship;
+        if (ship.hull > 0 || this.deathOverlay.style.display === "flex") return;
+        this.showDeathOverlay();
+    }
+
+    showDeathOverlay() {
+        if (!this.deathOverlay) return;
+        
+        const ship = this.state.ship;
+        const ch = this.state.character || {};
+        const stats = this.state.stats || {};
+        
+        const deathMessages = [
+            "Your hull shattered against the unforgiving void.",
+            "The darkness claims another wanderer.",
+            "Silence falls across the comms. You are lost.",
+            "A flash of light, then nothing. The end.",
+            "Your atoms scatter across the solar wind.",
+            "The galaxy forgets you in a heartbeat."
+        ];
+        
+        const deathTitles = [
+            "COMMANDER LOST IN THE VOID",
+            "HULL BREACH - ALL HANDS LOST",
+            "SIGNAL TERMINATED",
+            "VOIDFARER DESTROYED",
+            "LAST TRANSMISSION RECEIVED",
+            "EXPEDITION ENDED"
+        ];
+        
+        const msg = deathMessages[Math.floor(Math.random() * deathMessages.length)];
+        const title = deathTitles[Math.floor(Math.random() * deathTitles.length)];
+        
+        this.deathTitle.textContent = title;
+        this.deathMessage.textContent = msg;
+        
+        this.deathStats.innerHTML = `
+            <div class="death-stat">
+                <span class="death-stat-label">Sectors Explored</span>
+                <span class="death-stat-value">${stats.jumps || 0}</span>
+            </div>
+            <div class="death-stat">
+                <span class="death-stat-label">Credits Earned</span>
+                <span class="death-stat-value">${(ch.credits_earned || 0).toLocaleString()}</span>
+            </div>
+            <div class="death-stat">
+                <span class="death-stat-label">Enemies Destroyed</span>
+                <span class="death-stat-value">${stats.combat_victories || 0}</span>
+            </div>
+            <div class="death-stat">
+                <span class="death-stat-label">Anomalies Resolved</span>
+                <span class="death-stat-value">${stats.anomalies_resolved || 0}</span>
+            </div>
+            <div class="death-stat">
+                <span class="death-stat-label">Systems Visited</span>
+                <span class="death-stat-value">${stats.systems_visited || 0}</span>
+            </div>
+            <div class="death-stat">
+                <span class="death-stat-label">Expedition Duration</span>
+                <span class="death-stat-value">${this.formatPlaytime(this.state.time?.tick || 0)}</span>
+            </div>
+        `;
+        
+        this.deathOverlay.style.display = "flex";
+        this.sound.playAlarm();
+        
+        // Death overlay buttons
+        this.btnDeathNewGame.onclick = () => {
+            this.hideDeathOverlay();
+            this.openCharacterCreation();
+        };
+        this.btnDeathLoadSave.onclick = () => {
+            this.hideDeathOverlay();
+            this.openMainMenu();
+        };
+        this.btnDeathMainMenu.onclick = () => {
+            this.hideDeathOverlay();
+            this.openMainMenu();
+        };
+    }
+
+    hideDeathOverlay() {
+        if (this.deathOverlay) {
+            this.deathOverlay.style.display = "none";
+        }
+    }
+
+    formatPlaytime(ticks) {
+        if (!ticks) return "00:00";
+        const hours = Math.floor(ticks / 3600);
+        const minutes = Math.floor((ticks % 3600) / 60);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     }
 
     renderStory() {
@@ -1680,68 +1909,6 @@ class CockpitApp {
         }
     }
 
-    renderShipMods() {
-        if (!this.state || !this.shipModsList) return;
-        const info = this.state.ship_mods || {};
-        const slots = info.slots || [];
-        const labels = info.slot_labels || {};
-        const installed = info.installed || {};
-        const catalog = info.catalog || [];
-        const docked = !!(this.state.orbiting_body && this.state.orbiting_body.station_dockable);
-        const credits = this.state.ship.credits;
-
-        if (this.shipModSlotGrid) {
-            this.shipModSlotGrid.innerHTML = "";
-            slots.forEach(slot => {
-                const modId = installed[slot];
-                const mod = catalog.find(m => m.id === modId);
-                const card = document.createElement("div");
-                card.className = `shipmod-slot ${mod ? "" : "empty"}`;
-                card.innerHTML = `
-                    <span class="slot-name">${this.escapeHtml(labels[slot] || slot).toUpperCase()}</span>
-                    <span class="slot-mod">${mod ? this.escapeHtml(mod.name) : "EMPTY SLOT"}</span>
-                    ${mod ? `<button class="btn-hud btn-amber mod-remove" data-slot="${this.escapeHtml(slot)}" ${docked ? "" : "disabled"}>REMOVE</button>` : ""}
-                `;
-                const removeBtn = card.querySelector(".mod-remove");
-                if (removeBtn) removeBtn.addEventListener("click", () => this.handleRemoveShipMod(slot));
-                this.shipModSlotGrid.appendChild(card);
-            });
-        }
-
-        this.shipModsList.innerHTML = "";
-        catalog.forEach(mod => {
-            const isInstalled = installed[mod.slot] === mod.id;
-            const slotBusy = installed[mod.slot] && installed[mod.slot] !== mod.id;
-            const card = document.createElement("div");
-            card.className = `shipmod-card ${isInstalled ? "installed" : ""}`;
-            const effects = Object.entries(mod.effects || {}).map(([key, value]) => {
-                const negative = value < 0;
-                return `<span class="shipmod-effect ${negative ? "negative" : ""}">${this.escapeHtml(this.formatEffectLabel(key, value))}</span>`;
-            }).join("");
-            card.innerHTML = `
-                <div class="shipmod-title-row">
-                    <strong class="shipmod-name">${this.escapeHtml(mod.name)}</strong>
-                    <button class="btn-upgrade-buy" ${isInstalled || slotBusy || !docked || credits < mod.cost ? "disabled" : ""} data-id="${this.escapeHtml(mod.id)}">
-                        ${isInstalled ? "INSTALLED" : (slotBusy ? "SLOT OCCUPIED" : `${mod.cost} CR`)}
-                    </button>
-                </div>
-                <p class="shipmod-desc">${this.escapeHtml(mod.description)}</p>
-                <div class="shipmod-effects">${effects}</div>
-            `;
-            if (!isInstalled && !slotBusy) {
-                card.querySelector(".btn-upgrade-buy").addEventListener("click", () => this.handleInstallShipMod(mod.id));
-            }
-            this.shipModsList.appendChild(card);
-        });
-        if (!docked) {
-            const notice = document.createElement("p");
-            notice.className = "panel-intro-text";
-            notice.style.color = "var(--neon-amber)";
-            notice.textContent = "Orbit a station or colony drydock to install or remove structural modifications.";
-            this.shipModsList.prepend(notice);
-        }
-    }
-
     formatEffectLabel(key, value) {
         const names = {
             max_hull: "HULL", max_shield: "SHIELD", cargo_capacity: "CARGO", fuel_efficiency: "FUEL BURN",
@@ -1765,27 +1932,35 @@ class CockpitApp {
         return `${label} ${value >= 0 ? "+" : ""}${Math.round(value)}`;
     }
 
-    renderCharacter() {
-        if (!this.state || !this.characterSummary) return;
+    renderPlayer() {
+        if (!this.state || !this.characterProfile) return;
         const ch = this.state.character || {};
         const skillPoints = ch.skill_points || 0;
-        this.characterSummary.innerHTML = `
-            <div class="commander-portrait">${this.portraitAvatar(ch.portrait, ch.name || "Commander")}</div>
-            <div>
-                <strong>${this.escapeHtml(ch.name || "Commander")}</strong><br>
-                Age ${ch.age || 31} | Level ${ch.level || 1} | XP ${ch.xp || 0}/${ch.next_level_xp || 400} | Skill points ${skillPoints}
+        const xp = ch.xp || 0;
+        const nextXp = ch.next_level_xp || 400;
+        const xpPct = Math.min(100, (xp / nextXp) * 100);
+        const skills = ch.skills || {};
+        const traits = ch.traits || [];
+
+        this.characterProfile.innerHTML = `
+            <div class="character-portrait-large">${this.portraitAvatar(ch.portrait, ch.name || "Player", 60)}</div>
+            <div class="character-info">
+                <div class="character-name-row">
+                    <span class="character-name">${this.escapeHtml(ch.name || "Player")}</span>
+                </div>
+                <div class="character-meta">
+                    <span>Age ${ch.age || 30}</span>
+                    <span>${this.escapeHtml(ch.background || "Navigator")}</span>
+                    <span>${skillPoints} SP AVAILABLE</span>
+                </div>
+                <div class="character-xp-row">
+                    <span class="character-level">LEVEL ${ch.level || 1}</span>
+                    <div class="character-xp-bar"><div class="character-xp-fill" style="width: ${xpPct}%"></div></div>
+                    <span class="character-xp-text" style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--neon-amber);">${xp}/${nextXp} XP</span>
+                </div>
             </div>
         `;
-        const skillNames = { piloting: "Piloting", engineering: "Engineering", science: "Science", combat: "Combat", diplomacy: "Diplomacy", trade: "Trade" };
-        this.characterSkills.innerHTML = Object.entries(ch.skills || {}).map(([id, level]) => `
-            <div class="skill-row">
-                <span>${this.escapeHtml(skillNames[id] || id)} <span class="rank">R${level}</span></span>
-                <button class="btn-hud" data-train-skill="${this.escapeHtml(id)}" ${skillPoints <= 0 ? "disabled" : ""}>TRAIN</button>
-            </div>
-        `).join("");
-        this.characterSkills.querySelectorAll("[data-train-skill]").forEach(btn =>
-            btn.addEventListener("click", () => this.postAction("/api/character/train", { skill: btn.getAttribute("data-train-skill") }, "character"))
-        );
+
         const abilities = Object.entries(this.state.character_abilities || {});
         const unlocked = new Set(ch.abilities || []);
         const cooldowns = ch.ability_cooldowns || {};
@@ -1801,8 +1976,237 @@ class CockpitApp {
         this.characterAbilities.querySelectorAll("[data-use-ability]").forEach(btn =>
             btn.addEventListener("click", () => this.postAction("/api/character/ability", { ability_id: btn.getAttribute("data-use-ability") }, "character"))
         );
+
+        if (this.characterSkills) {
+            this.characterSkills.innerHTML = `
+                <h4>SKILLS</h4>
+                <div class="skills-summary-grid">
+                    ${Object.entries(skills).map(([id, level]) => `
+                        <span class="skill-summary-chip">${this.escapeHtml(id.toUpperCase())} ${level}</span>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        this.characterPerks.innerHTML = `
+            <h4>TRAITS</h4>
+            <div class="perks-list">
+                ${traits.length
+                    ? traits.map(t => `<span class="perk-badge active">${this.escapeHtml(String(t).replace(/_/g, " "))}</span>`).join("")
+                    : `<span class="perk-badge">NO TRAITS RECORDED</span>`}
+            </div>
+        `;
+    }
+
+    renderSkills() {
+        if (!this.state || !this.skillsGrid) return;
+        const ch = this.state.character || {};
+        const skillPoints = ch.skill_points || 0;
+        const skills = ch.skills || { piloting: 0, engineering: 0, science: 0, combat: 0, diplomacy: 0, trade: 0 };
+        const skillNames = { piloting: "Piloting", engineering: "Engineering", science: "Science", combat: "Combat", diplomacy: "Diplomacy", trade: "Trade" };
+        const skillDescs = {
+            piloting: "Improves sublight maneuverability, warp efficiency, and evasion.",
+            engineering: "Boosts repair speed, shield recharge, and module efficiency.",
+            science: "Increases scan range, research speed, and anomaly rewards.",
+            combat: "Enhances weapon damage, targeting, and combat abilities.",
+            diplomacy: "Improves standing gains, trade prices, and crew morale.",
+            trade: "Increases cargo capacity, buy/sell margins, and depot efficiency."
+        };
+        const maxRank = 10;
+
+        this.skillsGrid.innerHTML = Object.entries(skills).map(([id, level]) => `
+            <div class="skill-card">
+                <div class="skill-header">
+                    <span class="skill-name">${this.escapeHtml(skillNames[id])}</span>
+                    <span class="skill-level">${level}/${maxRank}</span>
+                </div>
+                <div class="skill-bar">
+                    <div class="skill-bar-fill" style="width: ${(level / maxRank) * 100}%"></div>
+                </div>
+                <div class="skill-desc">${this.escapeHtml(skillDescs[id])}</div>
+                <div class="skill-train-row">
+                    <span class="skill-train-cost">Cost: 1 SP</span>
+                    <button class="btn-train-skill" data-train-skill="${this.escapeHtml(id)}" ${skillPoints <= 0 || level >= maxRank ? "disabled" : ""}>TRAIN</button>
+                </div>
+            </div>
+        `).join("");
+
+        this.skillsGrid.querySelectorAll("[data-train-skill]").forEach(btn =>
+            btn.addEventListener("click", () => this.postAction("/api/character/train", { skill: btn.getAttribute("data-train-skill") }, "character"))
+        );
+
+        if (this.skillsPointsAvailable) {
+            this.skillsPointsAvailable.textContent = skillPoints;
+        }
+
+        const traits = ch.traits || [];
+        if (this.skillsPerksList) {
+            this.skillsPerksList.innerHTML = traits.length
+                ? traits.map(t => `<span class="skill-perk-badge active">${this.escapeHtml(String(t).replace(/_/g, " "))}</span>`).join("")
+                : `<span class="skill-perk-badge">NO TRAITS RECORDED</span>`;
+        }
+    }
+
+    renderShip() {
+        if (!this.state || !this.shipVisual) return;
+        const ship = this.state.ship || {};
+        const report = this.state.ship_mods || {};
+        const slots = report.slots || [];
+        const labels = report.slot_labels || {};
+        const installed = report.installed || {};
+        const catalog = report.catalog || [];
+        const docked = !!(this.state.orbiting_body && this.state.orbiting_body.station_dockable);
+        const credits = ship.credits || 0;
+
+        const shipClass = String(ship.ship_class || "Corvette Scout");
+        const silhouettes = {
+            standard: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#00f0ff;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#0080ff;stop-opacity:0.6"/></linearGradient></defs><path d="M280,60 L20,10 L20,110 Z" fill="url(#shipGrad)" stroke="#00f0ff" stroke-width="2"/><circle cx="260" cy="60" r="8" fill="#ffaa00" opacity="0.8"/><rect x="20" y="40" width="60" height="40" fill="#1a2a4a" stroke="#00f0ff" stroke-width="1" rx="4"/></svg>`,
+            freighter: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ffaa00;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#ff8800;stop-opacity:0.6"/></linearGradient></defs><path d="M260,55 L20,10 L20,110 L260,65 Z" fill="url(#shipGrad)" stroke="#ffaa00" stroke-width="2"/><rect x="30" y="25" width="200" height="70" fill="#2a2a1a" stroke="#ffaa00" stroke-width="1" rx="6"/><circle cx="240" cy="60" r="10" fill="#00f0ff" opacity="0.8"/></svg>`,
+            fighter: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff3355;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#cc0033;stop-opacity:0.6"/></linearGradient></defs><path d="M290,60 L20,10 L20,110 Z" fill="url(#shipGrad)" stroke="#ff3355" stroke-width="2"/><path d="M270,60 L290,70 L270,80 Z" fill="#ff3355" opacity="0.8"/><rect x="20" y="45" width="40" height="30" fill="#3a1a1a" stroke="#ff3355" stroke-width="1" rx="3"/></svg>`,
+            explorer: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#c77dff;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#7209b7;stop-opacity:0.6"/></linearGradient></defs><path d="M270,60 L30,15 L30,105 Z" fill="url(#shipGrad)" stroke="#c77dff" stroke-width="2"/><ellipse cx="30" cy="60" rx="20" ry="15" fill="#2a1a3a" stroke="#c77dff" stroke-width="1"/><circle cx="250" cy="60" r="6" fill="#00ffaa" opacity="0.8"/></svg>`,
+            stealth: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#444;stop-opacity:0.9"/><stop offset="100%" style="stop-color:#111;stop-opacity:0.7"/></linearGradient></defs><path d="M280,60 L30,10 L30,110 Z" fill="url(#shipGrad)" stroke="#666" stroke-width="1.5"/><path d="M260,60 L270,65 L260,70" fill="none" stroke="#00ffaa" stroke-width="2" opacity="0.6"/></svg>`
+        };
+        const silhouette = /freight|cargo/i.test(shipClass) ? "freighter"
+            : /fighter|intercept/i.test(shipClass) ? "fighter"
+            : /explor|survey/i.test(shipClass) ? "explorer"
+            : /stealth|ghost/i.test(shipClass) ? "stealth"
+            : "standard";
+        this.shipVisual.innerHTML = silhouettes[silhouette];
+
+        const slotPositions = {
+            frame: { top: "50%", left: "20%" },
+            reactor_core: { top: "45%", left: "48%" },
+            thermal: { top: "25%", left: "62%" },
+            drive: { top: "72%", left: "72%" },
+            ops: { top: "25%", left: "32%" }
+        };
+
+        slots.forEach(slot => {
+            const position = slotPositions[slot] || { top: "50%", left: "50%" };
+            const modId = installed[slot];
+            const mod = catalog.find(m => m.id === modId);
+            const slotDiv = document.createElement("div");
+            slotDiv.className = `ship-module-slot ${mod ? "filled" : "empty"}`;
+            slotDiv.style.top = position.top;
+            slotDiv.style.left = position.left;
+            slotDiv.dataset.slot = slot;
+            slotDiv.innerHTML = mod
+                ? `<span class="ship-module-icon">?</span><span class="ship-module-name">${this.escapeHtml(mod.name)}</span>`
+                : `<span class="ship-module-icon">+</span><span class="ship-module-name">${this.escapeHtml(labels[slot] || slot)}</span>`;
+            slotDiv.title = mod
+                ? `${mod.name}: ${mod.description}`
+                : `${labels[slot] || slot} ? pick a compatible module below`;
+            slotDiv.addEventListener("click", () => {
+                if (mod) {
+                    this.handleModuleAction(mod.id, "uninstall");
+                } else {
+                    this.appendLog(`[SHIP] Select a ${labels[slot] || slot} module from the list below.`, "system");
+                }
+            });
+            this.shipVisual.appendChild(slotDiv);
+        });
+
+        if (this.shipModulesGrid) {
+            this.shipModulesGrid.innerHTML = catalog.length ? catalog.map(mod => {
+                const isInstalled = installed[mod.slot] === mod.id;
+                const slotBusy = Boolean(installed[mod.slot]) && installed[mod.slot] !== mod.id;
+                const disabled = !docked || (!isInstalled && (slotBusy || credits < mod.cost));
+                const effects = Object.entries(mod.effects || {})
+                    .map(([key, value]) => `<span class="ship-module-stat">${this.escapeHtml(this.formatEffectLabel(key, value))}</span>`)
+                    .join("");
+                return `
+                    <div class="ship-module-card ${isInstalled ? "installed" : ""}" data-module="${this.escapeHtml(mod.id)}">
+                        <div class="ship-module-card-header">
+                            <span class="ship-module-card-name">${this.escapeHtml(mod.name)}</span>
+                            <span class="ship-module-card-status ${isInstalled ? "installed" : "available"}">${isInstalled ? "INSTALLED" : (slotBusy ? "SLOT OCCUPIED" : `${mod.cost} CR`)}</span>
+                        </div>
+                        <div class="ship-module-card-desc">${this.escapeHtml(mod.description)}</div>
+                        <div class="ship-module-card-stats">${effects}</div>
+                        <button class="btn-hud ${isInstalled ? "btn-amber" : "btn-cyan"}" data-action="${isInstalled ? "uninstall" : "install"}" ${disabled ? "disabled" : ""}>${isInstalled ? "REMOVE" : "INSTALL"}</button>
+                    </div>
+                `;
+            }).join("") : `<p class="panel-intro-text">No structural refits are available.</p>`;
+            this.shipModulesGrid.querySelectorAll("[data-module]").forEach(card => {
+                const button = card.querySelector("[data-action]");
+                if (button) {
+                    button.addEventListener("click", () => this.handleModuleAction(card.dataset.module, button.dataset.action));
+                }
+            });
+        }
+
+        if (this.shipStatsPanel) {
+            const cargo = Object.values(ship.cargo || {}).reduce((sum, quantity) => sum + Number(quantity || 0), 0);
+            const rows = [
+                ["Hull", `${ship.hull || 0}/${ship.max_hull || 0}`],
+                ["Shield", `${ship.shield || 0}/${ship.max_shield || 0}`],
+                ["Fuel", `${ship.fuel || 0}/${ship.max_fuel || 0}`],
+                ["Cargo", `${cargo}/${ship.cargo_capacity || 0}`],
+                ["Class", shipClass.toUpperCase()],
+                ["Modules", `${Object.keys(installed).length}/${slots.length || 0}`]
+            ];
+            this.shipStatsPanel.innerHTML = `
+                <h4>SHIP STATISTICS</h4>
+                <div class="ship-stats-grid">
+                    ${rows.map(([label, value]) => `
+                        <div class="ship-stat-item">
+                            <span class="ship-stat-label">${label}</span>
+                            <span class="ship-stat-value">${this.escapeHtml(String(value))}</span>
+                        </div>
+                    `).join("")}
+                </div>
+                ${docked ? "" : `<p class="panel-intro-text" style="color: var(--neon-amber);">Orbit a station or colony drydock to install or remove structural modifications.</p>`}
+            `;
+        }
+    }
+
+    handleModuleAction(modId, action) {
+        this.postAction("/api/ship/module", { module_id: modId, action }, "ship");
+    }
+
+    renderCrew() {
+        if (!this.state) return;
+        const crew = this.state.crew || [];
+        const bonuses = this.state.crew_bonuses || {};
+        const roles = this.state.crew_roles || [];
+        const bonusLabels = {
+            fuel_efficiency: "FUEL EFFICIENCY",
+            evasion: "EVASION",
+            reactor_cooling: "COOLING",
+            hull_repair_per_tick: "HULL REPAIR/TICK",
+            scan_mult: "SCAN RANGE",
+            research_per_tick: "RESEARCH/TICK",
+            combat_damage: "COMBAT DAMAGE",
+            trade_margin: "TRADE MARGIN",
+            boarding_defense: "BOARDING DEFENSE"
+        };
+
+        if (this.crewAssignments) {
+            const bonusChips = Object.entries(bonuses)
+                .filter(([, value]) => value !== 0 && value !== 1)
+                .map(([key, value]) => {
+                    const pct = ["fuel_efficiency", "evasion", "scan_mult", "trade_margin", "boarding_defense"].includes(key);
+                    const display = pct
+                        ? `${value > 0 && key !== "fuel_efficiency" ? "+" : ""}${Math.round((value - (key === "fuel_efficiency" || key === "scan_mult" ? 1 : 0)) * 100)}%`
+                        : `${value > 0 ? "+" : ""}${Math.round(value * 10) / 10}`;
+                    return `<span class="crew-bonus-chip">${this.escapeHtml(bonusLabels[key] || key)} ${display}</span>`;
+                })
+                .join("");
+            this.crewAssignments.innerHTML = `
+                <h4>ACTIVE CREW BONUSES</h4>
+                <div class="crew-bonus-grid">${bonusChips || `<span class="crew-bonus-chip">NO ACTIVE BONUSES</span>`}</div>
+                <h4>AVAILABLE ROLES</h4>
+                <div class="crew-role-grid">
+                    ${roles.map(role => `
+                        <div class="crew-role-row">
+                            <span><strong>${this.escapeHtml(role.name)}</strong><br><small>${this.escapeHtml(role.description)}</small></span>
+                            <span class="crew-role-cost">${role.cost} CR</span>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+        }
+
         if (this.crewRoster) {
-            const crew = this.state.crew || [];
             this.crewRoster.innerHTML = crew.length ? crew.map(m => `
                 <div class="crew-row">
                     <div class="crew-portrait">${this.portraitAvatar(m.portrait, m.name)}</div>
@@ -1812,26 +2216,27 @@ class CockpitApp {
                 </div>
             `).join("") : `<p class="panel-intro-text">No crew aboard. Dock at a station and recruit specialists.</p>`;
             this.crewRoster.querySelectorAll("[data-train-crew]").forEach(btn =>
-                btn.addEventListener("click", () => this.postAction("/api/crew/train", { crew_id: btn.getAttribute("data-train-crew") }, "character"))
+                btn.addEventListener("click", () => this.postAction("/api/crew/train", { crew_id: btn.getAttribute("data-train-crew") }, "crew"))
             );
             this.crewRoster.querySelectorAll("[data-dismiss-crew]").forEach(btn =>
-                btn.addEventListener("click", () => this.postAction("/api/crew/dismiss", { crew_id: btn.getAttribute("data-dismiss-crew") }, "character"))
+                btn.addEventListener("click", () => this.postAction("/api/crew/dismiss", { crew_id: btn.getAttribute("data-dismiss-crew") }, "crew"))
             );
         }
     }
 
-    portraitAvatar(portraitId, name) {
+    portraitAvatar(portraitId, name, size = 40) {
         const palette = ["#00f0ff", "#ffaa00", "#cc66ff", "#00ff99", "#ff6677", "#66aaff"];
         const key = String(portraitId || name || "crew");
         let hash = 0;
         for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
         const color = palette[Math.abs(hash) % palette.length];
         const initials = String(name || "?").split(/\s+/).map(p => p[0] || "").slice(0, 2).join("").toUpperCase();
-        return `<svg viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="${this.escapeHtml(name || "portrait")}">
+        const fontSize = Math.max(6, size * 0.2);
+        return `<svg viewBox="0 0 40 40" width="${size}" height="${size}" role="img" aria-label="${this.escapeHtml(name || "portrait")}">
             <circle cx="20" cy="20" r="18" fill="rgba(0,0,0,.55)" stroke="${color}" stroke-width="1.5"></circle>
             <circle cx="20" cy="15" r="6" fill="${color}" opacity="0.8"></circle>
             <path d="M8 34 Q20 22 32 34" fill="none" stroke="${color}" stroke-width="2" opacity="0.7"></path>
-            <text x="20" y="26" text-anchor="middle" font-size="8" fill="#fff" font-family="monospace">${initials}</text>
+            <text x="20" y="26" text-anchor="middle" font-size="${fontSize}" fill="#fff" font-family="monospace">${initials}</text>
         </svg>`;
     }
 
@@ -2391,49 +2796,6 @@ class CockpitApp {
         }
     }
 
-    async handleInstallShipMod(modId) {
-        this.sound.init();
-        try {
-            const res = await fetch("/api/shipmods/install", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mod_id: modId })
-            });
-            const json = await res.json();
-            if (json.ok) {
-                this.sound.playChime();
-                this.appendLog(json.message, "reward");
-                this.state = json.state;
-                this.renderHUD();
-            } else {
-                this.appendLog(`[ERROR] ${json.message}`, "hazard");
-            }
-        } catch (e) {
-            this.appendLog(`[ERROR] Ship modification failed: ${e.message}`, "hazard");
-        }
-    }
-
-    async handleRemoveShipMod(slot) {
-        this.sound.init();
-        try {
-            const res = await fetch("/api/shipmods/remove", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slot })
-            });
-            const json = await res.json();
-            if (json.ok) {
-                this.appendLog(json.message, "reward");
-                this.state = json.state;
-                this.renderHUD();
-            } else {
-                this.appendLog(`[ERROR] ${json.message}`, "hazard");
-            }
-        } catch (e) {
-            this.appendLog(`[ERROR] Ship modification removal failed: ${e.message}`, "hazard");
-        }
-    }
-
     async handleReactorMode(mode) {
         this.sound.init();
         try {
@@ -2797,39 +3159,16 @@ class CockpitApp {
     updateTargetCard() {
         if (!this.state) return;
         const travel = this.state.ship?.travel || this.state.travel || null;
+        const targetCard = document.getElementById("navTargetCard");
+        
         if (!this.selectedTarget) {
-            this.targetType.textContent = travel
-                ? `IN TRANSIT (${travel.mode.toUpperCase()}) -> ${travel.destination_body_id.toUpperCase()}`
-                : "TARGET: NONE SELECTED";
-            this.targetName.textContent = "Select a celestial body on radar";
-            this.targetDist.textContent = "--";
-            this.targetDesc.textContent = "Click on any planet, station, or star in the radar display to calculate orbital approach.";
-            this.btnOrbitTarget.style.display = "inline-block";
-            this.btnOrbitTarget.disabled = true;
-            if (this.btnSublightTarget) {
-                this.btnSublightTarget.style.display = "inline-block";
-                this.btnSublightTarget.disabled = true;
-            }
-            if (this.btnQuantumTarget) {
-                this.btnQuantumTarget.style.display = "inline-block";
-                this.btnQuantumTarget.disabled = true;
-            }
-            this.btnJumpTarget.style.display = "none";
-            if (this.btnLandTarget) this.btnLandTarget.style.display = "none";
-            if (this.btnSalvageTarget) this.btnSalvageTarget.style.display = "none";
-            if (this.btnScoopFuel) this.btnScoopFuel.style.display = "none";
-            if (this.salvageInfo) this.salvageInfo.style.display = "none";
-            this.targetGravity.textContent = "--";
-            this.targetAtmosphere.textContent = "--";
-            this.targetTemp.textContent = "--";
-            if (this.targetHabitability) this.targetHabitability.textContent = "--";
-            this.targetMoons.textContent = "--";
-            if (this.targetFaction) this.targetFaction.textContent = "--";
-            if (this.targetPopulation) this.targetPopulation.textContent = "--";
-            if (this.targetGovernment) this.targetGovernment.textContent = "--";
-            this.targetResources.innerHTML = "";
+            // Hide target card when nothing selected
+            if (targetCard) targetCard.style.display = "none";
             return;
         }
+        
+        // Show target card when target selected
+        if (targetCard) targetCard.style.display = "block";
 
         if (this.selectedType === "body") {
             const fresh = this.state.current_system.bodies.find(b => b.id === this.selectedTarget.id);
@@ -3175,7 +3514,7 @@ class CockpitApp {
         const systems = Object.values(this.galaxySystems);
         if (!systems.length) return;
 
-        const scale = 2.8 * this.zoom * this.radarScale();
+        const scale = 8.0 * this.zoom * this.radarScale();  // Increased from 2.8 for much bigger galaxy
 
         ctx.strokeStyle = "rgba(0, 240, 255, 0.25)";
         ctx.lineWidth = 1;
@@ -3209,30 +3548,30 @@ class CockpitApp {
             const isSelected = (this.selectedTarget && this.selectedTarget.id === s.id);
 
             ctx.beginPath();
-            ctx.arc(sx, sy, isCurrent ? 7 : 5, 0, Math.PI * 2);
+            ctx.arc(sx, sy, isCurrent ? 14 : 10, 0, Math.PI * 2);  // Increased from 7/5 to 14/10
             ctx.fillStyle = s.color || "#00f0ff";
             ctx.shadowColor = s.color || "#00f0ff";
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 16;  // Increased from 10
             ctx.fill();
             ctx.shadowBlur = 0;
 
             if (isCurrent) {
                 ctx.beginPath();
-                ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+                ctx.arc(sx, sy, 24, 0, Math.PI * 2);  // Increased from 12
                 ctx.strokeStyle = "#00ffaa";
-                ctx.lineWidth = 1.5;
+                ctx.lineWidth = 2;  // Increased from 1.5
                 ctx.stroke();
             }
 
             if (isSelected) {
                 ctx.strokeStyle = "#00f0ff";
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(sx - 10, sy - 10, 20, 20);
+                ctx.lineWidth = 2;
+                ctx.strokeRect(sx - 14, sy - 14, 28, 28);  // Increased from 10/20
             }
 
-            ctx.font = "11px 'Rajdhani'";
+            ctx.font = "13px 'Rajdhani'";  // Increased from 11px
             ctx.fillStyle = isCurrent ? "#00ffaa" : "#e6f1ff";
-            ctx.fillText(s.name, sx + 10, sy + 3);
+            ctx.fillText(s.name, sx + 16, sy + 4);  // Adjusted offset
         });
     }
 
@@ -3286,6 +3625,7 @@ class CockpitApp {
         const my = point.y;
         const cx = this.viewW / 2 + this.panX;
         const cy = this.viewH / 2 + this.panY;
+        let hit = false;
 
         if (this.viewMode === "ORBITS" && this.state) {
             const auScale = 45 * this.zoom * this.radarScale();
@@ -3300,6 +3640,7 @@ class CockpitApp {
                     this.selectedType = "body";
                     this.sound.playBeep(1000);
                     this.updateTargetCard();
+                    hit = true;
                     return;
                 }
             }
@@ -3313,9 +3654,17 @@ class CockpitApp {
                     this.selectedType = "system";
                     this.sound.playBeep(1000);
                     this.updateTargetCard();
+                    hit = true;
                     return;
                 }
             }
+        }
+
+        // Clicked on empty space - clear target
+        if (!hit) {
+            this.selectedTarget = null;
+            this.selectedType = null;
+            this.updateTargetCard();
         }
     }
     renderFactions() {
@@ -3576,6 +3925,7 @@ class CockpitApp {
                 this.closeMainMenu();
                 this.viewMode = "ORBITS";
                 this.selectedTarget = null;
+                this.gameStarted = true;
                 this.fetchGalaxy();
             }
             if (json.ok) this.sound.playChime();
@@ -3654,18 +4004,47 @@ class CockpitApp {
     }
 
     renderQuests() {
-        if (!this.state || !this.questsList) return;
+        if (!this.state) return;
         const quests = this.state.quests || [];
-        this.questsList.innerHTML = quests.length ? quests.map(q => {
-            const pct = q.target_count > 0 ? Math.min(100, Math.round((q.progress / q.target_count) * 100)) : 0;
-            return `<div class="quest-card">
-                <h4>${this.escapeHtml(q.title)}</h4>
-                <div>${this.escapeHtml(q.description)}</div>
-                <div>TYPE: ${this.escapeHtml(q.kind.toUpperCase())} // REWARD: ${this.escapeHtml(q.reward)}</div>
-                <div class="quest-progress"><div style="width:${pct}%"></div></div>
-                <div>${q.progress}/${q.target_count} ${q.completed ? "// COMPLETE" : ""}</div>
-            </div>`;
-        }).join("") : '<div class="quest-card">No active quests.</div>';
+        const completed = this.state.quests_completed || [];
+
+        // Active quests
+        if (this.questsList) {
+            this.questsList.innerHTML = quests.length ? quests.map(q => {
+                const pct = q.target_count > 0 ? Math.min(100, Math.round((q.progress / q.target_count) * 100)) : 0;
+                return `<div class="quest-card">
+                    <h4>${this.escapeHtml(q.title)}</h4>
+                    <div>${this.escapeHtml(q.description)}</div>
+                    <div>TYPE: ${this.escapeHtml(q.kind.toUpperCase())} // REWARD: ${this.escapeHtml(q.reward)}</div>
+                    <div class="quest-progress"><div style="width:${pct}%"></div></div>
+                    <div>${q.progress}/${q.target_count} ${q.completed ? "// COMPLETE" : ""}</div>
+                </div>`;
+            }).join("") : '<div class="quest-card">No active quests.</div>';
+        }
+
+        // Completed quests
+        if (this.questsCompletedList) {
+            this.questsCompletedList.innerHTML = completed.length ? completed.map(q => {
+                const rewards = q.rewards || {};
+                return `<div class="quest-completed-card">
+                    <div class="quest-completed-header">
+                        <span class="quest-completed-name">${this.escapeHtml(q.title)}</span>
+                        <span class="quest-completed-date">${this.formatDate(q.completed_at)}</span>
+                    </div>
+                    <div class="quest-completed-rewards">
+                        ${rewards.credits ? `<span class="quest-completed-reward credits">${rewards.credits} CR</span>` : ''}
+                        ${rewards.xp ? `<span class="quest-completed-reward xp">${rewards.xp} XP</span>` : ''}
+                        ${rewards.relic ? `<span class="quest-completed-reward relic">${this.escapeHtml(rewards.relic)}</span>` : ''}
+                    </div>
+                </div>`;
+            }).join("") : '<div class="quest-card">No completed quests yet.</div>';
+        }
+    }
+
+    formatDate(timestamp) {
+        if (!timestamp) return "Unknown";
+        const date = new Date(timestamp);
+        return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
     }
 
     renderAICaptains() {
@@ -3779,17 +4158,6 @@ class CockpitApp {
             this.messagesBadge.textContent = String(unread);
             this.messagesBadge.style.display = unread > 0 ? "inline-block" : "none";
         }
-    }
-
-    async handleSendMessage() {
-        const recipient = document.getElementById("messageRecipient")?.value || "";
-        const subject = document.getElementById("messageSubject")?.value || "";
-        const body = document.getElementById("messageBody")?.value || "";
-        await this.postAction("/api/messages/send", { recipient, subject, body }, "messages");
-        ["messageRecipient", "messageSubject", "messageBody"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = "";
-        });
     }
 
     async handleLandAction() {

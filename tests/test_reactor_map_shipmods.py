@@ -236,10 +236,11 @@ class NewCLIAndCockpitWiringTest(unittest.TestCase):
         html = (static / "index.html").read_text(encoding="utf-8")
         script = (static / "app.js").read_text(encoding="utf-8")
         for element_id in (
-            "tabBtnShipMods",
-            "tabContentShipMods",
-            "shipModsList",
-            "shipModSlotGrid",
+            "tabBtnShip",
+            "tabContentShip",
+            "shipVisual",
+            "shipModulesGrid",
+            "shipStatsPanel",
             "reactorHeatFill",
             "reactorOutputLabel",
             "reactorModeRow",
@@ -248,9 +249,8 @@ class NewCLIAndCockpitWiringTest(unittest.TestCase):
         ):
             self.assertIn(f'id="{element_id}"', html)
         for symbol in (
-            "renderShipMods",
-            "/api/shipmods/install",
-            "/api/shipmods/remove",
+            "renderShip",
+            "/api/ship/module",
             "/api/reactor/mode",
             "/api/reactor/vent",
         ):

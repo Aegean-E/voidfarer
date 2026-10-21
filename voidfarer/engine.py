@@ -626,13 +626,37 @@ class SimulationEngine:
                 updated.append(c)
         return tuple(updated), logs
 
-    def reset(self, seed: int = 42) -> tuple[bool, str]:
+    def reset(self, seed: int = 42, profile: dict[str, Any] | None = None) -> tuple[bool, str]:
         """Reset the simulation to a fresh galaxy with an isolated deterministic RNG stream."""
         with self.lock:
             self.seed = int(seed)
             self.rng = random.Random(self.seed)
             self.state = self._create_initial_state(self.seed)
+            if profile:
+                self._apply_commander_profile(profile)
             return True, "Simulation reset to factory state."
+
+    def _apply_commander_profile(self, profile: dict[str, Any]) -> None:
+        """Apply the commander name, age, background and starting skills chosen at creation."""
+        character = self.state.character
+        name = str(profile.get("name") or character.name).strip()[:24] or character.name
+        try:
+            age = max(18, min(99, int(profile.get("age", character.age) or character.age)))
+        except (TypeError, ValueError):
+            age = character.age
+        background = str(profile.get("background") or character.background).strip()[:32] or character.background
+        raw_skills = profile.get("skills") if isinstance(profile.get("skills"), dict) else {}
+        skills = dict(character.skills)
+        for skill in skills:
+            if skill not in raw_skills:
+                continue
+            try:
+                skills[skill] = max(1, min(10, int(raw_skills[skill])))
+            except (TypeError, ValueError):
+                continue
+        updated_character = replace(character, name=name, age=age, background=background, skills=skills)
+        updated_ship = self._clone_ship(commander_name=name)
+        self.state = self._clone_state(character=updated_character, ship=updated_ship)
 
     def load_state(self, state: GameState) -> tuple[bool, str]:
         """Replace the live universe with a loaded save and reseed its RNG stream."""

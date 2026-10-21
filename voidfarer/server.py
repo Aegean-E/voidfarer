@@ -20,6 +20,7 @@ from voidfarer.engine import SimulationEngine
 from voidfarer.frontier import MERCENARY_CATALOG
 from voidfarer.inventory import get_inventory_manifest
 from voidfarer.mapmods import MAP_MODIFIER_CATALOG, aggregate_map_modifiers, system_modifier_summary
+from voidfarer.shipmods import get_ship_mod
 from voidfarer.storage import StorageManager, resolve_slot_name
 from voidfarer.upgrades import (
     CATALOG_CHASSIS,
@@ -400,7 +401,8 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         if path == "/api/new-game":
             seed = _int_field(body, "seed", 42, minimum=0)
             slot = resolve_slot_name(body.get("slot"))
-            ok, msg = self.engine.reset(seed)
+            profile = body.get("profile") if isinstance(body.get("profile"), dict) else None
+            ok, msg = self.engine.reset(seed, profile=profile)
             self.storage.save(self.engine.state, slot=slot)
             self._send_json({
                 "ok": ok,
@@ -623,6 +625,24 @@ class VoidFarerHandler(BaseHTTPRequestHandler):
         if path == "/api/shipmods/remove":
             slot = str(body.get("slot", ""))
             ok, msg = self.engine.remove_ship_mod(slot)
+            self.storage.save(self.engine.state)
+            self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
+            return
+
+        if path == "/api/ship/module":
+            module_id = str(body.get("module_id", ""))
+            action = str(body.get("action", "install")).lower()
+            if action == "install":
+                ok, msg = self.engine.install_ship_mod(module_id)
+            elif action in ("uninstall", "remove"):
+                mod = get_ship_mod(module_id)
+                ok, msg = (
+                    self.engine.remove_ship_mod(mod.slot)
+                    if mod is not None
+                    else (False, "Unknown ship module.")
+                )
+            else:
+                ok, msg = False, "Unknown module action."
             self.storage.save(self.engine.state)
             self._send_json({"ok": ok, "message": msg, "state": self.engine.get_status_snapshot()})
             return

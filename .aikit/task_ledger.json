@@ -1,50 +1,13 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "task-voidfarer-mechanics-economy-storage-fix-v1",
+    "task_id": "cockpit-redesign-wiring-v1",
     "last_phase": "phase 4",
-    "active_phase": 5,
-    "status": "completed",
-    "updated_at": 1792516165.6545258,
-    "completed_at": 1792516170.5684152
+    "active_phase": 4,
+    "status": "in_progress",
+    "updated_at": 1792587233.4456792
   },
   "checkpoints": [
-    {
-      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/5] Plan: resolution-adaptive cockpit UI and radar, new salvage/scoop/crew-drill mechanics, JS/engine bug fixes, docs and gates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792502107.7173023,
-      "timestamp_str": "2026-10-20 16:15:07",
-      "impact_assessment": {
-        "why": "User asked for a resolution-adaptive VoidFarer UI, more mechanics, and bug fixes/improvements.",
-        "benefits": "Cockpit stays usable from phone to 4K with DPR-crisp radar and touch input; three new risk/reward mechanics deepen exploration and crew play; polling/hotkey/resize bugs are fixed.",
-        "risks": "contract: G-001..G-010 layout rules and save compatibility must hold; dependency: stdlib and vanilla JS only; concurrency: engine lock and server ticker preserved; state: legacy saves need defaulted CelestialBody.salvage_claimed without RNG drift.",
-        "mitigation": "Add defaulted model fields, keep base CSS rules intact and append media queries, add failing-first tests before code, run the full suite plus aikit check."
-      }
-    },
-    {
-      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 2/5] Resolution-adaptive cockpit: density/scale settings, ultrawide/tablet/phone/short-height/reduced-motion/safe-area CSS, settings UI wiring; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792506133.8141296,
-      "timestamp_str": "2026-10-20 17:22:13"
-    },
-    {
-      "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[milestone 3/5] DPR-correct radar backing store, ResizeObserver/rotation, touch pan and pinch zoom, hidden-tab RAF pause, single-flight polling, hotkey overlay/typing guards; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792506139.8219688,
-      "timestamp_str": "2026-10-20 17:22:19"
-    },
     {
       "task_id": "task-voidfarer-adaptive-ui-salvage-v1",
       "phase": "phase 4",
@@ -223,6 +186,42 @@
       "status": "completed",
       "timestamp": 1792516170.5684166,
       "timestamp_str": "2026-10-20 20:09:30"
+    },
+    {
+      "task_id": "cockpit-redesign-wiring-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/3] Audit the in-flight cockpit redesign, fix the JS parse breaks, and wire the PLAYER, SKILLS, CREW and SHIP tabs to the real simulation state",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792587192.1604667,
+      "timestamp_str": "2026-10-21 15:53:12",
+      "impact_assessment": {
+        "why": "The uncommitted cockpit redesign was syntactically invalid and its ship, crew, and creation flows called state fields and endpoints that do not exist",
+        "benefits": "A functional tabbed cockpit, truthful ship refits, persistent commander creation, and no dead or invented UI data",
+        "risks": "contract: new /api/ship/module and optional new-game profile; dependency: none added; concurrency: existing engine lock retained; state: commander name/age/background/skills persist with no schema change",
+        "mitigation": "Wrap the existing install/remove engine methods, validate profile values, remove unsupported perk/gender/race fields, and cover the new routes with server tests"
+      }
+    },
+    {
+      "task_id": "cockpit-redesign-wiring-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/3] Implementation: repaired charStep/renderStory/checkDeath, rewrote renderShip over state.ship_mods, wired crew bonuses and player traits, added /api/ship/module and persistent commander profiles, updated ADR-032 and README",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792587198.4768922,
+      "timestamp_str": "2026-10-21 15:53:18"
+    },
+    {
+      "task_id": "cockpit-redesign-wiring-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[3/3] Phase 4 complete: checklists: passed; 4/4 gates (test, hygiene, guidelines, secrets) green; 375 tests pass",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792587233.4456792,
+      "timestamp_str": "2026-10-21 15:53:53"
     }
   ]
 }

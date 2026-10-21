@@ -98,6 +98,39 @@ class TestServer(unittest.TestCase):
         status, data = self._post("/api/shipmods/remove", {"slot": "frame"})
         self.assertEqual(status, 200)
 
+        status, data = self._post("/api/ship/module", {"module_id": "salvage_processor", "action": "install"})
+        self.assertEqual(status, 200)
+        payload = json.loads(data.decode("utf-8"))
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["state"]["ship"]["ship_mods"]["ops"], "salvage_processor")
+
+        status, data = self._post("/api/ship/module", {"module_id": "salvage_processor", "action": "uninstall"})
+        self.assertEqual(status, 200)
+        payload = json.loads(data.decode("utf-8"))
+        self.assertTrue(payload["ok"])
+        self.assertNotIn("ops", payload["state"]["ship"]["ship_mods"])
+
+    def test_new_game_applies_commander_profile(self):
+        status, data = self._post("/api/new-game", {
+            "seed": 7,
+            "profile": {
+                "name": "Nova",
+                "age": 41,
+                "background": "Engineer",
+                "skills": {"engineering": 9, "combat": 2},
+            },
+        })
+        self.assertEqual(status, 200)
+        payload = json.loads(data.decode("utf-8"))
+        self.assertTrue(payload["ok"])
+        character = payload["state"]["character"]
+        self.assertEqual(character["name"], "Nova")
+        self.assertEqual(character["age"], 41)
+        self.assertEqual(character["background"], "Engineer")
+        self.assertEqual(character["skills"]["engineering"], 9)
+        self.assertEqual(character["skills"]["combat"], 2)
+        self.assertEqual(payload["state"]["ship"]["commander_name"], "Nova")
+
     def test_character_research_fleet_diplomacy_endpoints(self):
         for path in ("/api/character", "/api/research", "/api/outposts", "/api/diplomacy", "/api/fleet/ships"):
             status, data = self._get(path)

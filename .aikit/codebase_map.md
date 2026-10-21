@@ -9,8 +9,8 @@
 - **Total Python Modules**: `54`
 - **Total Classes**: `134`
 - **Total Top-Level Functions**: `159`
-- **Total Class Methods**: `709`
-- **Total Source Lines**: `21403`
+- **Total Class Methods**: `711`
+- **Total Source Lines**: `21481`
 
 ---
 
@@ -176,7 +176,7 @@
 ### [`tests/test_cockpit_layout.py`](tests/test_cockpit_layout.py)
 > *Layout regression tests for the holographic web cockpit (index.html / style.css / app.js).*
 
-**Size**: `492` lines (`20812` bytes)
+**Size**: `493` lines (`20993` bytes)
 
 **Classes:**
 - `class _DomNode` - *Minimal element tree node built from html.parser events.*
@@ -196,7 +196,7 @@
   - Method `._ancestor_ids(node)`
   - Method `._document_order()`
   - Method `.test_telemetry_log_sits_in_the_lower_right_deck()`
-  - Method `.test_lower_right_deck_contains_only_the_telemetry_log()`
+  - Method `.test_lower_right_deck_contains_telemetry_log_and_map_controls()`
   - Method `.test_lower_right_deck_anchors_its_content_to_the_bottom()`
   - Method `.test_telemetry_log_carries_a_hide_button()`
   - Method `.test_log_collapse_style_and_toggle_wiring_exist()`
@@ -241,7 +241,7 @@
   - Method `.test_vital_stat_cards_have_equal_size_styling()`
 - `class TestSingleLineVitalsAndDistanceParity`
   - Method `.setUpClass()`
-  - Method `.test_topbar_and_vitals_are_on_single_non_wrapping_line()`
+  - Method `.test_topbar_and_vitals_wrap_on_narrow_viewports()`
   - Method `.test_vital_cards_match_chrono_box_height()`
   - Method `.test_orbit_button_adheres_to_distance_calculation()`
 - `class TestArsenalParityAndBulkDepotUI`
@@ -283,7 +283,7 @@
 ### [`tests/test_empire_character_fleet.py`](tests/test_empire_character_fleet.py)
 > *Regression tests for character, research, outposts, factions, fleet, and travel additions.*
 
-**Size**: `221` lines (`10208` bytes)
+**Size**: `221` lines (`10234` bytes)
 
 **Classes:**
 - `class CharacterResearchOutpostTest`
@@ -587,7 +587,7 @@
 ### [`tests/test_reactor_map_shipmods.py`](tests/test_reactor_map_shipmods.py)
 > *Regression tests for reactor simulation, sector map modifiers, and ship modifications.*
 
-**Size**: `261` lines (`11188` bytes)
+**Size**: `261` lines (`11163` bytes)
 
 **Classes:**
 - `class ReactorSimulationTest`
@@ -625,7 +625,7 @@
 ### [`tests/test_server.py`](tests/test_server.py)
 > *Unit and integration tests for embedded HTTP server REST endpoints.*
 
-**Size**: `352` lines (`15331` bytes)
+**Size**: `385` lines (`16858` bytes)
 
 **Classes:**
 - `class TestServer`
@@ -639,6 +639,7 @@
   - Method `.test_get_api_state()`
   - Method `.test_get_api_galaxy()`
   - Method `.test_reactor_map_and_shipmod_endpoints()`
+  - Method `.test_new_game_applies_commander_profile()`
   - Method `.test_character_research_fleet_diplomacy_endpoints()`
   - Method `.test_crew_weapon_and_message_tree_endpoints()`
   - Method `.test_post_power()`
@@ -915,7 +916,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `4584` lines (`229066` bytes)
+**Size**: `4608` lines (`230413` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -936,7 +937,8 @@
   - Method `._progress_tutorial(action_type)` - *Advance the Cadet Flight Academy if current step requirement is satisfied.*
   - Method `._award_pilot_xp(amount, current_mastery)` - *Award experience points and compute level promotions and talent points.*
   - Method `._progress_contracts(category, amount)` - *Advance matching active contracts toward completion objectives.*
-  - Method `.reset(seed)` - *Reset the simulation to a fresh galaxy with an isolated deterministic RNG stream.*
+  - Method `.reset(seed, profile)` - *Reset the simulation to a fresh galaxy with an isolated deterministic RNG stream.*
+  - Method `._apply_commander_profile(profile)` - *Apply the commander name, age, background and starting skills chosen at creation.*
   - Method `.load_state(state)` - *Replace the live universe with a loaded save and reseed its RNG stream.*
   - Method `._create_initial_state(seed)` - *Construct a fresh universe state rooted at Sol System.*
   - Property `.current_system`
@@ -1414,7 +1416,7 @@
 ### [`voidfarer/server.py`](voidfarer/server.py)
 > *Zero-dependency embedded HTTP server and REST API for the VoidFarer Web Cockpit.*
 
-**Size**: `1096` lines (`45687` bytes)
+**Size**: `1116` lines (`46644` bytes)
 
 **Classes:**
 - `class ThreadedHTTPServer` - *Multi-threaded HTTP server handling concurrent HUD telemetry requests.*

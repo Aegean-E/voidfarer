@@ -14,7 +14,7 @@
     <div class="scanline-overlay"></div>
 
     <!-- Main Menu Overlay -->
-    <div class="main-menu-overlay" id="mainMenuOverlay">
+    <div class="main-menu-overlay hidden" id="mainMenuOverlay">
         <div class="main-menu-card">
             <div class="main-menu-brand">
                 <span class="main-menu-kicker">DEEP-SPACE COMMAND // PRESS ESC TO TOGGLE</span>
@@ -76,6 +76,75 @@
         </div>
     </div>
 
+    <!-- Character Creation Window -->
+    <div class="game-window-overlay" id="characterCreationOverlay" style="display: none;">
+        <div class="game-window">
+            <div class="game-window-header">
+                <h2>CHARACTER CREATION</h2>
+                <button class="window-close" id="btnCloseCharCreation">×</button>
+            </div>
+            <div class="game-window-body">
+                <div class="char-creation-step" id="charStep1">
+                    <h3>BASIC INFO</h3>
+                    <div class="creation-field">
+                        <label>NAME</label>
+                        <input type="text" id="charName" maxlength="24" placeholder="Enter name...">
+                    </div>
+                    <div class="creation-field">
+                        <label>AGE</label>
+                        <input type="number" id="charAge" min="18" max="65" value="30">
+                    </div>
+                    <div class="creation-field">
+                        <label>BACKGROUND</label>
+                        <select id="charBackground">
+                            <option value="Navigator">Navigator</option>
+                            <option value="Engineer">Engineer</option>
+                            <option value="Scientist">Scientist</option>
+                            <option value="Marine">Marine</option>
+                            <option value="Trader">Trader</option>
+                            <option value="Diplomat">Diplomat</option>
+                        </select>
+                    </div>
+                    <button class="btn-hud btn-cyan" id="btnCharNext1">NEXT: SKILLS</button>
+                </div>
+
+                <div class="char-creation-step" id="charStep2" style="display: none;">
+                    <h3>STARTING SKILLS (20 points, max 10)</h3>
+                    <div class="attr-grid" id="attrGrid"></div>
+                    <div class="creation-points">
+                        <span>POINTS REMAINING: <strong id="charPointsRemaining2">20</strong></span>
+                    </div>
+                    <div class="creation-nav">
+                        <button class="btn-hud" id="btnCharBack2">BACK</button>
+                        <button class="btn-hud btn-green" id="btnCharCreate">LAUNCH COMMANDER</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Death Overlay -->
+    <div class="game-window-overlay" id="deathOverlay" style="display: none;">
+        <div class="game-window death-window">
+            <div class="game-window-header">
+                <h2>COMMANDER LOST</h2>
+            </div>
+            <div class="game-window-body">
+                <div class="death-content">
+                    <div class="death-icon">☠️</div>
+                    <h3 class="death-title" id="deathTitle">COMMANDER LOST IN THE VOID</h3>
+                    <p class="death-message" id="deathMessage">Your journey ends here...</p>
+                    <div class="death-stats" id="deathStats"></div>
+                    <div class="death-options">
+                        <button class="btn-hud btn-red" id="btnDeathNewGame">NEW COMMANDER</button>
+                        <button class="btn-hud" id="btnDeathLoadSave">LOAD SAVE</button>
+                        <button class="btn-hud btn-cyan" id="btnDeathMainMenu">MAIN MENU</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Perks Window (branching talent tree) -->
     <div class="game-window-overlay" id="perksOverlay" style="display: none;">
         <div class="game-window perks-window">
@@ -107,9 +176,6 @@
             <div class="hud-top-actions">
                 <button class="btn-hud" id="audioToggleBtn" title="Toggle Synthesized Audio">
                     <span class="icon" id="audioIcon">🔊</span> SOUND FX
-                </button>
-                <button class="btn-hud btn-cyan" id="quickScanBtn">
-                    <span class="icon">📡</span> SENSOR SCAN
                 </button>
                 <button class="btn-hud" id="btnMainMenu" title="Open Main Menu (Hotkey: ESC)">MENU [ESC]</button>
                 <button class="btn-hud btn-cyan" id="btnOpenPerks" title="Open Pilot Perks">PERKS</button>
@@ -219,23 +285,25 @@
         <main class="cockpit-grid">
 
             <!-- Left Deck: Vertical Tactical Terminal (Commerce, Arsenal, Fleet, ...) -->
-            <section class="deck-panel panel-left drawer-collapsed" id="panelLeft">
+            <section class="deck-panel panel-left" id="panelLeft">
                 <nav class="deck-tabs-header" id="deckTabsHeader" aria-label="Terminal sections">
+                    <button class="deck-tab-btn active" id="tabBtnPlayer">PLAYER</button>
+                    <button class="deck-tab-btn" id="tabBtnSkills">SKILLS</button>
+                    <button class="deck-tab-btn" id="tabBtnCrew">CREW</button>
+                    <button class="deck-tab-btn" id="tabBtnShip">SHIP</button>
                     <button class="deck-tab-btn" id="tabBtnMarket">COMMERCE</button>
                     <button class="deck-tab-btn" id="tabBtnArsenal">ARSENAL</button>
-                    <button class="deck-tab-btn" id="tabBtnShipMods">SHIP MODS</button>
                     <button class="deck-tab-btn" id="tabBtnFleet">FLEET</button>
                     <button class="deck-tab-btn" id="tabBtnContracts">CONTRACTS <span class="tab-badge" id="contractsBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnMastery">PILOT PERKS</button>
-                    <button class="deck-tab-btn" id="tabBtnCharacter">COMMANDER</button>
                     <button class="deck-tab-btn" id="tabBtnEmpire">EMPIRE</button>
-                    <button class="deck-tab-btn" id="tabBtnCodex">CAPTAIN'S LOG <span class="tab-badge" id="codexBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnQuests">QUESTS</button>
                     <button class="deck-tab-btn" id="tabBtnAI">AI COMMAND</button>
                     <button class="deck-tab-btn" id="tabBtnDepot">DEPOT</button>
                     <button class="deck-tab-btn" id="tabBtnMessages">MESSAGES <span class="tab-badge" id="messagesBadge" style="display: none;">0</span></button>
                     <button class="deck-tab-btn" id="tabBtnStory">COMMS LOG <span class="tab-badge" id="storyBadge" style="display: none;">!</span></button>
                     <button class="deck-tab-btn" id="tabBtnFactions">FACTIONS & CORPS</button>
+                    <button class="deck-tab-btn" id="tabBtnCodex">CAPTAIN'S LOG <span class="tab-badge" id="codexBadge" style="display: none;">0</span></button>
                 </nav>
 
                 <div class="terminal-content-stack">
@@ -400,7 +468,14 @@
                             <div class="panel-tag"><span class="badge-dot dot-amber"></span> MISSION CONTROL</div>
                             <h2 class="panel-title">QUEST PANEL</h2>
                         </div>
-                        <div class="quests-list" id="questsList"></div>
+                        <div class="quests-section">
+                            <h3 class="subpanel-title">ACTIVE QUESTS</h3>
+                            <div class="quests-list" id="questsList"></div>
+                        </div>
+                        <div class="quests-section">
+                            <h3 class="subpanel-title">COMPLETED QUESTS</h3>
+                            <div class="quests-completed-list" id="questsCompletedList"></div>
+                        </div>
                     </div>
 
                     <!-- Tab 4c: AI Captain Command -->
@@ -427,12 +502,6 @@
                         <div class="panel-header">
                             <div class="panel-tag"><span class="badge-dot dot-cyan"></span> QUANTUM RELAY</div>
                             <h2 class="panel-title">INTERGALACTIC MESSAGES</h2>
-                        </div>
-                        <div class="message-composer">
-                            <input id="messageRecipient" placeholder="Recipient" aria-label="Message recipient">
-                            <input id="messageSubject" placeholder="Subject" aria-label="Message subject">
-                            <textarea id="messageBody" placeholder="Encrypted message body..." aria-label="Message body"></textarea>
-                            <button class="btn-hud btn-cyan" id="btnSendMessage">SEND QUANTUM MESSAGE</button>
                         </div>
                         <div class="message-list" id="messageList"></div>
                     </div>
@@ -466,16 +535,57 @@
                         </div>
                     </div>
 
-                    <!-- Tab: Commander Character Sheet -->
-                    <div class="character-panel tab-content" id="tabContentCharacter" style="display: none;">
+                    <!-- Tab: Player Character Sheet -->
+                    <div class="player-panel tab-content" id="tabContentPlayer">
                         <div class="panel-header">
-                            <div class="panel-tag"><span class="badge-dot dot-cyan"></span> COMMANDER</div>
+                            <div class="panel-tag"><span class="badge-dot dot-cyan"></span> PLAYER</div>
                             <h2 class="panel-title">CHARACTER & ABILITIES</h2>
                         </div>
-                        <div class="character-summary" id="characterSummary"></div>
+                        <div class="character-profile" id="characterProfile"></div>
                         <div class="character-skills" id="characterSkills"></div>
                         <div class="character-abilities" id="characterAbilities"></div>
-                        <div class="crew-section"><h3 class="subpanel-title">CREW ROSTER</h3><div class="crew-roster" id="crewRoster"></div></div>
+                        <div class="character-perks" id="characterPerks"></div>
+                    </div>
+
+                    <!-- Tab: Skills (Training & Perks) -->
+                    <div class="skills-panel tab-content" id="tabContentSkills" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-purple"></span> SKILLS</div>
+                            <h2 class="panel-title">TRAINING & PERKS</h2>
+                        </div>
+                        <div class="skills-points-banner">
+                            <div class="skills-points">
+                                <span>SKILL POINTS</span>
+                                <strong id="skillsPointsAvailable">0</strong>
+                            </div>
+                            <p class="skills-desc">Train skills to improve ship performance and unlock advanced perks.</p>
+                        </div>
+                        <div class="skills-grid" id="skillsGrid"></div>
+                        <div class="skills-perks-section">
+                            <h3 class="subpanel-title">ACTIVE PERKS</h3>
+                            <div class="skills-perks-list" id="skillsPerksList"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Crew Roster -->
+                    <div class="crew-panel tab-content" id="tabContentCrew" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-green"></span> CREW</div>
+                            <h2 class="panel-title">CREW ROSTER & ASSIGNMENTS</h2>
+                        </div>
+                        <div class="crew-assignments" id="crewAssignments"></div>
+                        <div class="crew-roster" id="crewRoster"></div>
+                    </div>
+
+                    <!-- Tab: Ship (Visual Customization & Modules) -->
+                    <div class="ship-panel tab-content" id="tabContentShip" style="display: none;">
+                        <div class="panel-header">
+                            <div class="panel-tag"><span class="badge-dot dot-amber"></span> SHIP</div>
+                            <h2 class="panel-title">SHIP CONFIGURATION</h2>
+                        </div>
+                        <div class="ship-visual" id="shipVisual"></div>
+                        <div class="ship-modules-grid" id="shipModulesGrid"></div>
+                        <div class="ship-stats-panel" id="shipStatsPanel"></div>
                     </div>
 
                     <!-- Tab: Empire (Research, Outposts, Diplomacy) -->
@@ -675,16 +785,6 @@
                         <canvas id="radarCanvas" width="1280" height="720"></canvas>
                         <div class="radar-crosshair"></div>
                         <div class="radar-sweep"></div>
-                        <div class="radar-overlay-top" id="radarOverlayTop">
-                            <div class="view-toggle-group">
-                                <button class="tab-btn active" id="viewOrbitBtn">ORBITS</button>
-                                <button class="tab-btn" id="viewGalaxyBtn">GALAXY MAP</button>
-                            </div>
-                            <div class="radar-overlay-settings">
-                                <button class="ctrl-btn" id="btnToggleGrid" title="Toggle Radar Grid">GRID</button>
-                                <button class="ctrl-btn" id="btnToggleLabels" title="Toggle Orbit Labels">LABELS</button>
-                            </div>
-                        </div>
                         <div class="radar-coords" id="radarCoords">COORDS: [0.00, 0.00] // SECTOR 01</div>
                         <div class="radar-controls">
                             <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
@@ -694,7 +794,7 @@
                     </div>
 
                     <!-- Selected Body / System Card -->
-                    <div class="nav-target-card" id="navTargetCard">
+                    <div class="nav-target-card" id="navTargetCard" style="display: none;">
                         <div class="target-badge" id="targetType">TARGET: CELESTIAL BODY</div>
                         <div class="target-title-row">
                             <h3 class="target-name" id="targetName">Select a target on radar</h3>
@@ -809,6 +909,27 @@
 
             <!-- Right Deck: Telemetry Flight Log (anchored lower-right, G-001) -->
             <section class="deck-panel panel-right" id="panelRight">
+                <!-- Map Controls (moved from radar overlay) -->
+                <div class="sub-panel map-controls-panel" id="mapControlsPanel">
+                    <div class="panel-header">
+                        <div class="panel-tag"><span class="badge-dot"></span> MAP CONTROLS</div>
+                        <h2 class="panel-title">RADAR SETTINGS</h2>
+                    </div>
+                    <div class="map-controls-content">
+                        <div class="view-toggle-group">
+                            <button class="tab-btn active" id="viewOrbitBtn">ORBITS</button>
+                            <button class="tab-btn" id="viewGalaxyBtn">GALAXY MAP</button>
+                        </div>
+                        <div class="map-settings-row">
+                            <button class="ctrl-btn" id="btnToggleGrid" title="Toggle Radar Grid">GRID</button>
+                            <button class="ctrl-btn" id="btnToggleLabels" title="Toggle Orbit Labels">LABELS</button>
+                            <button class="btn-hud btn-cyan" id="quickScanBtn" title="Sensor Scan">
+                                <span class="icon">📡</span> SCAN
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tactical Flight Telemetry Log -->
                 <div class="sub-panel log-panel" id="logPanel">
                     <div class="panel-header">

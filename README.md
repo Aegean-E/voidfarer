@@ -379,7 +379,7 @@ Launch the embedded zero-dependency Web Audio & Canvas cockpit:
 python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
-- **Top Status Bar & Chronometer (`G-007`)**: Single-line vitals plus the chrono deck.
+- **Top Status Bar & Chronometer (`G-007`, `G-011`)**: Responsive vitals plus the chrono deck, wrapping cleanly on narrow viewports.
 - **Background Radar HUD (`G-004`, `G-005`)**: Full-viewport orbital/galaxy canvas, collapsible right-expanding left terminal, and boxless flight log.
 - **Main Menu & Saves (`ESC`)**: Settings plus create, load, list, and delete named save slots.
 - **Planet Inspector**: Gravity, atmosphere, temperature, habitability, orbit distance, moons, resources, and colony tiers.
@@ -389,7 +389,9 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **REPL Server Lifecycle**: `serve` runs the HTTP server and simulation ticker; `serve stop` or REPL exit saves and shuts down.
 - **Reactor Power Matrix & Thermal Simulation (`G-006`)**: Allocation sliders, live heat meter, output/cooling/integrity telemetry, four doctrine modes, and an emergency VENT control.
 - **Sector Map Modifiers**: Generated environmental conditions displayed as radar chips and applied to fuel, scans, encounters, trade, and reactor heat.
-- **Ship Modification Section**: Drydock refit bay with five structural slots, trade-off cards, live capacity recomputation, install and salvage-remove controls.
+- **Player, Skills & Crew Tabs**: Character dossier with XP and traits, six trainable skills, and crew roster with live bonuses, drills, and dismissals.
+- **Ship Configuration Tab**: Chassis silhouette with five structural slot markers, trade-off catalogue cards, live capacity recomputation, and drydock install/salvage-remove controls through `/api/ship/module`.
+- **Commander Creation & Death Flow**: Name, age, background, and starting-skill allocation wired into new games; a death overlay summarizes the run and offers a fresh commander or save load.
 - **Resolution-Adaptive HUD**: ultrawide/tablet/phone/short-height breakpoints, density and HUD-scale settings, DPR-correct radar, ResizeObserver, touch pan/pinch, reduced motion, and safe-area insets.
 - **Derelict Boarding & Fuel Scooping**: once-per-body salvage risk/reward; star/gas/ice fuel scoops that trade reactor heat for fuel; paid crew training drills.
 - **Captain's Log & Discovery Codex**: career statistics grid, discovery milestones, claim rewards, category filters, and persistent flight log.
@@ -412,6 +414,6 @@ python -m voidfarer.cli codex claim first_light
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 374-test suite runs in about 5 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 375-test suite runs in about 6 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.

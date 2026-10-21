@@ -142,12 +142,12 @@ class TestCockpitLayout(unittest.TestCase):
         self.assertIsNotNone(log_panel.find_by_id("flightLogStream"),
                              "flight log stream must be inside the log panel")
 
-    def test_lower_right_deck_contains_only_the_telemetry_log(self):
+    def test_lower_right_deck_contains_telemetry_log_and_map_controls(self):
         right_deck = self.dom.find_by_id("panelRight")
         self.assertIsNotNone(right_deck)
         child_ids = [child.attrs.get("id") for child in right_deck.children]
-        self.assertEqual(child_ids, ["logPanel"],
-                         "the lower-right deck must hold only the telemetry log")
+        self.assertIn("logPanel", child_ids, "telemetry log must be in right deck")
+        self.assertIn("mapControlsPanel", child_ids, "map controls must be in right deck")
 
     def test_lower_right_deck_anchors_its_content_to_the_bottom(self):
         deck_rule = self._rule_body(".panel-right")
@@ -294,7 +294,7 @@ class TestFrontierCockpitUI(unittest.TestCase):
             self.assertIn(f'id="{marker}"', self.html)
 
     def test_frontier_tabs_and_radar_overlay_exist(self):
-        for marker in ("tabBtnQuests", "tabBtnAI", "tabBtnDepot", "tabBtnMessages", "radarOverlayTop", "btnToggleGrid", "btnToggleLabels", "btnLandTarget", "targetGravity"):
+        for marker in ("tabBtnQuests", "tabBtnAI", "tabBtnDepot", "tabBtnMessages", "viewOrbitBtn", "viewGalaxyBtn", "btnToggleGrid", "btnToggleLabels", "btnLandTarget", "targetGravity", "quickScanBtn"):
             self.assertIn(f'id="{marker}"', self.html)
 
     def test_frontier_renderers_are_wired(self):
@@ -369,7 +369,8 @@ class TestSleekHUDDeclutter(unittest.TestCase):
             r"\.panel-left\.drawer-collapsed\s*\.terminal-content-stack\s*\{[^}]*display:\s*none",
             "terminal content stack must be hidden when left drawer is collapsed",
         )
-        self.assertIn('class="deck-panel panel-left drawer-collapsed"', self.html)
+        # Panel starts expanded by default (no drawer-collapsed class), but supports collapsing
+        self.assertIn('class="deck-panel panel-left"', self.html)
         self.assertIn("drawer-collapsed", self.js)
         self.assertIn("this.panelLeft", self.js)
 
@@ -438,16 +439,16 @@ class TestSingleLineVitalsAndDistanceParity(unittest.TestCase):
         cls.js = APP_JS.read_text(encoding="utf-8")
         cls.css = STYLE_CSS.read_text(encoding="utf-8")
 
-    def test_topbar_and_vitals_are_on_single_non_wrapping_line(self):
+    def test_topbar_and_vitals_wrap_on_narrow_viewports(self):
         self.assertRegex(
             self.css,
-            r"\.hud-topbar\s*\{[^}]*flex-wrap:\s*nowrap",
-            "hud-topbar must not wrap onto multiple lines",
+            r"\.hud-topbar\s*\{[^}]*flex-wrap:\s*wrap",
+            "hud-topbar must wrap onto multiple lines on narrow viewports",
         )
         self.assertRegex(
             self.css,
-            r"\.vitals-row\s*\{[^}]*flex-wrap:\s*nowrap",
-            "vitals-row must not wrap onto multiple lines",
+            r"\.vitals-row\s*\{[^}]*flex-wrap:\s*wrap",
+            "vitals-row must wrap onto multiple lines on narrow viewports",
         )
 
     def test_vital_cards_match_chrono_box_height(self):

@@ -3,21 +3,12 @@
   "active_task": {
     "task_id": "sim-crew-market-cashflow-v1",
     "last_phase": "phase 4",
-    "active_phase": 4,
-    "status": "in_progress",
-    "updated_at": 1792621236.3740423
+    "active_phase": 5,
+    "status": "completed",
+    "updated_at": 1792621236.3740423,
+    "completed_at": 1792621259.3168037
   },
   "checkpoints": [
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "phase 5",
-      "phase_num": 5,
-      "description": "[4/4] Verification: 382 tests pass; node --check app.js; aikit check voidfarer 4/4 gates; ADR-033 and codebase map synchronized; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792599960.1894894,
-      "timestamp_str": "2026-10-21 19:26:00"
-    },
     {
       "task_id": "review-last-3-changes-v1",
       "phase": "phase 4",
@@ -222,6 +213,15 @@
       "status": "in_progress",
       "timestamp": 1792621236.3740423,
       "timestamp_str": "2026-10-22 01:20:36"
+    },
+    {
+      "task_id": "sim-crew-market-cashflow-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'sim-crew-market-cashflow-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792621259.3168051,
+      "timestamp_str": "2026-10-22 01:20:59"
     }
   ]
 }

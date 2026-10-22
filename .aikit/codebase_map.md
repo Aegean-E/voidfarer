@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `57`
-- **Total Classes**: `152`
-- **Total Top-Level Functions**: `175`
-- **Total Class Methods**: `859`
-- **Total Source Lines**: `24688`
+- **Total Python Modules**: `58`
+- **Total Classes**: `155`
+- **Total Top-Level Functions**: `177`
+- **Total Class Methods**: `875`
+- **Total Source Lines**: `25057`
 
 ---
 
@@ -454,6 +454,34 @@
   - Method `.test_reactive_shield_regenerator_adds_tick_recharge()`
   - Method `._combat_after_jump(equipped)`
   - Method `.test_ecm_scrambler_reduces_pirate_encounter_chance()`
+
+---
+
+### [`tests/test_exploration_depth.py`](tests/test_exploration_depth.py)
+> *Regression tests for exploration depth: survey completion, scan discipline, salvage contracts, and scoop reserves.*
+
+**Size**: `207` lines (`8634` bytes)
+
+**Classes:**
+- `class TestScanDiscipline`
+  - Method `.setUp()`
+  - Method `.test_zero_sensor_power_does_not_consume_a_scan()`
+  - Method `.test_full_system_survey_awards_bonus_and_codex_progress()`
+- `class TestSalvageContractSynergy`
+  - Method `.setUp()`
+  - Method `.test_titanium_salvage_advances_mining_contract()`
+- `class TestVolatileReserve`
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `._star()`
+  - Method `.test_reserve_is_deterministic_and_type_limited()`
+  - Method `.test_legacy_body_defaults_to_untapped()`
+  - Method `.test_negative_volatile_counters_are_clamped_on_load()`
+  - Method `.test_far_future_recharge_tick_is_capped_to_one_interval()`
+  - Method `.test_recharge_schedule_is_exact_and_not_boundary_aligned()`
+  - Method `.test_large_tick_jump_recharges_multiple_pending_taps()`
+  - Method `.test_scoop_depletes_reservoir_then_recharges()`
+  - Method `.test_snapshot_exposes_reserve_and_depletion()`
 
 ---
 
@@ -1029,7 +1057,7 @@
 ### [`voidfarer/codex.py`](voidfarer/codex.py)
 > *Captain's log and discovery codex: milestones, statistics, and rewards.*
 
-**Size**: `540` lines (`18331` bytes)
+**Size**: `556` lines (`18952` bytes)
 
 **Classes:**
 - `class CodexCategory` - *A thematic grouping of codex milestones.*
@@ -1099,7 +1127,7 @@
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `5377` lines (`269814` bytes)
+**Size**: `5472` lines (`274300` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -1233,13 +1261,15 @@
 ### [`voidfarer/exploration.py`](voidfarer/exploration.py)
 > *Derelict salvage sites, fuel scooping profiles, and crew training drills.*
 
-**Size**: `120` lines (`4402` bytes)
+**Size**: `167` lines (`5983` bytes)
 
 **Classes:**
 - `class DerelictSite` - *A deterministic, once-per-body salvage site with a risk/reward profile.*
   - Method `.to_dict()`
 
 **Functions:**
+- `def scoop_reserve(body)` - *Deterministic number of scoop passes a body's volatiles support.*
+- `def recharge_volatile_reserve(tapped, recharge_tick, current_tick)` - *Apply elapsed recharge intervals to one body's queued volatile taps.*
 - `def _stable_crc(*parts)`
 - `def derive_derelict(system_id, system_seed, body)` - *Return the body's deterministic salvage site, or None when it has none.*
 - `def scoop_profile(body)` - *Return the fuel-scooping profile for a body, or None when it cannot be scooped.*
@@ -1390,7 +1420,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1805` lines (`66345` bytes)
+**Size**: `1809` lines (`66570` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*

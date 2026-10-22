@@ -49,9 +49,12 @@ from voidfarer.character import (
 )
 from voidfarer.codex import build_codex_report, get_codex_entry
 from voidfarer.exploration import (
+    SCOOP_RECHARGE_TICKS,
     crew_training_cost,
     derive_derelict,
+    recharge_volatile_reserve,
     scoop_profile,
+    scoop_reserve,
     scoop_yield,
 )
 from voidfarer.economy import (
@@ -228,6 +231,10 @@ from voidfarer.upgrades import (
 
 class SimulationEngine:
     """Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat."""
+
+    MIN_SURVEY_SENSOR_POWER = 5.0
+    SURVEY_COMPLETION_CREDITS = 300
+    SURVEY_COMPLETION_XP = 120
 
     def __init__(self, seed: int = 42, state: GameState | None = None) -> None:
         self.lock = threading.RLock()
@@ -1510,11 +1517,19 @@ class SimulationEngine:
             equipment = self._combined_equipment()
             map_effects = self._map_effects()
             pwr = self._effective_power("sensors") * float(map_effects["sensor_mult"])
+            if pwr < self.MIN_SURVEY_SENSOR_POWER:
+                return (
+                    False,
+                    f"Sensor array needs at least {self.MIN_SURVEY_SENSOR_POWER:.0f} MW to resolve a survey "
+                    f"(currently {pwr:.1f} MW). Route reactor power to sensors first.",
+                    {},
+                )
             credit_bounty = int(100 * (pwr / 25.0))
             research = self._research_bonuses()
             credit_bounty = int(credit_bounty * equipment["scan_mult"] * passives["scan_bounty"] * research["scan_mult"] * (1.0 + self._skill("science")) * float(map_effects["scan_mult"]))
 
             # Mark scan completed on body
+            was_complete = all(b.scan_completed for b in self.current_system.bodies)
             updated_bodies = []
             for b in self.current_system.bodies:
                 if b.id == body.id:
@@ -1522,6 +1537,10 @@ class SimulationEngine:
                     updated_bodies.append(scanned)
                 else:
                     updated_bodies.append(b)
+            survey_complete = all(b.scan_completed for b in updated_bodies)
+            newly_complete = survey_complete and not was_complete
+            survey_bonus = self.SURVEY_COMPLETION_CREDITS if newly_complete else 0
+            survey_xp = self.SURVEY_COMPLETION_XP if newly_complete else 0
 
             cur_sys = self.current_system
             new_sys = StarSystem(
@@ -1543,8 +1562,8 @@ class SimulationEngine:
             systems = dict(self.state.systems)
             systems[cur_sys.id] = new_sys
 
-            # Award credit bounty
-            new_credits = self.state.ship.credits + credit_bounty
+            # Award credit bounty and full-system survey completion bonus
+            new_credits = self.state.ship.credits + credit_bounty + survey_bonus
 
             # Variable Ratio relic drop and near-miss feedback
             relic_bonus = (
@@ -1559,6 +1578,11 @@ class SimulationEngine:
 
             log_entry = f"Sensor scan completed for {body.name}: awarded {credit_bounty} cr scientific research bounty."
             new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+            if newly_complete:
+                new_log.append(
+                    f"SYSTEM SURVEY COMPLETE: {cur_sys.name} fully charted "
+                    f"(+{survey_bonus} cr, +{survey_xp} XP)."
+                )
 
             if found_relic:
                 new_relics.append(found_relic)
@@ -1572,7 +1596,7 @@ class SimulationEngine:
             new_log.extend(contract_logs)
             scan_faction_id = get_faction_id_from_name(cur_sys.faction)
             scan_perks = get_faction_service_perks(scan_faction_id, self.state.ship.faction_standings.get(scan_faction_id, 0))
-            scan_xp = int(50 * (1.0 + float(scan_perks["scan_xp_bonus"])))
+            scan_xp = int(50 * (1.0 + float(scan_perks["scan_xp_bonus"]))) + survey_xp
             new_mastery, xp_logs = self._award_pilot_xp(scan_xp, self.state.ship.mastery)
             new_log.extend(xp_logs)
 
@@ -1607,7 +1631,9 @@ class SimulationEngine:
 
             stats = dict(self.state.stats)
             stats["scans"] += 1
-            stats["credits_earned"] += credit_bounty
+            stats["credits_earned"] += credit_bounty + survey_bonus
+            if newly_complete:
+                stats["systems_surveyed"] = int(stats.get("systems_surveyed", 0)) + 1
 
             self.state = self._clone_state(ship=new_ship, systems=systems, stats=stats)
 
@@ -1620,8 +1646,16 @@ class SimulationEngine:
                 "hazards": list(body.hazards),
                 "relic": found_relic.to_dict() if found_relic else None,
                 "near_miss": is_near_miss,
+                "survey_complete": newly_complete,
+                "survey_bonus": survey_bonus,
             }
 
+            if newly_complete:
+                return (
+                    True,
+                    f"Scan analysis complete: {body.scan_discovery} SYSTEM SURVEY COMPLETE (+{survey_bonus} cr, +{survey_xp} XP).",
+                    discovery_info,
+                )
             return True, f"Scan analysis complete: {body.scan_discovery}", discovery_info
 
     def route_power(self, engines: int, shields: int, sensors: int, weapons: int) -> tuple[bool, str]:
@@ -4171,17 +4205,43 @@ class SimulationEngine:
                 if orb_body and not orb_body.salvage_claimed
                 else None
             )
-            scoop = scoop_profile(orb_body) if orb_body else None
+            scoop = None
+            if orb_body:
+                profile = scoop_profile(orb_body)
+                if profile:
+                    reserve = scoop_reserve(orb_body)
+                    tapped, recharge_tick = recharge_volatile_reserve(
+                        orb_body.volatile_tapped,
+                        orb_body.volatile_recharge_tick,
+                        self.state.time.tick,
+                    )
+                    scoop = {
+                        **profile,
+                        "available": (
+                            self.state.ship.fuel < self.state.ship.max_fuel
+                            and tapped < reserve
+                        ),
+                        "tapped": tapped,
+                        "reserve": reserve,
+                        "next_tap_in": (
+                            max(0, recharge_tick - self.state.time.tick)
+                            if tapped > 0
+                            else 0
+                        ),
+                    }
+            survey_scanned = sum(1 for b in cur_sys.bodies if b.scan_completed)
             return {
                 "ship": self.state.ship.to_dict(),
                 "current_system": cur_sys.to_dict(),
                 "orbiting_body": orb_body.to_dict() if orb_body else None,
                 "salvage_site": salvage_site.to_dict() if salvage_site else None,
-                "scoop": (
-                    {**scoop, "available": self.state.ship.fuel < self.state.ship.max_fuel}
-                    if scoop
-                    else None
-                ),
+                "scoop": scoop,
+                "survey": {
+                    "system_id": cur_sys.id,
+                    "scanned": survey_scanned,
+                    "total": len(cur_sys.bodies),
+                    "complete": survey_scanned >= len(cur_sys.bodies),
+                },
                 "visited_systems": list(self.state.visited_systems),
                 "active_anomaly": self.state.active_anomaly.to_dict() if self.state.active_anomaly else None,
                 "active_combat": self.state.active_combat.to_dict() if self.state.active_combat else None,
@@ -4675,7 +4735,11 @@ class SimulationEngine:
                 + (f", hull -{hull_damage}" if hull_damage else "")
                 + f", reactor heat +{heat_gain:.0f}."
             )
-            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + xp_logs
+            updated_contracts = self.state.ship.active_contracts
+            contract_logs: list[str] = []
+            if success and granted > 0 and site.cargo_item == "titanium":
+                updated_contracts, contract_logs = self._progress_contracts("mining", granted)
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + xp_logs + contract_logs
 
             new_ship = self._clone_ship(
                 hull=new_hull,
@@ -4683,6 +4747,7 @@ class SimulationEngine:
                 cargo=cargo,
                 reactor=new_reactor,
                 mastery=new_mastery,
+                active_contracts=updated_contracts,
                 flight_log=tuple(new_log[-20:]),
             )
             stats = dict(self.state.stats)
@@ -4715,6 +4780,18 @@ class SimulationEngine:
                 return False, f"{body.name} has no accessible volatiles for fuel scooping."
             if self.state.ship.fuel >= self.state.ship.max_fuel:
                 return False, "Fuel tanks are already full."
+            reserve = scoop_reserve(body)
+            base_tapped, base_recharge = recharge_volatile_reserve(
+                body.volatile_tapped,
+                body.volatile_recharge_tick,
+                self.state.time.tick,
+            )
+            if base_tapped >= reserve:
+                return False, (
+                    f"{body.name}'s volatile reservoir is depleted "
+                    f"({base_tapped}/{reserve} taps). It recharges one tap every "
+                    f"{SCOOP_RECHARGE_TICKS} ticks."
+                )
 
             recovered = scoop_yield(
                 body,
@@ -4726,10 +4803,21 @@ class SimulationEngine:
             reactor = self.state.ship.reactor
             max_heat = reactor_heat_capacity(reactor, self._combined_equipment())
             new_reactor = replace(reactor, heat=min(max_heat, reactor.heat + profile["heat"]))
+            new_tapped = base_tapped + 1
+            new_recharge = (
+                base_recharge
+                if base_tapped > 0
+                else self.state.time.tick + SCOOP_RECHARGE_TICKS
+            )
+            systems = self._replace_system_body(
+                body.id,
+                volatile_tapped=new_tapped,
+                volatile_recharge_tick=new_recharge,
+            )
 
             log_entry = (
                 f"FUEL SCOOP: {profile['label']} at {body.name} recovered {gained} fuel "
-                f"(reactor heat +{profile['heat']:.0f})."
+                f"(reactor heat +{profile['heat']:.0f}, volatiles {new_tapped}/{reserve})."
             )
             new_ship = self._clone_ship(
                 fuel=new_fuel,
@@ -4738,7 +4826,7 @@ class SimulationEngine:
             )
             stats = dict(self.state.stats)
             stats["scoops"] = stats.get("scoops", 0) + 1
-            self.state = self._clone_state(ship=new_ship, stats=stats)
+            self.state = self._clone_state(ship=new_ship, systems=systems, stats=stats)
             return True, log_entry
 
     def train_crew_member(self, crew_id: str) -> tuple[bool, str]:
@@ -4899,11 +4987,18 @@ class SimulationEngine:
                 for body in system.bodies:
                     d_angle = body.orbit_speed * 0.05 * num_ticks
                     updated_pop = step_population_dynamics(body, num_ticks) if body.population > 0 else body.population
+                    tapped, recharge_tick = recharge_volatile_reserve(
+                        body.volatile_tapped,
+                        body.volatile_recharge_tick,
+                        new_tick,
+                    )
                     updated_bodies.append(
                         replace(
                             body,
                             current_angle=(body.current_angle + d_angle) % (2.0 * math.pi),
                             population=updated_pop,
+                            volatile_tapped=tapped,
+                            volatile_recharge_tick=recharge_tick,
                         )
                     )
                 updated_systems[sys_id] = StarSystem(

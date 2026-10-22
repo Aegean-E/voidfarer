@@ -87,35 +87,7 @@ voidfarer/
 │       ├── cursor-default.svg <- themed default cockpit cursor
 │       ├── cursor-pointer.svg <- themed pointer cursor for controls
 │       └── cursor-crosshair.svg <- themed radar crosshair cursor
-└── tests/                    <- unit & integration test suite
-    ├── __init__.py
-    ├── test_adaptive_ui_salvage.py
-    ├── test_ai_and_calendar.py
-    ├── test_batch_launchers.py
-    ├── test_captains_log_codex.py
-    ├── test_cli.py
-    ├── test_cockpit_layout.py
-    ├── test_combat_void_depth.py
-    ├── test_economy.py
-    ├── test_empire_character_fleet.py
-    ├── test_engine.py
-    ├── test_engine_hardening.py
-    ├── test_equipment_bonuses.py
-    ├── test_factions_and_enemies.py
-    ├── test_frontier_systems.py
-    ├── test_galaxy.py
-    ├── test_inventory.py
-    ├── test_messaging_crew_quantum.py
-    ├── test_models.py
-    ├── test_perks_relics_rep.py
-    ├── test_reactor_map_shipmods.py
-    ├── test_server.py
-    ├── test_storage.py
-    ├── test_story.py
-    ├── test_time_and_ticks.py
-    ├── test_transit_civ_events.py
-    ├── test_sim_mechanics.py
-    └── test_void_traversal.py
+└── tests/                    <- unit & integration test suite (28 suites)
 ```
 
 ---
@@ -161,6 +133,7 @@ python -m voidfarer.cli salvage
 # Recover fuel from a star, gas giant, or ice body (adds reactor heat)
 python -m voidfarer.cli scoop
 ```
+Scans need at least 5 MW of sensor power, and a failed zero-power attempt no longer consumes the body. Surveying every body in a system pays a completion bonus and advances the `systems_surveyed` codex metric. Titanium salvage advances mining contracts, and each scoopable body has a finite volatile reserve (3-8 taps) that recharges one tap every 6 ticks.
 
 ### 4. Hardware Upgrades & Station Arsenal
 ```bash
@@ -424,7 +397,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Ship Configuration Tab**: Chassis silhouette with five structural slot markers, trade-off catalogue cards, live capacity recomputation, and drydock install/salvage-remove controls through `/api/ship/module`.
 - **Commander Creation & Death Flow**: Name, age, background, and starting-skill allocation wired into new games; a death overlay summarizes the run and offers a fresh commander or save load.
 - **Resolution-Adaptive HUD**: ultrawide/tablet/phone/short-height breakpoints, density and HUD-scale settings, DPR-correct radar, ResizeObserver, touch pan/pinch, reduced motion, and safe-area insets.
-- **Derelict Boarding & Fuel Scooping**: once-per-body salvage risk/reward; star/gas/ice fuel scoops that trade reactor heat for fuel; paid crew training drills.
+- **Derelict Boarding & Fuel Scooping**: once-per-body salvage that feeds titanium mining contracts; star/gas/ice scoops trade reactor heat for fuel from finite, recharging volatile reservoirs; paid crew training drills.
 - **Captain's Log & Discovery Codex**: career statistics grid, discovery milestones, claim rewards, category filters, and persistent flight log.
 
 ### 20. Captain's Log & Discovery Codex
@@ -438,6 +411,7 @@ python -m voidfarer.cli codex
 # Claim credits and pilot XP for a completed milestone
 python -m voidfarer.cli codex claim first_light
 ```
+New System Surveyor and Sector Cartographer milestones track full-system sweeps, and the log reports `systems_surveyed`.
 
 ---
 
@@ -445,6 +419,6 @@ python -m voidfarer.cli codex claim first_light
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 476-test suite runs in about 7 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 487-test suite runs in about 7 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.

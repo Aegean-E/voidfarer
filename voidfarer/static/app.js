@@ -3545,7 +3545,9 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.targetType.textContent = `TARGET: ${b.body_type.toUpperCase()}`;
             this.targetName.textContent = b.name;
             this.targetDist.textContent = `${distAu.toFixed(2)} AU (ORBIT ${b.orbit_radius.toFixed(2)} AU)`;
-            this.targetDesc.textContent = b.scan_completed ? b.scan_discovery : "Uncharted body. Orbital sensor sweep required.";
+            const survey = this.state.survey;
+            const surveyNote = survey && survey.total ? ` | SURVEY ${survey.scanned}/${survey.total}` : "";
+            this.targetDesc.textContent = (b.scan_completed ? b.scan_discovery : "Uncharted body. Orbital sensor sweep required.") + surveyNote;
             this.btnOrbitTarget.style.display = "inline-block";
             this.btnJumpTarget.style.display = "none";
             const inOrbitHere = (this.state.ship.orbiting_body_id === b.id && !travel);
@@ -3609,11 +3611,21 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                     this.salvageInfo.style.display = "none";
                 }
             }
-            const scoop = inOrbitHere && this.state.scoop && this.state.scoop.available ? this.state.scoop : null;
+            const scoop = inOrbitHere && this.state.scoop ? this.state.scoop : null;
             if (this.btnScoopFuel) {
-                this.btnScoopFuel.style.display = scoop ? "inline-block" : "none";
-                this.btnScoopFuel.disabled = !scoop;
-                this.btnScoopFuel.textContent = scoop ? "SCOOP FUEL" : "TANKS FULL";
+                if (!scoop) {
+                    this.btnScoopFuel.style.display = "none";
+                } else {
+                    const depleted = scoop.tapped >= scoop.reserve;
+                    this.btnScoopFuel.style.display = "inline-block";
+                    this.btnScoopFuel.disabled = !scoop.available;
+                    this.btnScoopFuel.title = scoop.tapped > 0
+                        ? `Next volatile tap in ${scoop.next_tap_in} ticks`
+                        : "";
+                    this.btnScoopFuel.textContent = scoop.available
+                        ? "SCOOP FUEL"
+                        : depleted ? "RESERVOIR DEPLETED" : "TANKS FULL";
+                }
             }
         } else if (this.selectedType === "system") {
             const fresh = this.galaxySystems[this.selectedTarget.id];

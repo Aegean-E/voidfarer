@@ -63,6 +63,8 @@ class CelestialBody:
     government: str = "None"
     habitability: float = 0.0
     salvage_claimed: bool = False
+    volatile_tapped: int = 0
+    volatile_recharge_tick: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -94,6 +96,8 @@ class CelestialBody:
             government=str(data.get("government", "None")),
             habitability=float(data.get("habitability", 0.0)),
             salvage_claimed=bool(data.get("salvage_claimed", False)),
+            volatile_tapped=max(0, int(data.get("volatile_tapped", 0))),
+            volatile_recharge_tick=max(0, int(data.get("volatile_recharge_tick", 0))),
         )
 
 

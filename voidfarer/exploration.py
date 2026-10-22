@@ -37,6 +37,53 @@ SCOOP_PROFILES: dict[str, dict[str, Any]] = {
     "ice_giant": {"base": 12, "heat": 7.0, "label": "Cryo-volatile scoop"},
 }
 
+# Local volatile reservoirs prevent a single body from becoming an infinite fuel tap.
+SCOOP_RESERVE_BASE: dict[str, int] = {
+    "star": 6,
+    "gas_giant": 5,
+    "ringed_giant": 4,
+    "ice_giant": 4,
+    "ice_world": 3,
+}
+SCOOP_RECHARGE_TICKS = 6
+
+
+def scoop_reserve(body: CelestialBody) -> int:
+    """Deterministic number of scoop passes a body's volatiles support."""
+    base = SCOOP_RESERVE_BASE.get(body.body_type, 0)
+    if base <= 0:
+        return 0
+    return base + _stable_crc(body.id) % 3
+
+
+def recharge_volatile_reserve(
+    tapped: int,
+    recharge_tick: int,
+    current_tick: int,
+) -> tuple[int, int]:
+    """Apply elapsed recharge intervals to one body's queued volatile taps.
+
+    ``recharge_tick`` is the absolute tick of the next due recharge. When a
+    large tick step crosses several intervals, all due taps return at once and
+    the schedule advances to the next future slot.
+    """
+    tapped = max(0, int(tapped))
+    recharge_tick = max(0, int(recharge_tick))
+    current_tick = max(0, int(current_tick))
+    if tapped <= 0:
+        return 0, 0
+    if recharge_tick <= 0:
+        return tapped, current_tick + SCOOP_RECHARGE_TICKS
+    if recharge_tick > current_tick + SCOOP_RECHARGE_TICKS:
+        recharge_tick = current_tick + SCOOP_RECHARGE_TICKS
+    if current_tick < recharge_tick:
+        return tapped, recharge_tick
+    steps = 1 + (current_tick - recharge_tick) // SCOOP_RECHARGE_TICKS
+    remaining = max(0, tapped - steps)
+    if remaining <= 0:
+        return 0, 0
+    return remaining, recharge_tick + steps * SCOOP_RECHARGE_TICKS
+
 
 @dataclass(frozen=True)
 class DerelictSite:

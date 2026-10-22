@@ -105,6 +105,18 @@ CODEX_ENTRIES: tuple[CodexEntry, ...] = (
         "scans", 30, 800, 250,
     ),
     CodexEntry(
+        "system_surveyor", "exploration", "System Surveyor",
+        "Complete a full system survey.",
+        "Scan every body in a single star system.",
+        "systems_surveyed", 1, 400, 120,
+    ),
+    CodexEntry(
+        "sector_cartographer", "exploration", "Sector Cartographer",
+        "Complete three full system surveys.",
+        "Finish survey sweeps across multiple systems.",
+        "systems_surveyed", 3, 1200, 350,
+    ),
+    CodexEntry(
         "bootprint", "exploration", "Bootprint",
         "Land on a habitable world for the first time.",
         "Orbit a landable body and run `land <body_id>`.",
@@ -321,6 +333,7 @@ METRIC_LABELS: dict[str, str] = {
     "jumps": "Hyperspace jumps",
     "systems_visited": "Systems charted",
     "scans": "Planetary scans",
+    "systems_surveyed": "Systems surveyed",
     "landings": "Surface landings",
     "salvage": "Derelicts boarded",
     "scoops": "Fuel scoops",
@@ -354,6 +367,7 @@ STATS_ORDER: tuple[str, ...] = (
     "jumps",
     "systems_visited",
     "scans",
+    "systems_surveyed",
     "landings",
     "salvage",
     "scoops",
@@ -409,6 +423,8 @@ def metric_value(state: GameState, metric: str) -> int:
         return len(state.visited_systems)
     if metric == "scans":
         return int(state.stats.get("scans", 0))
+    if metric == "systems_surveyed":
+        return int(state.stats.get("systems_surveyed", 0))
     if metric == "landings":
         return int(state.stats.get("landings", 0))
     if metric == "salvage":

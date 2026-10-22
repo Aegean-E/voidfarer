@@ -1,134 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "sim-combat-void-depth-v1",
+    "task_id": "sim-exploration-hardening-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792648389.9167323,
-    "completed_at": 1792648395.880798
+    "updated_at": 1792666101.3402948,
+    "completed_at": 1792666107.923932
   },
   "checkpoints": [
-    {
-      "task_id": "layout-command-strip-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[4/4] Revision: strip moved to bottom row (equal 3 columns from left panel to right edge); separate radar settings panel above log; circular +/center/\u2212 zoom stack; reactor mode/vent bindings fixed; themed SVG cursors; G-013/README/ADR-034 synced; 392 tests, 4/4 gates, checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792603760.4312453,
-      "timestamp_str": "2026-10-21 20:29:20"
-    },
-    {
-      "task_id": "layout-command-strip-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[5/5] Review pass: fixed DOM source order (strip after cockpit), responsive 2/1-column breaks, disabled/select cursors, dead renderPlayer var; added source-order/K-toggle/cursor/reactor-binding regressions; served-asset check confirms image/svg+xml; 393 tests, 4/4 gates, checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792604187.8683727,
-      "timestamp_str": "2026-10-21 20:36:27"
-    },
-    {
-      "task_id": "layout-command-strip-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[6/6] Resume delivery: re-verified 393 tests and 4/4 gates (test, hygiene, guidelines, secrets) after the interruption; fixed stale README top-strip wording and CSS comment to the bottom-row G-013 contract; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792606035.9362154,
-      "timestamp_str": "2026-10-21 21:07:15"
-    },
-    {
-      "task_id": "layout-command-strip-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'layout-command-strip-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792606072.197189,
-      "timestamp_str": "2026-10-21 21:07:52"
-    },
-    {
-      "task_id": "story-void-traversal-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/6] Planning: proper story mechanics (requirement-gated choices, persistent story flags, follow-up transmissions, branch-skipped chapters, ending resolution, 5-act campaign with old-save migration) plus void traversal (deterministic void lanes between black-hole systems, void dive/emerge, tick-driven storms and arrival)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792607106.626149,
-      "timestamp_str": "2026-10-21 21:25:06",
-      "impact_assessment": {
-        "why": "The narrative campaign is a static 3-act linear chain whose choices have no persistent consequences, and the game named VoidFarer has no mechanics for traversing the void between stars despite black-hole systems existing",
-        "benefits": "Branching consequences that persist and gate later content, branch-resolvable locked choices with reasons, distinct campaign endings, and a deterministic risk-reward void travel layer with CLI/REST/cockpit parity",
-        "risks": "contract: story save schema grows (flags, requirements, endings) and the campaign extends from 3 to 5 acts so the old completed-campaign test contract changes; dependency: none added (stdlib only); concurrency: existing engine lock retained for all new mutations; state: ShipState gains void_traversal with None default and StoryState gains flags/ending_id with empty defaults, both backward compatible via from_dict migration",
-        "mitigation": "Failing-first tests for every new behavior, additive serialization defaults for old saves, migration reopens a completed 3-act save into the 5-act campaign deterministically, the changed test contract is recorded in the ADR per PRINCIPLE-014 R2, and all lanes/storms derive from the galaxy seed and engine RNG"
-      }
-    },
-    {
-      "task_id": "story-void-traversal-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/6] Story mechanics implemented: StoryRequirements gating (flags, reputation, relics, orbit body), persistent choice flags with glossary, branch-resolvable locked choices with reasons, follow-up transmissions, flag-gated chapter skipping, 5-act campaign with Act IV black-hole orbit gate and Act V finale, three deterministic endings, legacy 3-act save migration on init and load; 403 tests pass",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792608313.9447792,
-      "timestamp_str": "2026-10-21 21:45:13"
-    },
-    {
-      "task_id": "story-void-traversal-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[4/6] Void mechanics implemented: VoidTraversalState with backward-compatible serialization, deterministic seeded void-lane graph meshing black-hole anchors with far spokes, void_dive/void_emerge/void_status with horizon-orbit/fuel/shield gates, tick-driven storms with stability collapse and forced emergence, arrival rewards with first-visit cartography bounty, relic void_stability passives, gateways_open storm calming, CLI void command + REST /api/void routes + snapshot parity; 428 tests pass",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792610339.7164001,
-      "timestamp_str": "2026-10-21 22:18:59"
-    },
-    {
-      "task_id": "story-void-traversal-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[6/6] Verification: 435 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, codebase map synced, ADR-035/README updated, legacy-save black-hole backfill verified against a real pre-void save, CLI and REST dogfooded; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792614465.5973346,
-      "timestamp_str": "2026-10-21 23:27:45"
-    },
-    {
-      "task_id": "story-void-traversal-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'story-void-traversal-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792614501.6017568,
-      "timestamp_str": "2026-10-21 23:28:21"
-    },
-    {
-      "task_id": "sim-crew-market-cashflow-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/6] Planning: living crew morale (event-driven morale shifts, paid shore leave at stations, resignation risk below morale 20, inactive-crew drift bugfix), volume-aware market execution (sliced orders walk prices with the shifting stockpile, average-price and impact reporting), and cash-flow telemetry (upkeep vs passive income per tick in snapshot, CLI status, and crew tab)",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792615356.61725,
-      "timestamp_str": "2026-10-21 23:42:36",
-      "impact_assessment": {
-        "why": "Crew morale only moves +/-0.1-0.8 per tick via wages with no events, consequences, or player agency; bulk trade orders execute at a flat pre-trade quote so dumping large volumes has zero price impact; and the negative baseline wage burn (-65 cr/tick vs ~+19 passive) is invisible to the player, weakening the simulation feel and the retention loop around crew management",
-        "benefits": "Crew becomes a living system with stakes (resignations) and a credit-sink lever (shore leave); markets punish bulk dumps and reward order sizing; players can see and manage their net cash flow; combat, void storms, hostile arrivals and story resolutions now feed back into crew state",
-        "risks": "contract: tick_crew gains an rng parameter and removes resigning crew, trade messages gain impact wording, and the market response for bulk orders changes; dependency: none added; concurrency: engine lock retained, shore leave mutates under it; state: no schema change (morale and stockpiles already serialized), resignation only removes existing crew entries",
-        "mitigation": "Failing-first tests for every behavior, single-unit orders keep the legacy price and message shape so the tutorial and existing trade tests stay valid, resignation is seeded from the engine rng for determinism (G-012), shore leave validates docking and credits atomically, and CLI/REST/cockpit parity is covered by tests plus layout regressions"
-      }
-    },
-    {
-      "task_id": "sim-crew-market-cashflow-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[4/6] Implemented: living crew morale (combat victory +5, hull breach -4, void storm -3, hostile arrival -2, story celebration +6, resignation risk below morale 20 while wages unpaid, critical-morale warnings, inactive-crew drift fix), paid shore leave at docked stations with faction repair discounts, volume-aware market execution with sliced stockpile walks and impact reporting on both buy and sell, cash-flow telemetry in engine/crew report/snapshot/CLI status; 460 tests pass",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792617663.294404,
-      "timestamp_str": "2026-10-22 00:21:03"
-    },
     {
       "task_id": "sim-crew-market-cashflow-v1",
       "phase": "phase 4",
@@ -221,6 +101,131 @@
       "status": "completed",
       "timestamp": 1792648395.8808,
       "timestamp_str": "2026-10-22 08:53:15"
+    },
+    {
+      "task_id": "sim-exploration-depth-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/4] Planning: exploration/resource depth pass - prevent zero-power wasted scans, reward full-system survey completion with codex progress, make derelict titanium salvage advance the advertised mining contract, and give fuel-scoop bodies a finite deterministic volatile reserve that recharges over ticks",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792649200.697583,
+      "timestamp_str": "2026-10-22 09:06:40",
+      "impact_assessment": {
+        "why": "Exploration currently has three retention/balance gaps: a scan at 0 sensor power permanently consumes a body for no bounty, scanning every body in a system has no completion payoff, the mining contract promises salvage progress it never receives, and scooping gives unlimited free fuel at any star/gas/ice body, bypassing station fuel and trade",
+        "benefits": "Adds a clear Zeigarnik completion goal per system, closes a wasted-scan trap, makes contract wording truthful and salvage economically useful, and turns fuel into a local resource-management loop without removing exploration viability",
+        "risks": "contract: CelestialBody gains serialized volatile_tapped, scan completion adds stats/snapshot fields, and scoop availability semantics change when a reservoir is tapped out; dependency: none (stdlib only); concurrency: engine RLock retained, system/body replacement stays inside it; state: volatile_tapped defaults to 0 and legacy saves load unchanged",
+        "mitigation": "Failing-first tests for scan gating, survey completion, salvage contract progress, reserve depletion/recharge and legacy defaults; reserve sizes derive deterministically from body type/id; existing first-scoop tests keep passing; codex metric and CLI/REST/cockpit telemetry covered; README/ADR updated"
+      }
+    },
+    {
+      "task_id": "sim-exploration-depth-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/4] Implemented scan discipline and survey loop: 5 MW sensor gate prevents wasted scans, full-system completion pays 300 cr + 120 XP, logs SYSTEM SURVEY COMPLETE, increments systems_surveyed, adds snapshot survey progress and cockpit SURVEY x/y text, plus codex metric with System Surveyor/Sector Cartographer milestones",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792650208.053597,
+      "timestamp_str": "2026-10-22 09:23:28"
+    },
+    {
+      "task_id": "sim-exploration-depth-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[3/4] Implemented resource/contract depth: titanium salvage now advances mining contracts; CelestialBody.volatile_tapped persists with legacy 0 default; deterministic 3-8 tap scoop reservoirs recharge one tap per 6 ticks; scoop reports n/reserve, rejects depleted bodies, snapshot exposes tapped/reserve/available, cockpit shows RESERVOIR DEPLETED; ADR-038 and README updated",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792650215.7418208,
+      "timestamp_str": "2026-10-22 09:23:35"
+    },
+    {
+      "task_id": "sim-exploration-depth-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[4/4] Verified: 483 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, codebase map refreshed, ADR-038 and README synced; checklists: passed; changes left uncommitted because no commit or push was requested",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792650261.108081,
+      "timestamp_str": "2026-10-22 09:24:21"
+    },
+    {
+      "task_id": "sim-exploration-depth-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'sim-exploration-depth-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792650264.223553,
+      "timestamp_str": "2026-10-22 09:24:24"
+    },
+    {
+      "task_id": "sim-exploration-polish-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: polish the exploration pass - add a per-body volatile recharge schedule so a tap returns exactly after 6 ticks rather than on absolute tick boundaries, clamp corrupt negative volatile counters on load, expose next-tap telemetry, and cover both with regressions",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792658262.6376758,
+      "timestamp_str": "2026-10-22 11:37:42",
+      "impact_assessment": {
+        "why": "Verification found two residual correctness gaps: recharge was globally boundary-aligned (a tap could return 1-6 ticks after use), and malformed saves could keep negative volatile counters because from_dict performed no clamp",
+        "benefits": "Makes the fuel-reservoir simulation predictable and fair, hardens save loading, and gives players a clear next-tap countdown without changing the 3-8 reservoir balance",
+        "risks": "contract: CelestialBody gains volatile_recharge_tick with legacy default 0 and the scoop snapshot gains next_tap_in; dependency: none (stdlib only); concurrency: all changes remain under the engine RLock; state: new field is additive and old saves load with a full reservoir",
+        "mitigation": "Pure recharge helper with deterministic tests for early, exact, and large jumps; clamp tests for negative legacy payloads; save/load roundtrip; existing 483 tests and 4/4 gates rerun; ADR-039 and README synced"
+      }
+    },
+    {
+      "task_id": "sim-exploration-polish-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: exact per-body volatile recharge scheduling via volatile_recharge_tick and recharge_volatile_reserve, snapshot next_tap_in, negative-counter clamping on load, corrected large-jump regression, 486 tests pass, 4/4 project gates, node --check app.js clean, map refreshed; checklists: passed; uncommitted because no commit or push was requested",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792665152.7162297,
+      "timestamp_str": "2026-10-22 13:32:32"
+    },
+    {
+      "task_id": "sim-exploration-polish-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'sim-exploration-polish-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792665157.5401437,
+      "timestamp_str": "2026-10-22 13:32:37"
+    },
+    {
+      "task_id": "sim-exploration-hardening-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: harden the volatile recharge schedule against corrupt far-future timestamps - cap any due tick beyond one interval at now+6, add a pure-helper regression, and document the guard",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792665883.9955463,
+      "timestamp_str": "2026-10-22 13:44:43",
+      "impact_assessment": {
+        "why": "The second verification pass found that negative counters are clamped but a malformed far-future volatile_recharge_tick could lock a body for an unbounded time; a legitimate due can never be more than one interval ahead",
+        "benefits": "Removes the last identified corrupt-save lockout path without changing normal reservoir balance or scheduling",
+        "risks": "contract: recharge_volatile_reserve gains a defensive cap but keeps its signature and normal outputs; dependency: none; concurrency: pure helper, no state mutation; state: no schema change",
+        "mitigation": "Failing-first pure-helper test for a far-future due tick, rerun all 486 tests plus the new regression, 4/4 project gates, README/ADR sync"
+      }
+    },
+    {
+      "task_id": "sim-exploration-hardening-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: recharge_volatile_reserve caps far-future due ticks at now+interval, pure-helper regression added, 487 tests pass, 4/4 project gates, map refreshed, ADR-040 and README test count synced; checklists: passed; uncommitted because no commit or push was requested",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792666101.3402948,
+      "timestamp_str": "2026-10-22 13:48:21"
+    },
+    {
+      "task_id": "sim-exploration-hardening-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'sim-exploration-hardening-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792666107.923934,
+      "timestamp_str": "2026-10-22 13:48:27"
     }
   ]
 }

@@ -1025,6 +1025,7 @@ class VoidTraversalState:
     duration_ticks: int = 1
     stability: float = 100.0
     storms_weathered: int = 0
+    resonance: float = 0.0
 
     def progress(self, current_tick: int) -> float:
         total = max(1, self.arrival_tick - self.started_tick)
@@ -1044,6 +1045,7 @@ class VoidTraversalState:
             duration_ticks=int(data.get("duration_ticks", 1)),
             stability=float(data.get("stability", 100.0)),
             storms_weathered=int(data.get("storms_weathered", 0)),
+            resonance=float(data.get("resonance", 0.0)),
         )
 
 

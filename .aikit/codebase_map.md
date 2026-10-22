@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `56`
-- **Total Classes**: `149`
-- **Total Top-Level Functions**: `174`
-- **Total Class Methods**: `841`
-- **Total Source Lines**: `24377`
+- **Total Python Modules**: `57`
+- **Total Classes**: `152`
+- **Total Top-Level Functions**: `175`
+- **Total Class Methods**: `859`
+- **Total Source Lines**: `24688`
 
 ---
 
@@ -271,6 +271,35 @@
   - Method `.test_crew_section_source_order()`
   - Method `.test_app_wires_shore_leave_and_morale_bars()`
   - Method `.test_crew_simulation_styles_exist()`
+
+---
+
+### [`tests/test_combat_void_depth.py`](tests/test_combat_void_depth.py)
+> *Regression tests for progression-scaled combat and Hollow resonance risk/reward.*
+
+**Size**: `200` lines (`8546` bytes)
+
+**Classes:**
+- `class TestProgressionThreatScaling`
+  - Method `.test_threat_multiplier_starts_flat_and_grows()`
+  - Method `.test_generated_enemy_scales_with_threat_level()`
+  - Method `.test_dreadnought_boss_is_gated_behind_mastery()`
+- `class TestEvasiveBurnDiscipline`
+  - Method `._engine(fuel, streak, combo)`
+  - Method `.test_successful_evasive_burn_costs_fuel_and_resets_streak()`
+  - Method `.test_failed_evasive_burn_still_burns_fuel_and_keeps_combat()`
+  - Method `.test_evasive_burn_requires_fuel()`
+- `class TestVoidResonance`
+  - Method `.setUp()`
+  - Method `.tearDown()`
+  - Method `._traversal(started, arrival, resonance, stability)`
+  - Method `._set_void_ship(traversal, credits, visited)`
+  - Method `.test_resonance_defaults_and_roundtrips()`
+  - Method `.test_storm_accumulates_resonance_with_low_stability_premium()`
+  - Method `.test_status_projects_resonance_payout()`
+  - Method `.test_arrival_pays_resonance_credits_and_xp()`
+  - Method `.test_emergency_emerge_pays_only_prorated_resonance()`
+  - Method `.test_cli_and_cockpit_expose_resonance()`
 
 ---
 
@@ -946,7 +975,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `2582` lines (`131858` bytes)
+**Size**: `2586` lines (`132160` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*
@@ -1055,21 +1084,22 @@
 ### [`voidfarer/enemies.py`](voidfarer/enemies.py)
 > *Hostile Enemy Archetypes, Tactical Combat AI, and Procedural Intercept Generation.*
 
-**Size**: `250` lines (`9753` bytes)
+**Size**: `279` lines (`10978` bytes)
 
 **Classes:**
 - `class EnemyArchetype` - *Blueprint for procedural hostile intercepts across galactic territories.*
 
 **Functions:**
+- `def threat_multiplier(threat_level)` - *Scale generated intercept strength with the pilot's command experience.*
 - `def choose_enemy_intent(profile, special_ability, ability_ready, enemy_hull, enemy_max_hull, enemy_shield, enemy_max_shield, player_hull, player_max_hull, player_shield, player_max_shield, player_combo)` - *Pick the next hostile maneuver from hull, shield, combo, and AI profile state.*
-- `def generate_system_enemy(system_id, security, faction, seed)` - *Generate a procedurally balanced CombatEncounter matching star system characteristics.*
+- `def generate_system_enemy(system_id, security, faction, seed, threat_level)` - *Generate a procedurally balanced CombatEncounter matching star system characteristics.*
 
 ---
 
 ### [`voidfarer/engine.py`](voidfarer/engine.py)
 > *Deterministic state machine and simulation engine for VoidFarer.*
 
-**Size**: `5301` lines (`265664` bytes)
+**Size**: `5377` lines (`269814` bytes)
 
 **Classes:**
 - `class SimulationEngine` - *Coordinates space flight, star navigation, fleet drones, upgrades, and tactical combat.*
@@ -1099,6 +1129,7 @@
   - Property `.orbiting_body`
   - Method `._body_by_id(body_id)` - *Look up a celestial body anywhere in the known galaxy.*
   - Method `._void_storm_chance()` - *Current void storm probability, calmed by open gateways.*
+  - Method `._void_resonance_payout(resonance, share)` - *Convert weathered-storm resonance into credits and pilot XP.*
   - Method `.void_dive(target_system_id)` - *Slip through a black-hole event horizon into the Hollow Between.*
   - Method `.void_emerge()` - *Emergency surfacing from an active void traversal, back through the entry horizon.*
   - Method `.void_status()` - *Void traversal readiness, lanes, and active traversal state (CLI/REST/cockpit parity).*
@@ -1359,7 +1390,7 @@
 ### [`voidfarer/models.py`](voidfarer/models.py)
 > *Domain state models and frozen data transfer objects for VoidFarer.*
 
-**Size**: `1803` lines (`66261` bytes)
+**Size**: `1805` lines (`66345` bytes)
 
 **Classes:**
 - `class Moon` - *Natural satellite orbiting a planet.*

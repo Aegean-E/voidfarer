@@ -95,6 +95,7 @@ voidfarer/
     ├── test_captains_log_codex.py
     ├── test_cli.py
     ├── test_cockpit_layout.py
+    ├── test_combat_void_depth.py
     ├── test_economy.py
     ├── test_empire_character_fleet.py
     ├── test_engine.py
@@ -201,6 +202,8 @@ python -m voidfarer.cli combat flee             # Emergency hyperspace micro-jum
 
 Hostile captains use adaptive AI profiles (`aggressive`, `defensive`, `opportunist`, `adaptive`, `warlord`). They read your hull, shields, and tactical combo to brace, evade, execute wounded targets, drain shields, EMP weapon systems, tachyon-lance hull, or regenerate nanites. The combat telemetry line shows the next predicted maneuver.
 
+Hostile strength scales with Pilot Mastery: +5% hull, shields, damage and bounty per level above 1 (capped +75%), and Void Warlord Dreadnoughts only ambush level-4+ commanders. Evasive burns cost 3 fuel and, on success, reset both tactical combo and expedition streak.
+
 ### 7. Dynamic Sector Bounties & Contracts (Zeigarnik Loop)
 ```bash
 # View active contracts, progress bars, and rewards
@@ -288,7 +291,7 @@ python -m voidfarer.cli void dive golconda
 # Emergency surfacing back through the entry horizon (costs hull and shields)
 python -m voidfarer.cli void emerge
 ```
-Black-hole anchors (Cygnus Void Gate, Golconda Rift) mesh into a seeded void-lane graph with far spokes. Diving requires orbiting an event horizon, route fuel, and 25% shields; each tick in the Hollow risks storms that drain stability, shields, and hull. Stability collapse force-ejects you at the origin; arrival grants pilot XP plus a first-visit cartography bounty. The `gateways_open` story flag calms storms by 25%, and the Void Compass / Crown of Echoes relics raise starting stability.
+Black-hole anchors mesh into a seeded void-lane graph. Diving needs a horizon orbit, route fuel, and 25% shields; storms drain stability, shields, and hull. Each storm crystallizes Hollow resonance (+1, doubled below 30% stability) worth 120 cr and 15 XP on arrival; `void emerge` banks only half the prorated resonance, while collapse loses all. The `gateways_open` flag calms storms 25%; the Void Compass and Crown of Echoes raise starting stability.
 
 ### 14. Geopolitical Factions & Megacorporations
 ```bash
@@ -319,7 +322,7 @@ python -m voidfarer.cli time step 4
 ```bash
 python -m voidfarer.cli repl
 ```
-Inside the interactive REPL, you can execute all commands (`status`, `chart`, `time`, `factions`, `corporations`, `contracts`, `mastery`, `relics`, `streak`, `market`, `economy`, `inventory`, `shipyard`, `jump`, `fleet`, `upgrades`, `combat`, `scan`, `power`, `tutorial`, `story`, `void`, etc.), or type **`serve`** to launch the concurrent background Web HUD!
+Inside the interactive REPL, all commands work (`status`, `chart`, `time`, `contracts`, `combat`, `story`, `void`, ...); type **`serve`** to launch the concurrent background Web HUD!
 
 Frontier commands are also available directly:
 ```bash
@@ -406,7 +409,7 @@ python -m voidfarer.cli serve --port 8080
 ```
 Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Top Status Bar & Chronometer (`G-007`, `G-011`)**: Responsive vitals plus the chrono deck, wrapping cleanly on narrow viewports.
-- **Background Radar HUD (`G-004`, `G-005`, `G-013`)**: Full map, left terminal, and an equal three-column bottom strip: reactor, skills, separate radar settings above the compact log; circular zoom icons and themed cursors.
+- **Background Radar HUD (`G-004`, `G-005`, `G-013`)**: Map, left terminal, and a three-column bottom strip: reactor, skills, separate radar settings above the compact log; circular zoom icons and themed cursors.
 - **Main Menu & Saves (`ESC`)**: Settings plus create, load, list, and delete named save slots.
 - **Planet Inspector**: Gravity, atmosphere, temperature, habitability, orbit distance, moons, resources, and colony tiers.
 - **Transit, Landing & Fleet**: Tick-synchronized sublight/quantum transit, surface survey rewards, and drone/mercenary commands.
@@ -442,6 +445,6 @@ python -m voidfarer.cli codex claim first_light
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 464-test suite runs in about 7 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 476-test suite runs in about 7 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.

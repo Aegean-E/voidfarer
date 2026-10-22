@@ -122,6 +122,25 @@ SPECIAL_TELEGRAPHS = {
     "nanite_regen": "Nanite repair matrix deployed in automated standby",
 }
 
+# Dynamic difficulty: hostile forces answer a proven commander with heavier metal.
+THREAT_SCALE_PER_LEVEL = 0.05
+THREAT_SCALE_CAP = 0.75
+DREADNOUGHT_MIN_THREAT_LEVEL = 4
+
+
+def threat_multiplier(threat_level: int) -> float:
+    """Scale generated intercept strength with the pilot's command experience.
+
+    A fresh pilot (level 1) keeps the original archetype numbers. Each later
+    level adds 5% hull, shields and damage (bounty follows at 80% of the same
+    curve), capped at +75%.
+    """
+    try:
+        level = int(threat_level)
+    except (TypeError, ValueError):
+        level = 1
+    return 1.0 + min(THREAT_SCALE_CAP, max(0, level - 1) * THREAT_SCALE_PER_LEVEL)
+
 
 def choose_enemy_intent(
     profile: str,
@@ -192,12 +211,21 @@ def generate_system_enemy(
     security: float,
     faction: str,
     seed: int | None = None,
+    threat_level: int = 1,
 ) -> CombatEncounter:
     """Generate a procedurally balanced CombatEncounter matching star system characteristics."""
     rng = random.Random(seed)
+    threat = threat_multiplier(threat_level)
+    try:
+        level = int(threat_level)
+    except (TypeError, ValueError):
+        level = 1
 
-    # Low security boss spawn chance (Capital Dreadnought)
-    if security < 0.20 and rng.random() < 0.30:
+    # Low security boss spawn chance (Capital Dreadnought) only for proven pilots.
+    # The roll is still consumed for low-security systems at every level so the
+    # seeded archetype sequence stays stable for existing saves.
+    boss_roll = rng.random() if security < 0.20 else 1.0
+    if security < 0.20 and level >= DREADNOUGHT_MIN_THREAT_LEVEL and boss_roll < 0.30:
         arch = ENEMY_ARCHETYPES["warlord_dreadnought"]
     elif "pulsar" in system_id.lower() or "cygnus" in system_id.lower() or "precursor" in faction.lower():
         arch = ENEMY_ARCHETYPES["precursor_sentinel"]
@@ -214,10 +242,11 @@ def generate_system_enemy(
         choices = ["corsair_interceptor", "syndicate_marauder"]
         arch = ENEMY_ARCHETYPES[rng.choice(choices)]
 
-    # Slight variance (+/- 10%)
-    hull_var = int(arch.base_hull * rng.uniform(0.9, 1.15))
-    shield_var = int(arch.base_shield * rng.uniform(0.9, 1.15))
-    dmg_var = int(arch.base_damage * rng.uniform(0.95, 1.10))
+    # Slight variance (+/- 10%) plus progression threat scaling.
+    hull_var = int(arch.base_hull * rng.uniform(0.9, 1.15) * threat)
+    shield_var = int(arch.base_shield * rng.uniform(0.9, 1.15) * threat)
+    dmg_var = int(arch.base_damage * rng.uniform(0.95, 1.10) * threat)
+    bounty = int(arch.bounty_credits * (1.0 + (threat - 1.0) * 0.8))
 
     initial_telegraph = "Weapons powering up; calibrating fire control"
     if arch.special_ability == "shield_drain":
@@ -236,7 +265,7 @@ def generate_system_enemy(
         enemy_hull=hull_var,
         enemy_max_hull=hull_var,
         enemy_damage=dmg_var,
-        bounty_credits=arch.bounty_credits,
+        bounty_credits=bounty,
         salvage_commodity=arch.salvage_commodity,
         enemy_shield=shield_var,
         enemy_max_shield=shield_var,

@@ -847,6 +847,11 @@ class SimulationEngine:
     VOID_EMERGENCE_HULL_DAMAGE = 25
     VOID_ARRIVAL_XP = 50
     VOID_FIRST_VISIT_BONUS = 400
+    VOID_RESONANCE_CREDITS = 120
+    VOID_RESONANCE_XP = 15
+    VOID_EMERGE_RESONANCE_SHARE = 0.5
+    VOID_LOW_STABILITY_THRESHOLD = 30.0
+    VOID_LOW_STABILITY_RESONANCE_BONUS = 1.0
 
     def _void_storm_chance(self) -> float:
         """Current void storm probability, calmed by open gateways."""
@@ -854,6 +859,18 @@ class SimulationEngine:
         if self.state.ship.story.flags.get("gateways_open"):
             chance *= 0.75
         return chance
+
+    def _void_resonance_payout(self, resonance: float, share: float = 1.0) -> tuple[int, int]:
+        """Convert weathered-storm resonance into credits and pilot XP.
+
+        ``share`` lets an emergency emergence pay only the prorated fraction the
+        commander actually braved before turning back.
+        """
+        value = max(0.0, float(resonance)) * max(0.0, min(1.0, float(share)))
+        return (
+            int(round(value * self.VOID_RESONANCE_CREDITS)),
+            int(round(value * self.VOID_RESONANCE_XP)),
+        )
 
     def void_dive(self, target_system_id: str) -> tuple[bool, str]:
         """Slip through a black-hole event horizon into the Hollow Between."""
@@ -938,6 +955,14 @@ class SimulationEngine:
             progress = traversal.progress(self.state.time.tick)
             hull_damage = int(5 + progress * 15)
             shield_damage = int(10 + progress * 25)
+            resonance_credits, resonance_xp = self._void_resonance_payout(
+                traversal.resonance,
+                progress * self.VOID_EMERGE_RESONANCE_SHARE,
+            )
+            new_mastery = self.state.ship.mastery
+            xp_logs: list[str] = []
+            if resonance_xp > 0:
+                new_mastery, xp_logs = self._award_pilot_xp(resonance_xp, new_mastery)
             origin_sys = self.state.systems.get(traversal.origin_system_id)
             origin_name = origin_sys.name if origin_sys else traversal.origin_system_id
             horizon_id = None
@@ -947,27 +972,45 @@ class SimulationEngine:
                         horizon_id = body.id
                         break
 
+            resonance_note = ""
+            if resonance_credits > 0 or resonance_xp > 0:
+                resonance_note = (
+                    f" Resonance yield: +{resonance_credits} cr, +{resonance_xp} XP "
+                    f"({traversal.resonance:.0f} storm resonance at {int(progress * 100)}% traversal)."
+                )
             log_entry = (
                 f"VOID EMERGENCE: Emergency surfacing at {origin_name} after "
                 f"{int(progress * 100)}% traversal. Hull stress -{hull_damage}, shield shear -{shield_damage}."
+                f"{resonance_note}"
             )
-            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry]
+            new_log = list(self.state.ship.flight_log[-19:]) + [log_entry] + xp_logs
+            stats = dict(self.state.stats)
+            stats["credits_earned"] = int(stats.get("credits_earned", 0)) + resonance_credits
+            banked_resonance = traversal.resonance * progress * self.VOID_EMERGE_RESONANCE_SHARE
+            stats["void_resonance"] = int(stats.get("void_resonance", 0)) + int(round(banked_resonance))
 
             self.state = self._clone_state(
                 ship=self._clone_ship(
                     hull=max(1, self.state.ship.hull - hull_damage),
                     shield=max(0, self.state.ship.shield - shield_damage),
+                    credits=self.state.ship.credits + resonance_credits,
+                    mastery=new_mastery,
                     orbiting_body_id=horizon_id,
                     void_traversal=None,
                     flight_log=tuple(new_log[-20:]),
-                )
+                ),
+                stats=stats,
             )
             self.emit_event(
                 "void",
                 "Void Emergence",
-                f"The void releases you violently at {origin_name}. Shields and hull took shear damage.",
+                f"The void releases you violently at {origin_name}. Shields and hull took shear damage."
+                + (f" Resonance salvage: {resonance_credits} cr." if resonance_credits else ""),
             )
-            return True, f"Emergency emergence at {origin_name}. Hull -{hull_damage}, shields -{shield_damage}."
+            return True, (
+                f"Emergency emergence at {origin_name}. Hull -{hull_damage}, shields -{shield_damage}."
+                + (f" Resonance yield: +{resonance_credits} cr, +{resonance_xp} XP." if resonance_credits or resonance_xp else "")
+            )
 
     def void_status(self) -> dict[str, Any]:
         """Void traversal readiness, lanes, and active traversal state (CLI/REST/cockpit parity)."""
@@ -1012,6 +1055,9 @@ class SimulationEngine:
                     else None
                 ),
                 "traversal_progress": round(traversal.progress(self.state.time.tick), 3) if traversal else None,
+                "resonance": round(traversal.resonance, 1) if traversal else 0.0,
+                "projected_resonance_credits": self._void_resonance_payout(traversal.resonance)[0] if traversal else 0,
+                "projected_resonance_xp": self._void_resonance_payout(traversal.resonance)[1] if traversal else 0,
                 "dive_ready": not reasons,
                 "blockers": reasons,
                 "destinations": destinations,
@@ -1146,6 +1192,7 @@ class SimulationEngine:
                     security=target_sys.security,
                     faction=target_sys.faction,
                     seed=self.rng.randint(1000, 99999),
+                    threat_level=self.state.ship.mastery.level,
                 )
                 new_log.append(f"HOSTILE PATROL: Intercepted by {combat.enemy_name} due to hostile faction standing ({standing})!")
             elif target_sys.security < 0.35:
@@ -1157,6 +1204,7 @@ class SimulationEngine:
                         security=target_sys.security,
                         faction=target_sys.faction,
                         seed=self.rng.randint(1000, 99999),
+                        threat_level=self.state.ship.mastery.level,
                     )
                     new_log.append(f"ALERT: Intercepted by hostile {combat.enemy_name}! Weapons locked.")
 
@@ -3237,11 +3285,17 @@ class SimulationEngine:
                 return True, msg
 
             elif action == "evasive_burn":
+                burn_cost = 3
+                if self.state.ship.fuel < burn_cost:
+                    return False, f"Insufficient fuel for an evasive burn ({burn_cost} units required)."
+                new_fuel = self.state.ship.fuel - burn_cost
                 eng = self.state.ship.power.engines
                 chance = min(0.95, 0.50 + (eng / 25.0) * 0.20 + equipment["evasion"])
                 if self.rng.random() < chance:
-                    msg = "High-G burn successful! Evaded enemy weapon tracking and escaped hostile sector."
+                    msg = "High-G burn successful! Evaded enemy weapon tracking and escaped hostile sector (expedition streak reset)."
                     new_combat = None
+                    new_streak = 1
+                    new_combo = 0
                 else:
                     dmg = combat.enemy_damage
                     if new_shield >= dmg:
@@ -3252,7 +3306,14 @@ class SimulationEngine:
                     msg = f"Evasive burn failed! Suffered {dmg} damage during high-G maneuver."
                     new_combat = combat
                 new_log = list(self.state.ship.flight_log[-19:]) + [msg]
-                new_ship = self._clone_ship(hull=new_hull, shield=new_shield, tactical_combo=new_combo, streak=new_streak, flight_log=tuple(new_log[-20:]))
+                new_ship = self._clone_ship(
+                    hull=new_hull,
+                    shield=new_shield,
+                    fuel=new_fuel,
+                    tactical_combo=new_combo,
+                    streak=new_streak,
+                    flight_log=tuple(new_log[-20:]),
+                )
                 self.state = self._clone_state(ship=new_ship, active_combat=new_combat)
                 return True, msg
 
@@ -5060,6 +5121,7 @@ class SimulationEngine:
                 storm_chance = self._void_storm_chance()
                 storms_weathered = new_void.storms_weathered
                 stability = new_void.stability
+                resonance = new_void.resonance
                 forced_emergence = False
                 for _ in range(ticks_in_void):
                     if stability <= 0:
@@ -5070,12 +5132,15 @@ class SimulationEngine:
                         stability -= self.VOID_STORM_STABILITY_LOSS
                         new_shield = max(0, new_shield - self.VOID_STORM_SHIELD_LOSS)
                         new_hull = max(1, new_hull - self.VOID_STORM_HULL_LOSS)
-                        if stability < 30:
+                        resonance += 1.0
+                        if stability < self.VOID_LOW_STABILITY_THRESHOLD:
                             new_hull = max(1, new_hull - self.VOID_STORM_HULL_LOSS)
+                            resonance += self.VOID_LOW_STABILITY_RESONANCE_BONUS
                         new_crew, storm_morale_log = apply_morale_event(new_crew, -3.0, "void storm shear in the Hollow")
                         new_flight_log.append(
-                            f"VOID STORM: Shear front weathered ({storms_weathered} total). "
-                            f"Stability {max(0.0, stability):.0f}%, shields -{self.VOID_STORM_SHIELD_LOSS}."
+                            f"VOID STORM: Shear front weathered ({storms_weathered} total, "
+                            f"resonance {resonance:.0f}). Stability {max(0.0, stability):.0f}%, "
+                            f"shields -{self.VOID_STORM_SHIELD_LOSS}."
                         )
                         if storm_morale_log:
                             new_flight_log.append(storm_morale_log)
@@ -5094,7 +5159,7 @@ class SimulationEngine:
                     new_void = None
                     new_flight_log.append(
                         f"VOID COLLAPSE: Stability lost. The Hollow expels the hull violently at {origin_name} "
-                        f"(hull -{self.VOID_EMERGENCE_HULL_DAMAGE})."
+                        f"(hull -{self.VOID_EMERGENCE_HULL_DAMAGE}, resonance {resonance:.0f} lost)."
                     )
                     evt_id = f"evt_{new_tick}_{len(new_events) + 1}"
                     new_events.append(
@@ -5116,7 +5181,11 @@ class SimulationEngine:
                     visited.add(dest_id)
                     new_visited_systems = tuple(sorted(visited))
                     new_current_system_id = dest_id
-                    new_mastery, xp_logs = self._award_pilot_xp(self.VOID_ARRIVAL_XP, cur_ship.mastery)
+                    resonance_credits, resonance_xp = self._void_resonance_payout(resonance)
+                    new_credits_delta += resonance_credits
+                    new_mastery, xp_logs = self._award_pilot_xp(
+                        self.VOID_ARRIVAL_XP + resonance_xp, cur_ship.mastery
+                    )
                     new_flight_log.extend(xp_logs)
                     if first_visit:
                         new_credits_delta += self.VOID_FIRST_VISIT_BONUS
@@ -5125,11 +5194,17 @@ class SimulationEngine:
                         )
                     else:
                         new_flight_log.append(f"VOID ARRIVAL: Emerged into {dest_name} from the Hollow Between.")
+                    if resonance > 0:
+                        new_flight_log.append(
+                            f"HOLLOW RESONANCE: {resonance:.0f} storm resonance crystallized on arrival "
+                            f"(+{resonance_credits} cr, +{resonance_xp} XP)."
+                        )
                     if stability < 60:
                         new_hull = max(1, new_hull - 5)
                         new_flight_log.append("Turbulent emergence: hull stress -5 from residual shear.")
                     new_stats_void = dict(new_stats_tick)
                     new_stats_void["void_arrivals"] = int(new_stats_void.get("void_arrivals", 0)) + 1
+                    new_stats_void["void_resonance"] = int(new_stats_void.get("void_resonance", 0)) + int(round(resonance))
                     new_stats_tick = new_stats_void
                     new_void = None
                     evt_id = f"evt_{new_tick}_{len(new_events) + 1}"
@@ -5152,6 +5227,7 @@ class SimulationEngine:
                         duration_ticks=new_void.duration_ticks,
                         stability=stability,
                         storms_weathered=storms_weathered,
+                        resonance=resonance,
                     )
 
             if new_flight_log_research:

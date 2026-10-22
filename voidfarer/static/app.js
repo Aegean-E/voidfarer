@@ -1881,6 +1881,10 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                     <span class="void-label">STORMS</span>
                     <span class="void-value">${traversal.storms_weathered} weathered</span>
                 </div>
+                <div class="void-transit-row">
+                    <span class="void-label">RESONANCE</span>
+                    <span class="void-value">${Math.round(traversal.resonance || 0)} storms · ~${voidState.projected_resonance_credits || 0} cr</span>
+                </div>
                 <button class="btn-hud void-emerge-btn" id="btnVoidEmerge">⚠ EMERGENCY EMERGE</button>
             `;
             const emergeBtn = document.getElementById("btnVoidEmerge");

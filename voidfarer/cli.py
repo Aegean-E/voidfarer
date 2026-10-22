@@ -200,7 +200,7 @@ def cmd_status(engine: SimulationEngine) -> int:
         vt = ship.void_traversal
         dest_sys = engine.state.systems.get(vt.destination_system_id)
         dest_name = dest_sys.name if dest_sys else vt.destination_system_id
-        void_msg = f"In the Hollow Between -> {dest_name} | Stability {vt.stability:.0f}% | Storms {vt.storms_weathered}"
+        void_msg = f"In the Hollow Between -> {dest_name} | Stability {vt.stability:.0f}% | Storms {vt.storms_weathered} | Resonance {vt.resonance:.0f}"
         print(f"╠════ VOID TRAVERSAL ══════════════════════════════════════════════════╣{RESET}")
         print(f"║ {MAGENTA}{void_msg[:67]:<67}{RESET} ║")
 
@@ -1369,7 +1369,11 @@ def cmd_void(engine: SimulationEngine, storage: StorageManager, parts: list[str]
         print(f"║ Status:     {MAGENTA}IN THE VOID{RESET} bound for {BOLD}{dest_name}{RESET}")
         print(f"║ Stability:  {_bar(int(traversal['stability']), 130, 24, GREEN if traversal['stability'] > 60 else RED)}")
         print(f"║ Storms:     {YELLOW}{traversal['storms_weathered']}{RESET} weathered  |  Progress: {int((status['traversal_progress'] or 0.0) * 100)}%")
-        print(f"║ {CYAN}Type: void emerge{RESET} for emergency surfacing (costs hull and shields).")
+        print(
+            f"║ Resonance:  {YELLOW}{traversal.get('resonance', 0.0):.0f}{RESET} storm resonance  |  "
+            f"Payout: ~{status.get('projected_resonance_credits', 0)} cr, ~{status.get('projected_resonance_xp', 0)} XP"
+        )
+        print(f"║ {CYAN}Type: void emerge{RESET} for emergency surfacing (prorated resonance, hull and shield damage).")
     else:
         if status["dive_ready"]:
             print(f"║ Status:     {GREEN}READY TO DIVE{RESET} (orbiting a black-hole event horizon)")

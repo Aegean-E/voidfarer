@@ -1,89 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "sim-crew-market-cashflow-v1",
+    "task_id": "sim-combat-void-depth-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792621236.3740423,
-    "completed_at": 1792621259.3168037
+    "updated_at": 1792648389.9167323,
+    "completed_at": 1792648395.880798
   },
   "checkpoints": [
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[5/5] Follow-up polish: depot volume telemetry and UI, removed dead refit panel, scoop_yield contract doc, 383 tests; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792600289.9637647,
-      "timestamp_str": "2026-10-21 19:31:29"
-    },
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[6/6] Persistence hardening: dock cost basis serialized in GameState, save/load preserves guard, legacy default empty, reload-arbitrage regression; 385 tests, 4/4 gates, checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792600531.9661896,
-      "timestamp_str": "2026-10-21 19:35:31"
-    },
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[7/7] Limitations closed: server-enforced creation budget with atomic rejection, snapshot-published budget drives cockpit constants, full suite 386, 4/4 gates, checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792600963.65659,
-      "timestamp_str": "2026-10-21 19:42:43"
-    },
-    {
-      "task_id": "review-last-3-changes-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'review-last-3-changes-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792602896.4166703,
-      "timestamp_str": "2026-10-21 20:14:56"
-    },
-    {
-      "task_id": "layout-command-strip-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/3] Planning: top-of-map command strip with reactor left, skills center, flight log right; icons, hotkeys, compact log, guide updates",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792602902.0502179,
-      "timestamp_str": "2026-10-21 20:15:02",
-      "impact_assessment": {
-        "why": "The user requires skills out of the PLAYER tab and a single hotkey-driven command row above the map",
-        "benefits": "Map keeps focus, skills train from anywhere, reactor and telemetry stay visible, log height drops",
-        "risks": "contract: layout guidelines G-001/G-005 change; dependency: none; concurrency: UI refresh only; state: no engine/schema change",
-        "mitigation": "Update G-013/README/ADR, keep all IDs wired, add layout and hotkey regression assertions, run 388 tests and 4 gates"
-      }
-    },
-    {
-      "task_id": "layout-command-strip-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/3] Implemented: hudCommandStrip (reactor/skills/log), PLAYER skills removed, icon skill chips with SHIFT+1..6, P/K/L and Q/W/E/R hotkeys, 108px log, G-013/README/ADR-034, layout tests updated",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792602906.147506,
-      "timestamp_str": "2026-10-21 20:15:06"
-    },
-    {
-      "task_id": "layout-command-strip-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[3/3] Verified: 388 tests pass, 8 subtests, app.js syntax clean, DOM IDs unique/no missing refs, 4/4 project gates, checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792602907.4026852,
-      "timestamp_str": "2026-10-21 20:15:07"
-    },
     {
       "task_id": "layout-command-strip-v1",
       "phase": "phase 4",
@@ -222,6 +147,80 @@
       "status": "completed",
       "timestamp": 1792621259.3168051,
       "timestamp_str": "2026-10-22 01:20:59"
+    },
+    {
+      "task_id": "sim-combat-void-depth-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/4] Planning: simulation-depth pass on combat and void traversal - progression-scaled encounter threat with early-boss gating, consistent evasive-burn disengagement (fuel cost, streak/combo reset), and Hollow resonance risk-reward with partial emergency payout plus CLI/REST/cockpit telemetry",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792624438.3903198,
+      "timestamp_str": "2026-10-22 02:13:58",
+      "impact_assessment": {
+        "why": "Combat difficulty never scales with player progression, a 30% anarchy dreadnought roll can ambush a level-1 hull, free evasive burns dodge the loss-aversion streak reset, and void traversal only punishes storms with no variable reward or bail-out value",
+        "benefits": "Keeps the combat flow channel as mastery grows, removes an early-game unfair spike, closes the streak-preserving escape exploit, and turns passive void waiting into a risk/reward loop with transparent resonance payouts",
+        "risks": "contract: generated enemy stats/bounties and VoidTraversalState serialization change, evasive burn gains a fuel cost; dependency: none (stdlib only); concurrency: engine RLock retained, all new mutation stays inside it; state: resonance is an additive default-0.0 field and old saves load unchanged",
+        "mitigation": "Failing-first tests for scaling, boss gating, evasive-burn costs, resonance accrual/payouts and serialization; generate_system_enemy keeps threat_level=1 defaults so existing callers/tests are unchanged; partial emergency payout is capped below full arrival value; CLI/REST/cockpit parity and G-012 determinism verified"
+      }
+    },
+    {
+      "task_id": "sim-combat-void-depth-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/4] Implemented combat depth: threat_multiplier (5%/level, +75% cap) with bounty curve, level-4 Dreadnought ambush gate preserving seeded RNG streams, mastery-level threat passed on both jump intercept paths, evasive burn now costs 3 fuel and resets streak/combo on success",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792647978.8733323,
+      "timestamp_str": "2026-10-22 08:46:18"
+    },
+    {
+      "task_id": "sim-combat-void-depth-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[3/4] Implemented Hollow resonance: serialized resonance field with legacy default, +1 per storm and +1 low-stability premium, 120 cr/15 XP per point on arrival, prorated half-share on emergency emerge, lifetime void_resonance stat, void_status projections, CLI status/void decks, cockpit row, REST parity, ADR-037 and README synced",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792647983.5965195,
+      "timestamp_str": "2026-10-22 08:46:23"
+    },
+    {
+      "task_id": "sim-combat-void-depth-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[4/4] Verified: 476 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, codebase map refreshed, ADR-037 and README updated; checklists: passed; changes intentionally left uncommitted because no commit was requested",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792648022.0381434,
+      "timestamp_str": "2026-10-22 08:47:02"
+    },
+    {
+      "task_id": "sim-combat-void-depth-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'sim-combat-void-depth-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792648042.0726671,
+      "timestamp_str": "2026-10-22 08:47:22"
+    },
+    {
+      "task_id": "sim-combat-void-depth-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[review] Self-review fix: lifetime void_resonance now counts only banked resonance (prorated on emergency emergence); 476 tests pass, 4/4 gates, app.js syntax clean; checklists: passed; changes remain uncommitted",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792648389.9167323,
+      "timestamp_str": "2026-10-22 08:53:09"
+    },
+    {
+      "task_id": "sim-combat-void-depth-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'sim-combat-void-depth-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792648395.8808,
+      "timestamp_str": "2026-10-22 08:53:15"
     }
   ]
 }

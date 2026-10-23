@@ -1,39 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-guard-activation-v1",
+    "task_id": "ui-guard-docs-sync-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792779817.6891282,
-    "completed_at": 1792779823.9250667
+    "updated_at": 1792780047.923591,
+    "completed_at": 1792780048.1191971
   },
   "checkpoints": [
-    {
-      "task_id": "sim-combat-void-depth-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'sim-combat-void-depth-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792648395.8808,
-      "timestamp_str": "2026-10-22 08:53:15"
-    },
-    {
-      "task_id": "sim-exploration-depth-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/4] Planning: exploration/resource depth pass - prevent zero-power wasted scans, reward full-system survey completion with codex progress, make derelict titanium salvage advance the advertised mining contract, and give fuel-scoop bodies a finite deterministic volatile reserve that recharges over ticks",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792649200.697583,
-      "timestamp_str": "2026-10-22 09:06:40",
-      "impact_assessment": {
-        "why": "Exploration currently has three retention/balance gaps: a scan at 0 sensor power permanently consumes a body for no bounty, scanning every body in a system has no completion payoff, the mining contract promises salvage progress it never receives, and scooping gives unlimited free fuel at any star/gas/ice body, bypassing station fuel and trade",
-        "benefits": "Adds a clear Zeigarnik completion goal per system, closes a wasted-scan trap, makes contract wording truthful and salvage economically useful, and turns fuel into a local resource-management loop without removing exploration viability",
-        "risks": "contract: CelestialBody gains serialized volatile_tapped, scan completion adds stats/snapshot fields, and scoop availability semantics change when a reservoir is tapped out; dependency: none (stdlib only); concurrency: engine RLock retained, system/body replacement stays inside it; state: volatile_tapped defaults to 0 and legacy saves load unchanged",
-        "mitigation": "Failing-first tests for scan gating, survey completion, salvage contract progress, reserve depletion/recharge and legacy defaults; reserve sizes derive deterministically from body type/id; existing first-scoop tests keep passing; codex metric and CLI/REST/cockpit telemetry covered; README/ADR updated"
-      }
-    },
     {
       "task_id": "sim-exploration-depth-v1",
       "phase": "phase 3",
@@ -243,6 +218,25 @@
       "status": "completed",
       "timestamp": 1792779823.9250686,
       "timestamp_str": "2026-10-23 21:23:43"
+    },
+    {
+      "task_id": "ui-guard-docs-sync-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[1/1] Synced the README tree with tracked .aikit/ui_history.json after the strict gate found the omission; README is 22,422 chars; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792780047.923591,
+      "timestamp_str": "2026-10-23 21:27:27"
+    },
+    {
+      "task_id": "ui-guard-docs-sync-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-guard-docs-sync-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792780048.1191988,
+      "timestamp_str": "2026-10-23 21:27:28"
     }
   ]
 }

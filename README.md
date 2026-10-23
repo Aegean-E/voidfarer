@@ -43,6 +43,7 @@ voidfarer/
 │   ├── guidelines.md         <- project-specific guidelines
 │   ├── project.json          <- stack and gate configuration
 │   ├── ui.json               <- committed cockpit UI surface contract
+│   ├── ui_history.json       <- append-only UI task evidence
 │   └── task_ledger.json      <- power-loss safe task state
 ├── docs/                     <- comprehensive system design & research
 │   ├── ATTENTION_MECHANICS_LITERATURE_REVIEW.md <- behavioral psychology review

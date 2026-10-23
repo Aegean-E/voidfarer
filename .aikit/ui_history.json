@@ -1,0 +1,16 @@
+[
+  {
+    "schema": 1,
+    "surface": "cockpit",
+    "baseline_commit": "4d7358a15d65dde2bd156b7a8be3f22fb8d9cce7",
+    "contract_hash": "5b6aff8b9d591d3ef3b3cbd0dcdd5aec4c88fd681e3dfb507ae145b1590d2d3d",
+    "started_at": 1792778988.5636787,
+    "finished_at": 1792779087.4809139,
+    "strikes": 0,
+    "reviewer": "User (confirmed via Kilo prompt)",
+    "allowed_removals": [],
+    "final_snapshot_digest": "3a6bce8befcc2fefac668db79f0e238f4aa453b7abb3ef2fb93220ae163a3f9e",
+    "final_snapshot_entries": 754,
+    "surface_digest": "824ee010273c3c1ada2b8042a306666e642a7deb4b9eae949ed9e843e50c550a"
+  }
+]

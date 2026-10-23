@@ -90,8 +90,9 @@ voidfarer/
 │       ├── cursor-default.svg <- themed default cockpit cursor
 │       ├── cursor-pointer.svg <- themed pointer cursor for controls
 │       └── cursor-crosshair.svg <- themed radar crosshair cursor
-├── tools/                    <- developer proofs outside the runtime
-│   └── ui_inventory.py       <- prints the cockpit inventory for the UI guard
+├── tools/                    <- developer proofs
+│   ├── __init__.py           <- package marker
+│   └── ui_inventory.py       <- cockpit inventory proof
 └── tests/                    <- unit & integration test suite (29 suites)
 ```
 
@@ -111,7 +112,7 @@ Displays commander dossier, vital telemetry (hull, shields, fuel), reactor power
 ```bash
 python -m voidfarer.cli chart
 ```
-Prints the sector hyperlane network, visited system flags, security ratings, and all celestial bodies in the local star system. Each system now hosts 5-6 planets, moons, ice worlds, lava worlds, ringed giants, and research outposts, with a guaranteed dockable station.
+Prints the sector hyperlane network, visited flags, security ratings, and every body in the local system. Each system hosts 5-6 planets, moons, ice/lava worlds, ringed giants, and research outposts, with a guaranteed dockable station.
 
 ### 3. Navigation & Spaceflight
 ```bash
@@ -393,8 +394,8 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Transit, Landing & Fleet**: Tick-synchronized sublight/quantum transit, surface survey rewards, and drone/mercenary commands.
 - **Living Galaxy**: Procedural worlds, AI traders, dynamic markets, faction perks, and reputation.
 - **Mission Panels**: Quests, contracts, diplomacy, depots, messages, COMMS, factions, perks, relics, and combat.
-- **Space-Opera Campaign Tab**: Five acts with a live objective checklist, locked choices that show their requirements, follow-up transmissions, and one of three resolved endings with epilogue.
-- **The Hollow Between Panel**: Void drive readiness and blockers, lane destination dive buttons, live traversal progress and stability meters, emergency emerge, and a hue-shifted radar overlay while in the void.
+- **Space-Opera Campaign Tab**: Five acts with a live objective checklist, locked choices that show their requirements, transmissions, and one of three endings with epilogue.
+- **The Hollow Between Panel**: Void drive readiness and blockers, lane dive buttons, traversal progress and stability meters, emergency emerge, and a hue-shifted radar overlay.
 - **REPL Server Lifecycle**: `serve` runs the HTTP server and simulation ticker; `serve stop` or REPL exit saves and shuts down.
 - **Reactor Power Matrix (`G-006`, `G-013`)**: Bottom-left strip panel with sliders, `Q/W/E/R` hotkeys, thermal telemetry, four modes, and VENT.
 - **Sector Map Modifiers**: Generated environmental conditions displayed as radar chips and applied to fuel, scans, encounters, trade, and reactor heat.

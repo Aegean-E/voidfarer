@@ -1,53 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-guard-integration-v1",
+    "task_id": "ui-guard-activation-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792776720.974249,
-    "completed_at": 1792776724.9832673
+    "updated_at": 1792779817.6891282,
+    "completed_at": 1792779823.9250667
   },
   "checkpoints": [
-    {
-      "task_id": "sim-combat-void-depth-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[3/4] Implemented Hollow resonance: serialized resonance field with legacy default, +1 per storm and +1 low-stability premium, 120 cr/15 XP per point on arrival, prorated half-share on emergency emerge, lifetime void_resonance stat, void_status projections, CLI status/void decks, cockpit row, REST parity, ADR-037 and README synced",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792647983.5965195,
-      "timestamp_str": "2026-10-22 08:46:23"
-    },
-    {
-      "task_id": "sim-combat-void-depth-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[4/4] Verified: 476 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, codebase map refreshed, ADR-037 and README updated; checklists: passed; changes intentionally left uncommitted because no commit was requested",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792648022.0381434,
-      "timestamp_str": "2026-10-22 08:47:02"
-    },
-    {
-      "task_id": "sim-combat-void-depth-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'sim-combat-void-depth-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792648042.0726671,
-      "timestamp_str": "2026-10-22 08:47:22"
-    },
-    {
-      "task_id": "sim-combat-void-depth-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[review] Self-review fix: lifetime void_resonance now counts only banked resonance (prorated on emergency emergence); 476 tests pass, 4/4 gates, app.js syntax clean; checklists: passed; changes remain uncommitted",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792648389.9167323,
-      "timestamp_str": "2026-10-22 08:53:09"
-    },
     {
       "task_id": "sim-combat-void-depth-v1",
       "phase": "completed",
@@ -232,6 +193,56 @@
       "status": "completed",
       "timestamp": 1792776724.9832692,
       "timestamp_str": "2026-10-23 20:32:04"
+    },
+    {
+      "task_id": "ui-guard-activation-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[1/1] Activated the approved cockpit UI guard: committed 4d7358a, ran begin/verify/finish --reviewed, recorded 754-entry surface evidence, set ui_required true, and fixed the README tools tree; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792779754.6288035,
+      "timestamp_str": "2026-10-23 21:22:34",
+      "handoff": {
+        "state": "UI history has one cockpit record with reviewer 'User (confirmed via Kilo prompt)' and surface digest 824ee010",
+        "next": "commit the evidence and ui_required change, then run check --strict",
+        "open": "none"
+      }
+    },
+    {
+      "task_id": "ui-guard-activation-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/1] Plan: enable the reviewed cockpit UI guard and record surface evidence",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792779803.5267022,
+      "timestamp_str": "2026-10-23 21:23:23",
+      "impact_assessment": {
+        "why": "The user authorized committing the integration and activating the guard, so strict delivery should require the cockpit contract and matching surface evidence instead of leaving enforcement opt-in",
+        "benefits": "Closes the opt-in gap, makes check --strict and publish refuse stale cockpit surfaces, and leaves an append-only reviewed evidence record",
+        "risks": "contract: ui_required true blocks delivery without a matching finished task; dependency: none (stdlib and existing AIKit guard); concurrency: the guard's task lock serializes begin/verify/finish; state: project.json gains a boolean and ui_history.json gains an append-only record",
+        "mitigation": "Run begin/verify/finish on the committed contract, confirm the history digest matches the surface, commit the evidence, then run check --strict and treat any mismatch as a blocking finding"
+      }
+    },
+    {
+      "task_id": "ui-guard-activation-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[1/1] Verified activation: begin/verify/finish --reviewed recorded 754 entries with reviewer 'User (confirmed via Kilo prompt)', ui_required is true, README is 22,360 chars, 4/4 gates pass; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792779817.6891282,
+      "timestamp_str": "2026-10-23 21:23:37"
+    },
+    {
+      "task_id": "ui-guard-activation-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-guard-activation-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792779823.9250686,
+      "timestamp_str": "2026-10-23 21:23:43"
     }
   ]
 }

@@ -516,3 +516,14 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   3. Add `tests/test_ui_inventory.py` (failing-first coverage of controls, handlers, routes, theme tokens, sorting and deduplication).
   4. Keep `ui_required: false` until the first reviewed cockpit task records surface evidence in `.aikit/ui_history.json`; then flip it so `check --strict` and `publish` enforce the contract. Document the commands and proof in the README.
 - **Consequences**: A cockpit task can now be bounded to one surface with a deterministic before/after inventory, a dropped control or handler becomes a hard finding even while the layout tests stay green, and the guard remains opt-in with zero new dependencies. A purely visual regression that keeps the inventory intact is still not caught; human `--reviewed` remains the closing gate.
+
+### ADR-042: Headless Visual Audit and Screenshot Harness
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: The UI guard proves scope and inventory, not rendered layout. Contrast, target size, responsive overflow and console errors can regress while the 490-test suite and the inventory stay green, and screenshots alone are not measurable evidence.
+- **Decision**:
+  1. Add `tools/ui_audit.py`: a stdlib-only developer tool that starts the real cockpit server in-process, copies the static surface into a temporary same-origin wrapper with an error collector and an iframe sized to an exact viewport, then runs headless Edge/Chrome.
+  2. Report console errors, horizontal scroll, offscreen/clipped text, text contrast, tap targets below 24px and 44px, missing accessible names, interactive overlaps, fonts, colors, media state and key panel rectangles. Write JSON plus Markdown plus PNG screenshots for `desktop`, `ultrawide`, `tablet`, `phone` and `short`.
+  3. Keep it optional: it is not a runtime dependency, not part of the fast proof and not a hard gate. `--check` is opt-in; human `ui finish --reviewed` remains the closing visual gate.
+  4. Support two scenarios: `cockpit` closes the startup menu and marks the game started, while `menu` audits the startup menu. Add helper tests for viewport math, wrapper injection and report parsing.
+- **Consequences**: Layout, contrast, accessibility and responsive regressions become repeatable measured findings, and screenshots remain available for human review. Without Edge or Chrome the tool exits with `Why:`/`Fix:` guidance. The regression suite grows to 496 tests; the audit is deliberately kept outside the fast proof.

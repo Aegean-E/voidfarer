@@ -93,8 +93,9 @@ voidfarer/
 │       └── cursor-crosshair.svg <- themed radar crosshair cursor
 ├── tools/                    <- developer proofs
 │   ├── __init__.py           <- package marker
+│   ├── ui_audit.py           <- screenshots + layout audit
 │   └── ui_inventory.py       <- cockpit inventory proof
-└── tests/                    <- unit & integration test suite (29 suites)
+└── tests/                    <- unit & integration test suite (30 suites)
 ```
 
 ---
@@ -397,10 +398,10 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Mission Panels**: Quests, contracts, diplomacy, depots, messages, COMMS, factions, perks, relics, and combat.
 - **Space-Opera Campaign Tab**: Five acts with a live objective checklist, locked choices that show their requirements, transmissions, and one of three endings with epilogue.
 - **The Hollow Between Panel**: Void drive readiness and blockers, lane dive buttons, traversal progress and stability meters, emergency emerge, and a hue-shifted radar overlay.
-- **REPL Server Lifecycle**: `serve` runs the HTTP server and simulation ticker; `serve stop` or REPL exit saves and shuts down.
-- **Reactor Power Matrix (`G-006`, `G-013`)**: Bottom-left strip panel with sliders, `Q/W/E/R` hotkeys, thermal telemetry, four modes, and VENT.
-- **Sector Map Modifiers**: Generated environmental conditions displayed as radar chips and applied to fuel, scans, encounters, trade, and reactor heat.
-- **Player, Skills & Crew Tabs**: PLAYER is a pure dossier; six icon/hotkey skills live in the bottom command strip (`SHIFT+1..6`), while SKILLS keeps full training and perks. Crew keeps bonuses and drills.
+- **REPL Server Lifecycle**: `serve` runs the HTTP server and ticker; `serve stop` saves and shuts down.
+- **Reactor Power Matrix (`G-006`, `G-013`)**: Bottom-left strip with sliders, `Q/W/E/R` hotkeys, thermal telemetry, four modes and VENT.
+- **Sector Map Modifiers**: Generated conditions shown as radar chips and applied to fuel, scans, encounters, trade and reactor heat.
+- **Player, Skills & Crew Tabs**: PLAYER is a dossier; six icon/hotkey skills live in the bottom strip (`SHIFT+1..6`), while SKILLS holds training and perks. Crew holds bonuses and drills.
 - **Ship Configuration Tab**: Chassis silhouette with five structural slot markers, trade-off catalogue cards, live capacity recomputation, and drydock install/salvage-remove controls through `/api/ship/module`.
 - **Commander Creation & Death Flow**: Name, age, background, and starting-skill allocation wired into new games; a death overlay summarizes the run and offers a fresh commander or save load.
 - **Resolution-Adaptive HUD**: ultrawide/tablet/phone/short-height breakpoints, density and HUD-scale settings, DPR-correct radar, ResizeObserver, touch pan/pinch, reduced motion, and safe-area insets.
@@ -420,10 +421,11 @@ python -m voidfarer.cli codex claim first_light
 ```
 New System Surveyor and Sector Cartographer milestones track full-system sweeps, and the log reports `systems_surveyed`.
 
-### 21. UI Guard & Inventory Proof
-`.aikit/ui.json` bounds cockpit work to `voidfarer/static/**` and `voidfarer/server.py`; the fast
-proof is `python -m unittest discover`, the snapshot is `python tools/ui_inventory.py`, and
-`ui_required` stays false until a reviewed cockpit task records evidence. See ADR-041.
+### 21. UI Guard & Visual Audit
+`.aikit/ui.json` bounds cockpit work to `voidfarer/static/**` and `voidfarer/server.py`.
+`ui_required` is true: tests are the fast proof, `python tools/ui_inventory.py` is the snapshot,
+and `python tools/ui_audit.py --out <dir>` captures screenshots, layout, contrast and targets.
+See ADR-041 and ADR-042.
 
 ---
 
@@ -431,6 +433,6 @@ proof is `python -m unittest discover`, the snapshot is `python tools/ui_invento
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 490-test suite runs in about 7 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 496-test suite runs in about 7 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, cargo-volume refit gates, quantum fuel efficiency and cockpit parity.

@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `61`
-- **Total Classes**: `157`
-- **Total Top-Level Functions**: `183`
-- **Total Class Methods**: `884`
-- **Total Source Lines**: `25276`
+- **Total Python Modules**: `63`
+- **Total Classes**: `158`
+- **Total Top-Level Functions**: `193`
+- **Total Class Methods**: `890`
+- **Total Source Lines**: `26088`
 
 ---
 
@@ -928,6 +928,22 @@
 
 ---
 
+### [`tests/test_ui_audit.py`](tests/test_ui_audit.py)
+> *The headless cockpit audit has deterministic viewport, parsing and wrapper helpers.*
+
+**Size**: `49` lines (`2116` bytes)
+
+**Classes:**
+- `class AuditHelpersTest`
+  - Method `.test_wide_viewports_get_only_window_chrome()`
+  - Method `.test_phone_keeps_an_exact_iframe_inside_a_minimum_window()`
+  - Method `.test_parse_audit_reads_an_escaped_payload()`
+  - Method `.test_parse_audit_refuses_a_missing_payload()`
+  - Method `.test_prepare_static_injects_the_collector_and_wrapper()`
+  - Method `.test_severe_findings_name_the_blocking_categories()`
+
+---
+
 ### [`tests/test_ui_inventory.py`](tests/test_ui_inventory.py)
 > *The cockpit inventory proof covers controls, handlers, routes, hotkeys and theme tokens.*
 
@@ -993,6 +1009,25 @@
 > *Developer proofs for VoidFarer.*
 
 **Size**: `1` lines (`38` bytes)
+
+---
+
+### [`tools/ui_audit.py`](tools/ui_audit.py)
+> *Capture VoidFarer cockpit screenshots and a measurable UI audit with headless Edge or Chrome.*
+
+**Size**: `763` lines (`28985` bytes)
+
+**Functions:**
+- `def find_browser()` - *Locate an installed Edge or Chrome executable without a third-party dependency.*
+- `def outer_window(viewport)` - *Outer window size that yields the requested inner viewport for wide screens.*
+- `def prepare_static(source, workdir)` - *Copy the cockpit and add a same-origin viewport wrapper plus an error collector.*
+- `def parse_audit(dom)` - *Read the JSON audit payload out of a dumped wrapper DOM.*
+- `def run_browser(browser, url, viewport, profile, screenshot, timeout)` - *Run one headless capture at a viewport and return stdout, stderr and the exit code.*
+- `def audit_viewport(browser, port, name, viewport, workdir, out, timeout, scenario)` - *Capture one viewport and return its parsed audit report.*
+- `def summary_line(report)` - *One ASCII-safe console line for a viewport report.*
+- `def severe_findings(report)` - *Names of findings that should fail an explicit audit check.*
+- `def write_report(reports, out, browser)` - *Write the combined JSON and Markdown evidence packet.*
+- `def main(argv)` - *Run the audit, write screenshots plus JSON/Markdown, and print a concise summary.*
 
 ---
 

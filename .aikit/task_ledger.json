@@ -1,44 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-guard-docs-sync-v1",
+    "task_id": "ui-visual-audit-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792780047.923591,
-    "completed_at": 1792780048.1191971
+    "updated_at": 1792784056.9924512,
+    "completed_at": 1792784057.3197298
   },
   "checkpoints": [
-    {
-      "task_id": "sim-exploration-depth-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/4] Implemented scan discipline and survey loop: 5 MW sensor gate prevents wasted scans, full-system completion pays 300 cr + 120 XP, logs SYSTEM SURVEY COMPLETE, increments systems_surveyed, adds snapshot survey progress and cockpit SURVEY x/y text, plus codex metric with System Surveyor/Sector Cartographer milestones",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792650208.053597,
-      "timestamp_str": "2026-10-22 09:23:28"
-    },
-    {
-      "task_id": "sim-exploration-depth-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[3/4] Implemented resource/contract depth: titanium salvage now advances mining contracts; CelestialBody.volatile_tapped persists with legacy 0 default; deterministic 3-8 tap scoop reservoirs recharge one tap per 6 ticks; scoop reports n/reserve, rejects depleted bodies, snapshot exposes tapped/reserve/available, cockpit shows RESERVOIR DEPLETED; ADR-038 and README updated",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792650215.7418208,
-      "timestamp_str": "2026-10-22 09:23:35"
-    },
-    {
-      "task_id": "sim-exploration-depth-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[4/4] Verified: 483 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, codebase map refreshed, ADR-038 and README synced; checklists: passed; changes left uncommitted because no commit or push was requested",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792650261.108081,
-      "timestamp_str": "2026-10-22 09:24:21"
-    },
     {
       "task_id": "sim-exploration-depth-v1",
       "phase": "completed",
@@ -237,6 +207,47 @@
       "status": "completed",
       "timestamp": 1792780048.1191988,
       "timestamp_str": "2026-10-23 21:27:28"
+    },
+    {
+      "task_id": "ui-visual-audit-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: add an optional headless visual audit and screenshot harness for the cockpit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792784039.2510884,
+      "timestamp_str": "2026-10-23 22:33:59",
+      "impact_assessment": {
+        "why": "The inventory guard proves controls and tests but cannot see contrast, target size, overflow or console regressions in the rendered cockpit, and screenshots alone are not measurable evidence",
+        "benefits": "Repeatable viewport screenshots plus measured layout, contrast, tap-target, label, overlap and console findings without touching the runtime or installing a Python dependency",
+        "risks": "contract: none; dependency: optional Edge/Chrome executable only, no Python package; concurrency: one in-process server and per-viewport browser profile, no shared state; state: writes only to a temp workdir and the user-supplied output directory, never to the cockpit surface",
+        "mitigation": "stdlib-only wrapper and parser tests, exact iframe viewports, decorative/overflow filters, opt-in --check, Why/Fix exit paths, ADR-042 and documentation; no static or server changes"
+      }
+    },
+    {
+      "task_id": "ui-visual-audit-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: 496 tests pass, 4/4 gates, visual audit works at five viewports; baseline has 25 contrast and 18-25 small-target findings, phone horizontal scroll, and tablet/short below-fold panels; checklists: passed",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792784056.9924512,
+      "timestamp_str": "2026-10-23 22:34:16",
+      "handoff": {
+        "state": "tools/ui_audit.py is optional and outside the fast proof, screenshots and reports default to the system temp",
+        "next": "use the audit to drive a Paradox-inspired cockpit pass",
+        "open": "phone horizontal overflow from the cadet banner and below-fold bottom strip at tablet/short",
+        "evidence": "ADR-042, tests/test_ui_audit.py, report.md in the audit output"
+      }
+    },
+    {
+      "task_id": "ui-visual-audit-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-visual-audit-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792784057.3197317,
+      "timestamp_str": "2026-10-23 22:34:17"
     }
   ]
 }

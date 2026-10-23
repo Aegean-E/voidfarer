@@ -1,59 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "sim-exploration-hardening-v1",
+    "task_id": "ui-guard-integration-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792666101.3402948,
-    "completed_at": 1792666107.923932
+    "updated_at": 1792776720.974249,
+    "completed_at": 1792776724.9832673
   },
   "checkpoints": [
-    {
-      "task_id": "sim-crew-market-cashflow-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[6/6] Verification: 464 tests pass, 4/4 project gates (test, hygiene, guidelines, secrets), node --check app.js clean, README trimmed under the 22.5k budget, codebase map synced, ADR-036 recorded, CLI crew/status and REST /api/crew/shore dogfooded; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792621236.3740423,
-      "timestamp_str": "2026-10-22 01:20:36"
-    },
-    {
-      "task_id": "sim-crew-market-cashflow-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'sim-crew-market-cashflow-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792621259.3168051,
-      "timestamp_str": "2026-10-22 01:20:59"
-    },
-    {
-      "task_id": "sim-combat-void-depth-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/4] Planning: simulation-depth pass on combat and void traversal - progression-scaled encounter threat with early-boss gating, consistent evasive-burn disengagement (fuel cost, streak/combo reset), and Hollow resonance risk-reward with partial emergency payout plus CLI/REST/cockpit telemetry",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792624438.3903198,
-      "timestamp_str": "2026-10-22 02:13:58",
-      "impact_assessment": {
-        "why": "Combat difficulty never scales with player progression, a 30% anarchy dreadnought roll can ambush a level-1 hull, free evasive burns dodge the loss-aversion streak reset, and void traversal only punishes storms with no variable reward or bail-out value",
-        "benefits": "Keeps the combat flow channel as mastery grows, removes an early-game unfair spike, closes the streak-preserving escape exploit, and turns passive void waiting into a risk/reward loop with transparent resonance payouts",
-        "risks": "contract: generated enemy stats/bounties and VoidTraversalState serialization change, evasive burn gains a fuel cost; dependency: none (stdlib only); concurrency: engine RLock retained, all new mutation stays inside it; state: resonance is an additive default-0.0 field and old saves load unchanged",
-        "mitigation": "Failing-first tests for scaling, boss gating, evasive-burn costs, resonance accrual/payouts and serialization; generate_system_enemy keeps threat_level=1 defaults so existing callers/tests are unchanged; partial emergency payout is capped below full arrival value; CLI/REST/cockpit parity and G-012 determinism verified"
-      }
-    },
-    {
-      "task_id": "sim-combat-void-depth-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/4] Implemented combat depth: threat_multiplier (5%/level, +75% cap) with bounty curve, level-4 Dreadnought ambush gate preserving seeded RNG streams, mastery-level threat passed on both jump intercept paths, evasive burn now costs 3 fuel and resets streak/combo on success",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792647978.8733323,
-      "timestamp_str": "2026-10-22 08:46:18"
-    },
     {
       "task_id": "sim-combat-void-depth-v1",
       "phase": "phase 3",
@@ -226,6 +181,57 @@
       "status": "completed",
       "timestamp": 1792666107.923934,
       "timestamp_str": "2026-10-22 13:48:27"
+    },
+    {
+      "task_id": "ui-guard-integration-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/3] Plan: add a stdlib UI inventory proof, a cockpit UI contract and its docs",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792775834.1989388,
+      "timestamp_str": "2026-10-23 20:17:14",
+      "impact_assessment": {
+        "why": "VoidFarer's cockpit has no bounded UI surface or mechanical proof that controls, handlers, REST routes and theme tokens survive a UI edit, while AIKit ships an opt-in UI guard for exactly that failure mode",
+        "benefits": "UI edits become surface-scoped, a lost control/handler/route/token becomes a hard finding, and the cockpit's fast proof and snapshot are reproducible without a browser",
+        "risks": "contract: adds .aikit/ui.json and ui_required false until a reviewed task records evidence; dependency: none, stdlib-only parsing; concurrency: read-only inventory and existing tests only; state: new project config keys are additive and AIKit bookkeeping stays untouched",
+        "mitigation": "Failing-first inventory tests, contract validation through scripts.ui_contract, full project unittest suite, hygiene/guidelines/secret gates, and README plus ADR-041 in the same change"
+      }
+    },
+    {
+      "task_id": "ui-guard-integration-v1",
+      "phase": "phase 3",
+      "phase_num": 3,
+      "description": "[2/3] Implemented the cockpit inventory proof, the committed UI contract, three inventory tests, README commands and ADR-041",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792776695.885159,
+      "timestamp_str": "2026-10-23 20:31:35",
+      "handoff": {
+        "state": "tools/ui_inventory.py prints 754 sorted entries, .aikit/ui.json validates, ui_required is false",
+        "next": "record Phase 4, then commit",
+        "open": "first reviewed cockpit task must finish before enabling ui_required",
+        "evidence": "490 tests pass, inventory parses ids/handlers/bindings/routes/hotkeys/tokens/assets"
+      }
+    },
+    {
+      "task_id": "ui-guard-integration-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[3/3] Verified: 490 tests pass, 4/4 project gates, 754-entry inventory, UI contract validates, README at 22,442 chars; checklists: passed; uncommitted because no commit or push was requested",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792776720.974249,
+      "timestamp_str": "2026-10-23 20:32:00"
+    },
+    {
+      "task_id": "ui-guard-integration-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'ui-guard-integration-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792776724.9832692,
+      "timestamp_str": "2026-10-23 20:32:04"
     }
   ]
 }

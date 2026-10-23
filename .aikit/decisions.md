@@ -505,3 +505,14 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
 - **Context**: ADR-039 added `volatile_recharge_tick` and clamped negative counters on load. Verification then identified the opposite corrupt-save case: a far-future timestamp would keep a body locked for an unbounded time. A legitimate next recharge can never be more than one interval (`SCOOP_RECHARGE_TICKS`) ahead of the current tick.
 - **Decision**: `recharge_volatile_reserve` caps any `recharge_tick` greater than `current_tick + SCOOP_RECHARGE_TICKS` to exactly that value before scheduling. Normal schedules are unchanged. A pure-helper regression covers the corrupted far-future case.
 - **Consequences**: Corrupt timestamps can no longer lock a volatile reservoir indefinitely; negative and far-future values are both bounded. No schema, balance, or normal-path behavior changes. Regressions grow to 487 tests.
+
+### ADR-041: Opt-In Cockpit UI Guard With a Parsed Inventory Proof
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: The cockpit's layout tests pin the HUD structure, but nothing bounded a UI edit to the static surface and its server adapter or proved that controls, handlers, REST calls, routes, hotkeys and theme tokens survived the edit. AIKit already ships an opt-in UI guard (`aikit ui begin/verify/finish`) whose snapshot proof is project-owned and deterministic.
+- **Decision**:
+  1. Add `.aikit/ui.json` with one `cockpit` surface over `voidfarer/static/**` and `voidfarer/server.py`, protecting tests, tools, docs, memory, launchers and the core simulation modules, with `python -m unittest discover` as the fast proof, `python tools/ui_inventory.py` as the snapshot, `style.css`, `app.js` and the cursor SVGs as theme paths, and 12-file/300-line limits.
+  2. Add `tools/ui_inventory.py`: a stdlib-only parser that prints one sorted line per element id, handler, static DOM binding, API call, server route, hotkey, theme token and static asset. It never starts a server or browser, so the proof works offline and on every host.
+  3. Add `tests/test_ui_inventory.py` (failing-first coverage of controls, handlers, routes, theme tokens, sorting and deduplication).
+  4. Keep `ui_required: false` until the first reviewed cockpit task records surface evidence in `.aikit/ui_history.json`; then flip it so `check --strict` and `publish` enforce the contract. Document the commands and proof in the README.
+- **Consequences**: A cockpit task can now be bounded to one surface with a deterministic before/after inventory, a dropped control or handler becomes a hard finding even while the layout tests stay green, and the guard remains opt-in with zero new dependencies. A purely visual regression that keeps the inventory intact is still not caught; human `--reviewed` remains the closing gate.

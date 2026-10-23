@@ -3,5 +3,6 @@
   "name": "voidfarer",
   "test_command": null,
   "gates": {},
+  "ui_required": false,
   "created": "2026-10-18"
 }

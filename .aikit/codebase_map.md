@@ -6,11 +6,11 @@
 ---
 
 ## 📊 Codebase Metrics
-- **Total Python Modules**: `58`
-- **Total Classes**: `155`
-- **Total Top-Level Functions**: `177`
-- **Total Class Methods**: `875`
-- **Total Source Lines**: `25057`
+- **Total Python Modules**: `61`
+- **Total Classes**: `157`
+- **Total Top-Level Functions**: `183`
+- **Total Class Methods**: `884`
+- **Total Source Lines**: `25276`
 
 ---
 
@@ -928,6 +928,19 @@
 
 ---
 
+### [`tests/test_ui_inventory.py`](tests/test_ui_inventory.py)
+> *The cockpit inventory proof covers controls, handlers, routes, hotkeys and theme tokens.*
+
+**Size**: `34` lines (`1276` bytes)
+
+**Classes:**
+- `class InventoryTest`
+  - Method `.test_the_inventory_names_the_core_controls_and_handlers()`
+  - Method `.test_the_inventory_names_the_ui_routes_and_theme_surface()`
+  - Method `.test_the_inventory_is_sorted_and_deduplicated()`
+
+---
+
 ### [`tests/test_void_traversal.py`](tests/test_void_traversal.py)
 > *Unit and integration tests for the Hollow Between void traversal mechanics.*
 
@@ -973,6 +986,37 @@
   - Method `.test_post_api_void_dive_rejected_without_horizon()`
   - Method `.test_post_api_void_emerge_rejected_when_not_traversing()`
   - Method `.test_story_endpoint_includes_status()`
+
+---
+
+### [`tools/__init__.py`](tools/__init__.py)
+> *Developer proofs for VoidFarer.*
+
+**Size**: `1` lines (`38` bytes)
+
+---
+
+### [`tools/ui_inventory.py`](tools/ui_inventory.py)
+> *Print VoidFarer's cockpit inventory, one entry per line.*
+
+**Size**: `184` lines (`7734` bytes)
+
+**Classes:**
+- `class SurfaceParser` - *Collects identified elements, roles, live regions and hotkey chips of one page.*
+  - Method `.__init__()`
+  - Method `._start(tag, attrs, self_closing)`
+  - Method `.handle_starttag(tag, attrs)`
+  - Method `.handle_startendtag(tag, attrs)`
+  - Method `.handle_data(data)`
+  - Method `.handle_endtag(tag)`
+
+**Functions:**
+- `def html_entries(path)` - *Identified elements, actions, roles, live regions and hotkey labels of a page.*
+- `def script_entries(path)` - *Handlers, DOM bindings, API calls and hotkeys declared by the cockpit script.*
+- `def route_entries(path)` - *The exact `/api/` routes the cockpit server dispatches.*
+- `def token_entries(path)` - *Theme custom properties the stylesheet declares.*
+- `def inventory(static)` - *Every inventory entry of a cockpit directory, sorted and deduplicated.*
+- `def main(argv)` - *Write the inventory to stdout; exit 1 when the surface has no entries at all.*
 
 ---
 

@@ -20,6 +20,7 @@ voidfarer.bat   # CLI passthrough launcher (e.g. `voidfarer.bat status`, `voidfa
   ```bash
   python aikit.py check voidfarer
   ```
+- **UI inventory proof**: `python tools/ui_inventory.py`
 
 ### 🛠️ AIKit Commands (run from the AIKit folder)
 | Role | Command |
@@ -28,6 +29,7 @@ voidfarer.bat   # CLI passthrough launcher (e.g. `voidfarer.bat status`, `voidfa
 | Phase 4: every gate | `python aikit.py check voidfarer` |
 | Repair memory and map, then check | `python aikit.py fix voidfarer` |
 | Resume an interrupted task | `python aikit.py resume voidfarer` |
+| Bounded cockpit UI task | `python aikit.py ui begin voidfarer --surface cockpit` (then `ui verify`) |
 
 ---
 
@@ -40,6 +42,7 @@ voidfarer/
 │   ├── decisions.md          <- monotonic ADR register
 │   ├── guidelines.md         <- project-specific guidelines
 │   ├── project.json          <- stack and gate configuration
+│   ├── ui.json               <- committed cockpit UI surface contract
 │   └── task_ledger.json      <- power-loss safe task state
 ├── docs/                     <- comprehensive system design & research
 │   ├── ATTENTION_MECHANICS_LITERATURE_REVIEW.md <- behavioral psychology review
@@ -87,7 +90,9 @@ voidfarer/
 │       ├── cursor-default.svg <- themed default cockpit cursor
 │       ├── cursor-pointer.svg <- themed pointer cursor for controls
 │       └── cursor-crosshair.svg <- themed radar crosshair cursor
-└── tests/                    <- unit & integration test suite (28 suites)
+├── tools/                    <- developer proofs outside the runtime
+│   └── ui_inventory.py       <- prints the cockpit inventory for the UI guard
+└── tests/                    <- unit & integration test suite (29 suites)
 ```
 
 ---
@@ -133,7 +138,7 @@ python -m voidfarer.cli salvage
 # Recover fuel from a star, gas giant, or ice body (adds reactor heat)
 python -m voidfarer.cli scoop
 ```
-Scans need at least 5 MW of sensor power, and a failed zero-power attempt no longer consumes the body. Surveying every body in a system pays a completion bonus and advances the `systems_surveyed` codex metric. Titanium salvage advances mining contracts, and each scoopable body has a finite volatile reserve (3-8 taps) that recharges one tap every 6 ticks.
+Scans need 5 MW of sensor power; a failed zero-power attempt no longer consumes the body. Full-system surveys pay a bonus and advance `systems_surveyed`; titanium salvage advances mining contracts; each scoopable body has a finite 3-8 tap reserve that recharges one tap every 6 ticks.
 
 ### 4. Hardware Upgrades & Station Arsenal
 ```bash
@@ -173,9 +178,9 @@ python -m voidfarer.cli combat evade            # High-G thruster burn to dodge 
 python -m voidfarer.cli combat flee             # Emergency hyperspace micro-jump
 ```
 
-Hostile captains use adaptive AI profiles (`aggressive`, `defensive`, `opportunist`, `adaptive`, `warlord`). They read your hull, shields, and tactical combo to brace, evade, execute wounded targets, drain shields, EMP weapon systems, tachyon-lance hull, or regenerate nanites. The combat telemetry line shows the next predicted maneuver.
+Hostile captains use adaptive AI profiles (`aggressive`, `defensive`, `opportunist`, `adaptive`, `warlord`) that read your hull, shields and tactical combo; the telemetry line shows the next predicted maneuver.
 
-Hostile strength scales with Pilot Mastery: +5% hull, shields, damage and bounty per level above 1 (capped +75%), and Void Warlord Dreadnoughts only ambush level-4+ commanders. Evasive burns cost 3 fuel and, on success, reset both tactical combo and expedition streak.
+Hostile strength scales +5% hull, shields, damage and bounty per Pilot Mastery level above 1 (capped +75%); Dreadnoughts only ambush level-4+ commanders. Evasive burns cost 3 fuel and reset the combo and streak.
 
 ### 7. Dynamic Sector Bounties & Contracts (Zeigarnik Loop)
 ```bash
@@ -248,7 +253,7 @@ python -m voidfarer.cli story
 # Resolve an episodic narrative dilemma
 python -m voidfarer.cli story choose choice_vance_telemetry
 ```
-The five-act campaign tracks persistent story flags: later choices can require earlier decisions (the Act V title claim needs the Act IV Voidfarer's Oath; selling the echoes needs the Act I Syndicate leak), locked choices show their branch-resolvable reasons, and the finale resolves one of three endings (First VoidFarer, Sentinel, Shadow Broker). Completed legacy saves migrate into the extended campaign on load.
+The five-act campaign tracks persistent story flags: later choices can require earlier decisions (Act V's title needs the Act IV Oath; selling the echoes needs the Act I Syndicate leak), locked choices show their reasons, and the finale resolves First VoidFarer, Sentinel, or Shadow Broker. Legacy saves migrate on load.
 
 ### 13b. The Hollow Between (Void Lane Traversal)
 ```bash
@@ -264,7 +269,7 @@ python -m voidfarer.cli void dive golconda
 # Emergency surfacing back through the entry horizon (costs hull and shields)
 python -m voidfarer.cli void emerge
 ```
-Black-hole anchors mesh into a seeded void-lane graph. Diving needs a horizon orbit, route fuel, and 25% shields; storms drain stability, shields, and hull. Each storm crystallizes Hollow resonance (+1, doubled below 30% stability) worth 120 cr and 15 XP on arrival; `void emerge` banks only half the prorated resonance, while collapse loses all. The `gateways_open` flag calms storms 25%; the Void Compass and Crown of Echoes raise starting stability.
+Black-hole anchors mesh into a seeded void-lane graph. Diving needs a horizon orbit, route fuel, and 25% shields; storms drain stability, shields and hull. Each storm adds resonance (+1, doubled below 30% stability) worth 120 cr and 15 XP on arrival; `void emerge` banks half, collapse loses all. `gateways_open` calms storms 25%, and the Void Compass and Crown of Echoes raise starting stability.
 
 ### 14. Geopolitical Factions & Megacorporations
 ```bash
@@ -413,12 +418,17 @@ python -m voidfarer.cli codex claim first_light
 ```
 New System Surveyor and Sector Cartographer milestones track full-system sweeps, and the log reports `systems_surveyed`.
 
+### 21. UI Guard & Inventory Proof
+`.aikit/ui.json` bounds cockpit work to `voidfarer/static/**` and `voidfarer/server.py`; the fast
+proof is `python -m unittest discover`, the snapshot is `python tools/ui_inventory.py`, and
+`ui_required` stays false until a reviewed cockpit task records evidence. See ADR-041.
+
 ---
 
 ## 🛡️ Architecture & Resilience Guarantees
 
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
-3. **Fast Test Verification**: Comprehensive 487-test suite runs in about 7 seconds (`python -m unittest discover`).
+3. **Fast Test Verification**: Comprehensive 490-test suite runs in about 7 seconds (`python -m unittest discover`).
 4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
-5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, strict hold capacity gates on chassis/modular refits, quantum fuel efficiency, and Web Cockpit showroom/weapons parity.
+5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, cargo-volume refit gates, quantum fuel efficiency and cockpit parity.

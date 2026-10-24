@@ -1,55 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "cockpit-overlays-v1",
+    "task_id": "stellaris-ui-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792821120.5235963,
-    "completed_at": 1792821120.7004426
+    "updated_at": 1792835045.7039156,
+    "completed_at": 1792835045.8811772
   },
   "checkpoints": [
-    {
-      "task_id": "ui-guard-activation-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[1/1] Activated the approved cockpit UI guard: committed 4d7358a, ran begin/verify/finish --reviewed, recorded 754-entry surface evidence, set ui_required true, and fixed the README tools tree; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792779754.6288035,
-      "timestamp_str": "2026-10-23 21:22:34",
-      "handoff": {
-        "state": "UI history has one cockpit record with reviewer 'User (confirmed via Kilo prompt)' and surface digest 824ee010",
-        "next": "commit the evidence and ui_required change, then run check --strict",
-        "open": "none"
-      }
-    },
-    {
-      "task_id": "ui-guard-activation-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/1] Plan: enable the reviewed cockpit UI guard and record surface evidence",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792779803.5267022,
-      "timestamp_str": "2026-10-23 21:23:23",
-      "impact_assessment": {
-        "why": "The user authorized committing the integration and activating the guard, so strict delivery should require the cockpit contract and matching surface evidence instead of leaving enforcement opt-in",
-        "benefits": "Closes the opt-in gap, makes check --strict and publish refuse stale cockpit surfaces, and leaves an append-only reviewed evidence record",
-        "risks": "contract: ui_required true blocks delivery without a matching finished task; dependency: none (stdlib and existing AIKit guard); concurrency: the guard's task lock serializes begin/verify/finish; state: project.json gains a boolean and ui_history.json gains an append-only record",
-        "mitigation": "Run begin/verify/finish on the committed contract, confirm the history digest matches the surface, commit the evidence, then run check --strict and treat any mismatch as a blocking finding"
-      }
-    },
-    {
-      "task_id": "ui-guard-activation-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[1/1] Verified activation: begin/verify/finish --reviewed recorded 754 entries with reviewer 'User (confirmed via Kilo prompt)', ui_required is true, README is 22,360 chars, 4/4 gates pass; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792779817.6891282,
-      "timestamp_str": "2026-10-23 21:23:37"
-    },
     {
       "task_id": "ui-guard-activation-v1",
       "phase": "completed",
@@ -266,6 +225,47 @@
       "status": "completed",
       "timestamp": 1792821120.7004445,
       "timestamp_str": "2026-10-24 08:52:00"
+    },
+    {
+      "task_id": "stellaris-ui-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: convert the Windows command console into a Stellaris-inspired administration skin",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792835017.3386753,
+      "timestamp_str": "2026-10-24 12:43:37",
+      "impact_assessment": {
+        "why": "The user requested a proper Stellaris-style UI; the prior command console was readable but still read as a generic sci-fi terminal to the vision reviewer",
+        "benefits": "Deep void navy, imperial gold hairlines, cold ivory data, a flat icon resource strip, a recessed Imperial Outliner, a selected-object dossier, a segmented command ribbon, and a textured map, all while preserving every gameplay layout and hotkey rule",
+        "risks": "contract: none; dependency: none; concurrency: none; state: static HTML, CSS and app.js font/canvas text only, no simulation or layout-rule changes",
+        "mitigation": "Five-viewport cockpit audit, every terminal tab audit, overlay audit, vision review until approved, 496-test suite, 4/4 gates and ADR-046"
+      }
+    },
+    {
+      "task_id": "stellaris-ui-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: Stellaris administration skin applied; vision reviewer APPROVED final cockpit, resource strip, map, market, ship, contracts and menu; all 16 terminal tabs and overlays report zero measured findings; 496 tests and 4/4 gates pass; checklists: passed; uncommitted pending commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792835045.7039156,
+      "timestamp_str": "2026-10-24 12:44:05",
+      "handoff": {
+        "state": "deep navy/gold resource strip, Imperial Outliner, selected-object dossier, segmented ribbon and textured map",
+        "next": "commit, then refresh the cockpit UI evidence and run check --strict",
+        "open": "none in the UI, only delivery bookkeeping",
+        "evidence": "ui-review screenshots and ADR-046"
+      }
+    },
+    {
+      "task_id": "stellaris-ui-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'stellaris-ui-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792835045.8811786,
+      "timestamp_str": "2026-10-24 12:44:05"
     }
   ]
 }

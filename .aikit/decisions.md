@@ -565,3 +565,16 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   4. Add `settings` and `character` scenarios to the visual audit and delay scenario/tab opening by 700ms so the async state is ready. Add the same talent-catalog fallback to `renderPerksWindow` that the mastery tab already uses.
   5. Verify settings, character and perks with zero measured findings; the vision reviewer approved all three overlays after the populated perks window was recaptured.
 - **Consequences**: The overlays now match the command-console shell, native browser controls no longer break the theme, and the audit can review overlays as well as tabs. The simulation is untouched and the suite remains 496 tests.
+
+### ADR-046: Stellaris Administration Skin
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The user asked for a proper Stellaris-style UI. The prior Windows command console was readable and stable, but the vision reviewer still saw a generic sci-fi terminal: warm parchment over cyan map, soft geometry and equal-weight panels. Stellaris reads as an imperial administration map: deep void navy, cold ivory data, imperial gold hairlines, a dominant map, a recessed outliner, a selected-object dossier and a segmented command ribbon.
+- **Decision**:
+  1. Shift the palette to void navy `#040913`, slate panels `#0a1424`/`#0e1a2e`, imperial gold `#c9a35a`, cold ivory `#e9f0f7`, cool text `#c6d4e2`, muted blue-grey `#9fb2c6` and cyan data `#6fc3d7`; use Palatino display, Segoe UI data and Cascadia Mono telemetry.
+  2. Replace the top bar with one flat administrative resource strip: brand, actions, six icon/label/value/gauge vitals and chrono as segments divided by gold hairlines.
+  3. Make the left terminal a recessed 150px Imperial Outliner rail with a 28px tab rhythm, gold active rule and a sharp panel. Keep the vertical rail, drawer behaviour and every existing tab.
+  4. Rebuild the selected-object dossier with a watermark glyph, cold data grid and framed action buttons; turn the bottom strip into a segmented dark ribbon with framed HIDE/CLEAR and beveled BUY/SELL actions.
+  5. Add restrained materiality: gold corner brackets, 2px module shells, 1px internal rules, soft black shadows, inner top highlights, a low-opacity starfield/nebula/grid over the radar and a subtle film-grain scanline. No neon bloom.
+  6. Preserve every layout and control rule: full-viewport radar, vertical terminal, chrono upper-right, 44px vital cells, three-column command strip, Q/W/E/R, SHIFT+1..6 and P/K/L.
+- **Consequences**: The cockpit now reads as a Stellaris-inspired grand-strategy interface and the vision reviewer approved the final cockpit, resource strip, map, market, ship, contracts and menu. Layout and mechanics are unchanged; all 16 terminal tabs and the overlays still report zero measured findings, and the suite remains 496 tests.

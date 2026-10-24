@@ -84,7 +84,7 @@ voidfarer/
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
 │   ├── cli.py                <- ANSI terminal interface & interactive REPL
-│   └── static/               <- Windows command console UI
+│   └── static/               <- Stellaris-style command console UI
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       ├── app.js            <- radar math, Web Audio synth & REST link
@@ -383,8 +383,8 @@ morale 20 risk resignation, and docked stations offer paid shore leave. Bulk ord
 local stockpile price, and the status deck, CLI, and crew tab show per-tick cash flow. The
 setting begins 01.01.3042 in the Quantum Age with Dyson spheres, wormholes, and ring worlds.
 
-### 19. Windows Command Console Cockpit
-Launch the Windows-only Web Audio & Canvas command console:
+### 19. Stellaris-Style Windows Cockpit
+Launch the Stellaris-inspired Windows command console:
 ```bash
 python -m voidfarer.cli serve --port 8080
 ```
@@ -404,7 +404,7 @@ Open **`http://127.0.0.1:8080`** in Edge or Chrome on Windows to access:
 - **Player, Skills & Crew Tabs**: PLAYER is a dossier; six icon/hotkey skills live in the bottom strip (`SHIFT+1..6`), while SKILLS holds training and perks. Crew holds bonuses and drills.
 - **Ship Configuration Tab**: Chassis silhouette with five structural slot markers, trade-off catalogue cards, live capacity recomputation, and drydock install/salvage-remove controls through `/api/ship/module`.
 - **Commander Creation & Death Flow**: Name, age, background, and starting-skill allocation wired into new games; a death overlay summarizes the run and offers a fresh commander or save load.
-- **Windows High-DPI HUD**: 1280x720 through 4K and ultrawide windows, density and HUD-scale settings, DPR-correct radar, ResizeObserver, keyboard/mouse controls, and reduced-motion support.
+- **Stellaris-Style Windows HUD**: deep-navy administrative panels, gold rules, 1280x720-4K/ultrawide, density/HUD scale, DPR radar, keyboard/mouse and reduced motion.
 - **Derelict Boarding & Fuel Scooping**: once-per-body salvage that feeds titanium mining contracts; star/gas/ice scoops trade reactor heat for fuel from finite, recharging volatile reservoirs; paid crew training drills.
 - **Captain's Log & Discovery Codex**: career statistics grid, discovery milestones, claim rewards, category filters, and persistent flight log.
 

@@ -3819,7 +3819,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             }
 
             if (this.radarLabels) {
-                ctx.font = "10px 'Rajdhani'";
+                ctx.font = "10px 'Segoe UI'";
                 ctx.fillStyle = "#ece4d4";
                 ctx.fillText(b.name, bx + bodyRadius + 6, by + 3);
             }
@@ -3890,7 +3890,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 ctx.strokeRect(sx - 14, sy - 14, 28, 28);  // Increased from 10/20
             }
 
-            ctx.font = "13px 'Rajdhani'";  // Increased from 11px
+            ctx.font = "13px 'Segoe UI'";  // Increased from 11px
             ctx.fillStyle = isCurrent ? "#8fbf9f" : "#ece4d4";
             ctx.fillText(s.name, sx + 16, sy + 4);  // Adjusted offset
         });

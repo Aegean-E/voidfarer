@@ -26,5 +26,19 @@
     "final_snapshot_digest": "5790b1e3e3697bea88145edd960e58d6fd49a33b57b2e651cee73906b89d74f4",
     "final_snapshot_entries": 770,
     "surface_digest": "e50a36be4373d5300826366055e6745402b5c71a19093b9182346f1e6a874a73"
+  },
+  {
+    "schema": 1,
+    "surface": "cockpit",
+    "baseline_commit": "f2298cfb5522f22d5d114c6d64dc501e9937b4a2",
+    "contract_hash": "5b6aff8b9d591d3ef3b3cbd0dcdd5aec4c88fd681e3dfb507ae145b1590d2d3d",
+    "started_at": 1792835204.779486,
+    "finished_at": 1792835244.267395,
+    "strikes": 0,
+    "reviewer": "gemma-4-31b (G-015 vision review)",
+    "allowed_removals": [],
+    "final_snapshot_digest": "5790b1e3e3697bea88145edd960e58d6fd49a33b57b2e651cee73906b89d74f4",
+    "final_snapshot_entries": 770,
+    "surface_digest": "0e14ee961f93f5d7302c624cf323bd8ae65dc63a2c8a302910f5876460786fed"
   }
 ]

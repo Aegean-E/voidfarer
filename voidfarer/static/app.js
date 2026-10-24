@@ -2476,12 +2476,19 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 <div class="crew-role-grid">
                     ${roles.map(role => `
                         <div class="crew-role-row">
-                            <span><strong>${this.escapeHtml(role.name)}</strong><br><small>${this.escapeHtml(role.description)}</small></span>
+                            <span class="crew-role-info"><strong>${this.escapeHtml(role.name)}</strong><small>${this.escapeHtml(role.description)}</small></span>
                             <span class="crew-role-cost">${role.cost} CR</span>
+                            <button class="btn-hud btn-green" data-recruit-crew="${this.escapeHtml(role.id || role.name)}">RECRUIT</button>
                         </div>
                     `).join("")}
                 </div>
             `;
+        }
+
+        if (this.crewAssignments) {
+            this.crewAssignments.querySelectorAll("[data-recruit-crew]").forEach(btn =>
+                btn.addEventListener("click", () => this.postAction("/api/crew/recruit", { role_id: btn.getAttribute("data-recruit-crew") }, "crew"))
+            );
         }
 
         if (this.crewRoster) {
@@ -2493,15 +2500,17 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 <div class="crew-row">
                     <div class="crew-portrait">${this.portraitAvatar(m.portrait, m.name)}</div>
                     <div class="crew-info-block">
-                        <strong>${this.escapeHtml(m.name)}</strong><br>
+                        <strong>${this.escapeHtml(m.name)}</strong>
                         <small>${this.escapeHtml(m.role)} | skill ${m.skill} | wage ${m.wage}</small>
-                        <div class="crew-morale-bar" title="Morale ${morale}${moraleNote}">
-                            <div class="crew-morale-fill ${moraleClass}" style="width:${morale}%"></div>
-                            <span class="crew-morale-text">${morale}${moraleNote}</span>
-                        </div>
                     </div>
-                    <button class="btn-hud btn-amber" data-train-crew="${this.escapeHtml(m.id)}" ${m.skill >= 10 ? "disabled" : ""}>DRILL</button>
-                    <button class="btn-hud" data-dismiss-crew="${this.escapeHtml(m.id)}">DISMISS</button>
+                    <div class="crew-morale-bar" title="Morale ${morale}${moraleNote}">
+                        <div class="crew-morale-fill ${moraleClass}" style="width:${morale}%"></div>
+                        <span class="crew-morale-text">${morale}${moraleNote}</span>
+                    </div>
+                    <div class="crew-actions">
+                        <button class="btn-hud btn-amber" data-train-crew="${this.escapeHtml(m.id)}" ${m.skill >= 10 ? "disabled" : ""}>DRILL</button>
+                        <button class="btn-hud" data-dismiss-crew="${this.escapeHtml(m.id)}">DISMISS</button>
+                    </div>
                 </div>
                 `;
             }).join("") : `<p class="panel-intro-text">No crew aboard. Dock at a station and recruit specialists.</p>`;
@@ -2740,8 +2749,9 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         } else {
             this.fleetShipRoster.innerHTML = ships.map(ship => `
                 <div class="fleet-ship-card">
-                    <div><strong>${this.escapeHtml(ship.name)}</strong> <span class="ship-role">${this.escapeHtml(ship.role.toUpperCase())}</span></div>
-                    <div>HULL ${ship.hull}/${ship.max_hull} | SHIELD ${ship.shield}/${ship.max_shield} | DMG ${ship.damage} | ${this.escapeHtml(ship.status)}</div>
+                    <div class="fleet-head"><strong>${this.escapeHtml(ship.name)}</strong> <span class="ship-role">${this.escapeHtml(ship.role.toUpperCase())}</span></div>
+                    <div class="fleet-sub">HULL ${ship.hull}/${ship.max_hull} | SHIELD ${ship.shield}/${ship.max_shield} | DMG ${ship.damage}</div>
+                    <div class="fleet-value">${this.escapeHtml(String(ship.status || "").toUpperCase())}</div>
                     <div class="ship-actions">
                         <button class="btn-hud btn-amber" data-escort-repair="${this.escapeHtml(ship.id)}">REPAIR</button>
                         <button class="btn-hud" data-escort-dismiss="${this.escapeHtml(ship.id)}">DISMISS</button>
@@ -2758,8 +2768,10 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const catalog = fleet.catalog || {};
         if (this.escortShopGrid) {
             this.escortShopGrid.innerHTML = Object.entries(catalog).map(([id, template]) => `
-                <button class="btn-hud btn-amber" data-escort-buy="${this.escapeHtml(id)}" title="${this.escapeHtml(template.description)}">
-                    ${this.escapeHtml(template.name)} // ${template.cost} CR
+                <button class="btn-hud btn-amber fleet-procurement-row" data-escort-buy="${this.escapeHtml(id)}" title="${this.escapeHtml(template.description)}">
+                    <span class="procurement-info"><strong>${this.escapeHtml(template.name)}</strong><small>${this.escapeHtml(template.description)}</small></span>
+                    <span class="procurement-value">${template.cost} CR</span>
+                    <span class="procurement-action">COMMISSION</span>
                 </button>
             `).join("");
             this.escortShopGrid.querySelectorAll("[data-escort-buy]").forEach(btn =>
@@ -2808,9 +2820,9 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             const catalog = Object.values(this.state.mercenary_catalog || {});
             const hired = new Set((this.state.ship.fleet_drones || []).filter(d => d.drone_type === "mercenary").map(d => d.specialty));
             this.mercenaryRoster.innerHTML = `<h4 class="commission-title">MERCENARY CONTRACTS</h4>` + catalog.map(m => `
-                <div class="depot-card">
-                    <h4>${this.escapeHtml(m.name)} // ${m.cost} CR</h4>
-                    <div>${this.escapeHtml(m.description)}</div>
+                <div class="depot-card fleet-procurement-row">
+                    <div class="procurement-info"><h4>${this.escapeHtml(m.name)}</h4><small>${this.escapeHtml(m.description)}</small></div>
+                    <span class="procurement-value">${m.cost} CR</span>
                     <div class="depot-actions">
                         <button class="btn-hud btn-cyan" data-merc="${this.escapeHtml(m.id)}" ${hired.has(m.specialty) ? "disabled" : ""}>${hired.has(m.specialty) ? "CONTRACTED" : "HIRE"}</button>
                     </div>

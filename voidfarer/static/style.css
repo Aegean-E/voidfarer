@@ -7247,3 +7247,337 @@ body.cockpit-theme .panel-center {
 .death-stat-value { color: var(--console-gold-bright); font-family: var(--font-mono); font-size: 14px; font-weight: 600; }
 .death-options { gap: 8px; flex-wrap: wrap; }
 .death-options .btn-hud { min-width: 150px; min-height: 32px; }
+
+/* Left terminal row ledger: one scan line per record. */
+#crewRoster::before,
+#fleetRoster::before {
+    display: block;
+    width: 100%;
+    padding: 7px 2px 5px;
+    border-bottom: 1px solid rgba(201, 163, 90, 0.2);
+    color: var(--console-gold);
+    font-family: var(--console-ui);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+}
+#crewRoster::before { content: "ACTIVE CREW"; }
+#fleetRoster::before { content: "ACTIVE FLEET"; }
+#crewRoster, #fleetRoster, .contracts-list, .crew-role-grid, .mercenary-roster, .fleet-ship-roster {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+}
+.crew-row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border: 0;
+    border-left: 2px solid rgba(143, 191, 159, 0.45);
+    border-bottom: 1px solid rgba(201, 163, 90, 0.12);
+    border-radius: 0;
+    background: transparent;
+    font-family: var(--console-ui);
+    font-size: 12px;
+}
+.crew-row:hover { background: rgba(201, 163, 90, 0.06); }
+.crew-row:last-child { border-bottom: 0; }
+.crew-row .crew-portrait { width: 40px; height: 40px; flex: 0 0 40px; }
+.crew-info-block { min-width: 0; }
+.crew-info-block strong { display: block; font-size: 14px; line-height: 1.2; color: var(--console-ivory); }
+.crew-info-block small { display: block; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crew-morale-bar { height: 14px; max-width: 220px; margin-top: 4px; border-radius: 2px; }
+.crew-morale-text { font-size: 12px; letter-spacing: 0; }
+.crew-row .btn-hud { min-height: 28px; padding: 3px 7px; font-size: 12px; }
+.crew-role-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 0;
+    border-left: 2px solid rgba(169, 139, 189, 0.35);
+    border-bottom: 1px solid rgba(201, 163, 90, 0.12);
+    border-radius: 0;
+    background: transparent;
+}
+.crew-role-row:hover { background: rgba(201, 163, 90, 0.06); }
+.crew-role-row:last-child { border-bottom: 0; }
+.crew-role-row span { min-width: 0; }
+.crew-role-row strong { font-size: 13px; color: var(--console-ivory); }
+.crew-role-row small { font-size: 12px; color: var(--console-muted); }
+.crew-role-cost { color: var(--console-gold-bright); font-family: var(--font-mono); }
+
+.contract-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 105px 120px;
+    grid-template-areas:
+        "head progress action"
+        "desc progress action";
+    align-items: center;
+    gap: 3px 10px;
+    min-height: 64px;
+    padding: 9px 10px;
+    border: 0;
+    border-left: 2px solid var(--console-gold);
+    border-bottom: 1px solid rgba(201, 163, 90, 0.12);
+    border-radius: 0;
+    background: transparent;
+}
+.contract-card:hover { background: rgba(201, 163, 90, 0.06); border-left-color: var(--console-gold-bright); }
+.contract-card:last-child { border-bottom: 0; }
+.contract-card.completed { border-left-color: var(--console-green); background: transparent; box-shadow: none; }
+.contract-header { grid-area: head; display: flex; align-items: center; gap: 7px; min-width: 0; }
+.contract-title { display: block; min-width: 0; font-size: 13.5px; color: var(--console-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contract-cat-badge { flex: 0 0 auto; font-size: 12px; padding: 1px 5px; border-radius: 1px; }
+.contract-desc { grid-area: desc; min-width: 0; margin: 0; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contract-progress-box { grid-area: progress; align-self: center; margin: 0; }
+.contract-progress-label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--console-muted); }
+.contract-progress-label span:first-child { display: none; }
+.contract-progress-meter { height: 5px; border-radius: 0; background: rgba(201, 163, 90, 0.12); }
+.contract-progress-fill { border-radius: 0; background: linear-gradient(90deg, #c9a35a, #e2c078); }
+.contract-footer { grid-area: action; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; }
+.contract-rewards { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 7px; }
+.reward-pill { padding: 0; border: 0; background: transparent; color: var(--console-gold-bright); font-size: 12px; }
+.reward-pill.xp { color: var(--console-cyan); }
+.reward-pill.relic { color: var(--console-purple); }
+.btn-claim-contract { min-height: 28px; padding: 4px 8px; font-size: 12px; }
+.contract-status { font-size: 12px; }
+
+.drone-card {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 92px 110px;
+    grid-template-areas:
+        "icon meta stats actions"
+        "icon sub value actions";
+    align-items: center;
+    gap: 2px 8px;
+    padding: 9px 10px;
+    border: 0;
+    border-left: 2px solid rgba(143, 191, 159, 0.5);
+    border-bottom: 1px solid rgba(201, 163, 90, 0.12);
+    border-radius: 0;
+    background: transparent;
+}
+.drone-card::before { content: "⬢"; grid-area: icon; color: var(--console-green); font-size: 16px; text-align: center; }
+.drone-card:hover { background: rgba(201, 163, 90, 0.06); }
+.drone-card:last-child { border-bottom: 0; }
+.drone-meta { display: contents; }
+.drone-name { grid-area: meta; min-width: 0; font-size: 13.5px; color: var(--console-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drone-sub { grid-area: sub; min-width: 0; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drone-stats { grid-area: stats; min-width: 0; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drone-yield-badge { grid-area: value; align-self: start; padding: 0; border: 0; background: transparent; color: var(--console-gold-bright); font-size: 12px; }
+.drone-actions { grid-area: actions; display: flex; flex-direction: column; gap: 4px; margin: 0 !important; }
+.drone-actions .btn-hud { min-height: 26px; padding: 2px 6px; font-size: 12px; }
+
+.depot-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 10px;
+    padding: 8px 10px;
+    border: 0;
+    border-left: 2px solid rgba(111, 195, 215, 0.45);
+    border-bottom: 1px solid rgba(201, 163, 90, 0.12);
+    border-radius: 0;
+    background: transparent;
+}
+.depot-card:hover { background: rgba(201, 163, 90, 0.06); }
+.depot-card:last-child { border-bottom: 0; }
+.depot-card h4 { grid-column: 1; grid-row: 1; margin: 0; font-size: 13px; color: var(--console-ivory); }
+.depot-card > div:not(.depot-actions) { grid-column: 1; grid-row: 2; font-size: 12px; color: var(--console-muted); }
+.depot-actions { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.depot-actions .btn-hud { min-height: 28px; padding: 3px 8px; font-size: 12px; }
+
+.fleet-ship-roster { gap: 0; }
+.fleet-ship-card {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) 118px;
+    grid-template-areas:
+        "icon head actions"
+        "icon stats actions";
+    align-items: center;
+    gap: 2px 8px;
+    padding: 8px 10px;
+    border: 0;
+    border-left: 2px solid rgba(111, 195, 215, 0.45);
+    border-bottom: 1px solid rgba(201, 163, 90, 0.12);
+    border-radius: 0;
+    background: transparent;
+    font-size: 12px;
+}
+.fleet-ship-card::before { content: "▲"; grid-area: icon; color: var(--console-cyan); font-size: 14px; text-align: center; }
+.fleet-ship-card:hover { background: rgba(201, 163, 90, 0.06); }
+.fleet-ship-card > div:first-child { grid-area: head; min-width: 0; }
+.fleet-ship-card > div:nth-child(2) { grid-area: stats; min-width: 0; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fleet-ship-card .ship-role { font-size: 12px; color: var(--console-cyan); }
+.fleet-ship-card .ship-actions { grid-area: actions; display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.fleet-ship-card .ship-actions .btn-hud { min-height: 26px; padding: 2px 6px; font-size: 12px; }
+
+/* Tab rail and market row discipline. */
+.panel-left .deck-tab-btn { display: flex; align-items: center; line-height: 1.1; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel-left .deck-tab-btn .tab-badge { margin-left: auto; flex: 0 0 auto; }
+.panel-left .deck-tab-btn.active::before { color: var(--console-gold-bright); }
+.market-table td:nth-child(2),
+.market-table td:nth-child(3),
+.market-table td:nth-child(4),
+.market-table th:nth-child(2),
+.market-table th:nth-child(3),
+.market-table th:nth-child(4) { text-align: right; }
+.market-table td:nth-child(5) { text-align: right; }
+.market-table tbody tr { transition: background 0.12s ease; }
+
+@media (max-width: 1599px) {
+    .contract-card { grid-template-columns: minmax(0, 1fr) 88px 104px; grid-template-areas: "head progress action"; min-height: 54px; }
+    .contract-desc { display: none; }
+    .drone-card { grid-template-columns: 26px minmax(0, 1fr) 88px; grid-template-areas: "icon meta actions" "icon sub actions" "icon value actions"; }
+    .drone-stats { display: none; }
+    .fleet-ship-card { grid-template-columns: 24px minmax(0, 1fr) 104px; }
+}
+
+/* One ledger grid for every left-panel record. */
+:root { --ledger-cols: 40px minmax(0, 1fr) 100px 110px; }
+@media (max-width: 1599px) { :root { --ledger-cols: 32px minmax(0, 1fr) 80px 96px; } }
+
+.crew-row,
+.crew-role-row,
+.contract-card,
+.drone-card,
+.depot-card,
+.fleet-ship-card,
+.fleet-procurement-row {
+    display: grid;
+    grid-template-columns: var(--ledger-cols);
+    grid-template-areas: none;
+    grid-auto-rows: auto;
+    align-items: center;
+    gap: 2px 10px;
+    min-height: 56px;
+    padding: 8px 10px;
+    border: 0;
+    border-left: 2px solid rgba(201, 163, 90, 0.35);
+    border-bottom: 1px solid rgba(201, 163, 90, 0.12);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--console-text);
+    font-family: var(--console-ui);
+    font-size: 12px;
+    text-align: left;
+}
+.crew-row:hover,
+.crew-role-row:hover,
+.contract-card:hover,
+.drone-card:hover,
+.depot-card:hover,
+.fleet-ship-card:hover,
+.fleet-procurement-row:hover { background: rgba(201, 163, 90, 0.06); }
+.crew-row,
+.crew-role-row,
+.contract-card,
+.drone-card,
+.depot-card,
+.fleet-ship-card,
+.fleet-procurement-row { border-bottom-color: rgba(201, 163, 90, 0.12); }
+.crew-row:last-child,
+.crew-role-row:last-child,
+.contract-card:last-child,
+.drone-card:last-child,
+.depot-card:last-child,
+.fleet-ship-card:last-child,
+.fleet-procurement-row:last-child { border-bottom: 0; }
+
+.crew-row { border-left-color: rgba(143, 191, 159, 0.5); }
+.crew-row .crew-portrait { grid-column: 1; grid-row: 1 / span 2; width: 40px; height: 40px; }
+.crew-row .crew-info-block { grid-column: 2; grid-row: 1 / span 2; display: block; min-width: 0; }
+.crew-row .crew-info-block strong { display: block; font-size: 14px; color: var(--console-ivory); line-height: 1.2; }
+.crew-row .crew-info-block small { display: block; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crew-row .crew-morale-bar { grid-column: 3; grid-row: 1 / span 2; width: 100%; max-width: none; height: 14px; margin: 0; align-self: center; }
+.crew-row .crew-actions { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 4px; }
+.crew-row .crew-actions .btn-hud { width: 100%; min-height: 26px; padding: 2px 6px; font-size: 12px; }
+
+.crew-role-row { border-left-color: rgba(169, 139, 189, 0.45); }
+.crew-role-row::before { content: "◇"; grid-column: 1; grid-row: 1 / span 2; align-self: center; color: var(--console-purple); font-size: 16px; text-align: center; }
+.crew-role-row > .crew-role-info { grid-column: 2; grid-row: 1 / span 2; display: block; min-width: 0; }
+.crew-role-info strong { display: block; font-size: 13px; color: var(--console-ivory); }
+.crew-role-info small { display: block; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crew-role-row > .crew-role-cost { grid-column: 3; grid-row: 1 / span 2; text-align: right; align-self: center; color: var(--console-gold-bright); font-family: var(--font-mono); }
+.crew-role-row > .btn-hud { grid-column: 4; grid-row: 1 / span 2; width: 100%; min-height: 28px; padding: 3px 6px; font-size: 12px; }
+
+.contract-card { border-left-color: rgba(201, 163, 90, 0.55); }
+.contract-card::before { content: "▤"; grid-column: 1; grid-row: 1 / span 2; align-self: center; color: var(--console-gold); font-size: 16px; text-align: center; }
+.contract-card > .contract-header { grid-column: 2; grid-row: 1; display: flex; align-items: center; gap: 7px; min-width: 0; }
+.contract-card > .contract-desc { grid-column: 2; grid-row: 2; display: block; min-width: 0; margin: 0; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contract-card > .contract-progress-box { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
+.contract-card > .contract-footer { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; }
+.contract-card.completed { border-left-color: var(--console-green); }
+.contract-cat-badge { flex: 0 0 auto; padding: 1px 5px; border-radius: 1px; font-size: 12px; }
+.contract-title { min-width: 0; font-size: 13.5px; color: var(--console-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.contract-progress-label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--console-muted); }
+.contract-progress-label span:first-child { display: none; }
+.contract-progress-meter { height: 5px; border-radius: 0; background: rgba(201, 163, 90, 0.12); }
+.contract-progress-fill { border-radius: 0; background: linear-gradient(90deg, #c9a35a, #e2c078); }
+.contract-rewards { justify-content: flex-end; gap: 2px 7px; }
+.reward-pill { padding: 0; border: 0; background: transparent; font-size: 12px; }
+.reward-pill.xp { color: var(--console-cyan); }
+.reward-pill.relic { color: var(--console-purple); }
+.btn-claim-contract { min-height: 28px; padding: 4px 8px; font-size: 12px; }
+.contract-status { font-size: 12px; }
+
+.drone-card { border-left-color: rgba(143, 191, 159, 0.5); }
+.drone-card::before { content: "⬢"; grid-column: 1; grid-row: 1 / span 2; align-self: center; color: var(--console-green); font-size: 16px; text-align: center; }
+.drone-meta { display: contents; }
+.drone-name { grid-column: 2; grid-row: 1; min-width: 0; font-size: 13.5px; color: var(--console-ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drone-sub { grid-column: 2; grid-row: 2; min-width: 0; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drone-stats { grid-column: 3; grid-row: 1; min-width: 0; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drone-yield-badge { grid-column: 3; grid-row: 2; align-self: start; padding: 0; border: 0; background: transparent; color: var(--console-gold-bright); font-size: 12px; }
+.drone-actions { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 4px; margin: 0 !important; }
+.drone-actions .btn-hud { min-height: 26px; padding: 2px 5px; font-size: 12px; }
+
+.fleet-ship-card { border-left-color: rgba(111, 195, 215, 0.45); }
+.fleet-ship-card::before { content: "▲"; grid-column: 1; grid-row: 1 / span 2; align-self: center; color: var(--console-cyan); font-size: 14px; text-align: center; }
+.fleet-ship-card > .fleet-head { grid-column: 2; grid-row: 1; min-width: 0; }
+.fleet-ship-card > .fleet-sub { grid-column: 2; grid-row: 2; min-width: 0; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fleet-ship-card > .fleet-value { grid-column: 3; grid-row: 1 / span 2; align-self: center; color: var(--console-gold-bright); font-size: 12px; text-align: right; }
+.fleet-ship-card .ship-role { color: var(--console-cyan); font-size: 12px; }
+.fleet-ship-card > .ship-actions { grid-column: 4; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.fleet-ship-card .ship-actions .btn-hud { min-height: 26px; padding: 2px 6px; font-size: 12px; }
+
+.fleet-procurement-row { border-left-color: rgba(201, 163, 90, 0.4); }
+.fleet-procurement-row::before { content: "◆"; grid-column: 1; grid-row: 1 / span 2; align-self: center; color: var(--console-gold); font-size: 15px; text-align: center; }
+.fleet-procurement-row > .procurement-info { grid-column: 2; grid-row: 1 / span 2; display: block; min-width: 0; }
+.procurement-info strong,
+.procurement-info h4 { display: block; margin: 0; font-size: 13px; color: var(--console-ivory); }
+.procurement-info small { display: block; font-size: 12px; color: var(--console-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fleet-procurement-row > .procurement-value { grid-column: 3; grid-row: 1 / span 2; align-self: center; text-align: right; color: var(--console-gold-bright); font-family: var(--font-mono); font-size: 12px; }
+.fleet-procurement-row > .procurement-action,
+.fleet-procurement-row > .depot-actions { grid-column: 4; grid-row: 1 / span 2; align-self: center; width: 100%; }
+.procurement-action { display: flex; align-items: center; justify-content: flex-end; color: var(--console-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.fleet-procurement-row:hover .procurement-action { color: var(--console-gold-bright); }
+.depot-card.fleet-procurement-row { border-left-color: rgba(111, 195, 215, 0.45); }
+.depot-actions .btn-hud,
+.fleet-procurement-row .btn-hud { width: 100%; min-height: 28px; padding: 3px 6px; font-size: 12px; }
+
+.drone-shop-grid,
+.escort-shop-grid { display: flex; flex-direction: column; gap: 0; width: 100%; }
+.btn-drone-buy { width: 100%; min-height: 56px; padding: 8px 10px; border-radius: 0; text-align: left; }
+.escort-shop-grid button { width: 100%; text-align: left; }
+.commission-title { margin: 10px 0 4px; color: var(--console-gold); font-family: var(--console-ui); font-size: 12px; letter-spacing: 0.1em; }
+.fleet-manager-box { margin-top: 10px; }
+.mercenary-roster { margin-top: 4px; }
+
+@media (max-width: 1599px) {
+    .contract-card > .contract-desc { display: none; }
+    .contract-card { min-height: 52px; }
+    .crew-row,
+    .crew-role-row,
+    .contract-card,
+    .drone-card,
+    .depot-card,
+    .fleet-ship-card,
+    .fleet-procurement-row { min-height: 52px; padding: 7px 8px; gap: 2px 6px; }
+}
+
+.crew-row .crew-morale-bar { height: 18px; }
+.crew-row .crew-morale-text { line-height: 1; }

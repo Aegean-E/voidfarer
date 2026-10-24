@@ -1,55 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "death-screen-v1",
+    "task_id": "left-row-ledger-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792854093.3577278,
-    "completed_at": 1792854093.5377595
+    "updated_at": 1792860026.6624393,
+    "completed_at": 1792860026.9009778
   },
   "checkpoints": [
-    {
-      "task_id": "in-game-terminal-redesign-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[3/3] Final audit: all 16 in-game tabs plus the perks overlay report zero measured findings at 1920; market/ship/contracts also zero at 1366/1280; vision reviewer APPROVED market, arsenal, ship, contracts, quests, factions, codex and messages; 496 tests and 4/4 gates pass; checklists: passed; uncommitted",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792815778.8437066,
-      "timestamp_str": "2026-10-24 07:22:58",
-      "handoff": {
-        "state": "all terminal tabs are dossier layouts with 12px+ copy and no nested scrollboxes",
-        "next": "commit and run a new reviewed cockpit UI task to refresh surface evidence",
-        "open": "strict delivery blocked only by the uncommitted tree and stale UI evidence",
-        "evidence": "ui-review/tabs screenshots, ADR-044, per-tab audits"
-      }
-    },
-    {
-      "task_id": "in-game-terminal-redesign-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'in-game-terminal-redesign-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792815779.0070167,
-      "timestamp_str": "2026-10-24 07:22:59"
-    },
-    {
-      "task_id": "cockpit-overlays-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/2] Plan: theme settings, character creation and perks overlays and add overlay capture scenarios",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792821107.7805462,
-      "timestamp_str": "2026-10-24 08:51:47",
-      "impact_assessment": {
-        "why": "The overlays still looked like generic dark web modals, native controls clashed with the command-console theme, and the perks window rendered empty because capture opened it before state loaded and the renderer lacked the mastery catalog fallback",
-        "benefits": "Overlays now match the cockpit, form controls are readable and themed, perks shows three populated branches, and the audit can capture settings and character states for future regressions",
-        "risks": "contract: none; dependency: none; concurrency: async state now gates overlay opening by 700ms; state: static UI and audit tooling only, simulation untouched",
-        "mitigation": "Zero-finding audits for settings/character/perks, vision approval, 496-test suite, 4/4 gates and ADR-045"
-      }
-    },
     {
       "task_id": "cockpit-overlays-v1",
       "phase": "phase 4",
@@ -279,6 +238,47 @@
       "status": "completed",
       "timestamp": 1792854093.537761,
       "timestamp_str": "2026-10-24 18:01:33"
+    },
+    {
+      "task_id": "left-row-ledger-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: unify every left-terminal record under one ledger grid",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792859993.9090428,
+      "timestamp_str": "2026-10-24 19:39:53",
+      "impact_assessment": {
+        "why": "Market already read as a ledger, while crew, contracts and fleet mixed cards, role rows, active rows and procurement offers; the vision reviewer asked for one shared row grammar",
+        "benefits": "A single icon/title/value/action grid across crew, contracts, drones, escorts, mercenaries and commissions, with the market table as the aligned reference",
+        "risks": "contract: none; dependency: none; concurrency: none; state: static HTML/CSS plus row markup and one existing crew-recruit endpoint; no simulation changes",
+        "mitigation": "Real-browser captures at desktop/laptop/720p, zero console/hscroll/clipped/tiny/target/contrast/overlap findings, free-vision approval, 496 tests, 4/4 gates and ADR-051"
+      }
+    },
+    {
+      "task_id": "left-row-ledger-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: crew roles/active crew, contracts, drones, escorts, mercenaries and commissions share one icon/title/value/action ledger; market numeric columns align; browser audits are zero at desktop/laptop/720p; the free vision reviewer APPROVED; 496 tests and 4/4 gates pass; checklists: passed; uncommitted pending commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792860026.6624393,
+      "timestamp_str": "2026-10-24 19:40:26",
+      "handoff": {
+        "state": "shared ledger columns, row chrome, crew RECRUIT action",
+        "next": "commit and refresh the cockpit evidence",
+        "open": "none in the UI, only delivery bookkeeping",
+        "evidence": "ui-review left crops, ADR-051"
+      }
+    },
+    {
+      "task_id": "left-row-ledger-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'left-row-ledger-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792860026.9009798,
+      "timestamp_str": "2026-10-24 19:40:26"
     }
   ]
 }

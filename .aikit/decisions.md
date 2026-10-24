@@ -622,3 +622,14 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   3. Preserve the randomized title/message, all stat sources and the New Commander / Load Save / Main Menu actions.
   4. Add a Playwright `death` scenario and verify the overlay at desktop, laptop and 720p. The free vision reviewer approved the final screen after quoting the title, stat labels and actions.
 - **Consequences**: The defeat screen now closes the game in the same visual language as the cockpit, menus and settings; navigation behavior is unchanged and the browser pass reports zero console, horizontal-scroll or tiny-text findings. The suite remains 496 tests.
+
+### ADR-051: Unified Left-Terminal Row Ledger
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The market was already a scannable ledger, but crew, contracts and fleet mixed cards, role rows, active rows and procurement offers. The vision reviewer rejected the split and asked for one shared row grammar across the left terminal.
+- **Decision**:
+  1. Use one four-column ledger grid for every left-panel record: leading icon/portrait, title/subtitle, right-aligned value, action. Desktop columns are 40px / 1fr / 100px / 110px; compact Windows columns are 32px / 1fr / 80px / 96px.
+  2. Convert contracts to rows with a category glyph, title, description, progress and reward/action column; convert drones, escorts, mercenaries and commissions to the same grid; keep the market table's fixed columns and add numeric alignment and hover.
+  3. Wrap active crew buttons into the action column, move morale into the value column, and add a RECRUIT action to available crew roles using the existing `/api/crew/recruit` endpoint.
+  4. Standardize row chrome: no cards, left accent by record type, one-pixel separators, 56px target height, hover tint, and consistent icon/label/badge tab rail rows.
+- **Consequences**: The left terminal now scans as one system: crew roles and crew members, contracts, active fleet assets, mercenary offers, escort wings and commissions all align to the same columns. Browser audits are zero at desktop, laptop and 720p, the free vision reviewer approved the unified rows, and the suite remains 496 tests.

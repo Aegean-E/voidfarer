@@ -1,4 +1,4 @@
-"""Regression tests for the resolution-adaptive cockpit, derelict salvage,
+"""Regression tests for the Windows high-DPI cockpit, derelict salvage,
 fuel scooping, and crew training drills."""
 
 import unittest
@@ -27,31 +27,34 @@ class TestAdaptiveCockpitAssets(unittest.TestCase):
         cls.css = STYLE_CSS.read_text(encoding="utf-8")
         cls.js = APP_JS.read_text(encoding="utf-8")
 
-    def test_css_declares_resolution_profiles(self):
+    def test_css_declares_windows_desktop_profiles(self):
         for marker in (
             "@media (min-width: 2200px)",
-            "@media (max-width: 760px)",
+            "@media (max-width: 1599px)",
             "@media (max-height: 720px)",
             "prefers-reduced-motion",
-            "env(safe-area-inset-bottom)",
             "data-density",
         ):
-            self.assertIn(marker, self.css, f"missing adaptive CSS marker: {marker}")
+            self.assertIn(marker, self.css, f"missing desktop CSS marker: {marker}")
+        for forbidden in ("@media (max-width: 760px)", "@media (max-width: 480px)",
+                          "env(safe-area-inset"):
+            self.assertNotIn(forbidden, self.css, f"mobile CSS path returned: {forbidden}")
 
     def test_settings_expose_density_and_scale(self):
         for marker in ("settingDensity", "settingUiScale", "viewportReadout"):
             self.assertIn(f'id="{marker}"', self.html)
 
-    def test_radar_is_dpi_aware_and_touch_ready(self):
+    def test_radar_is_dpi_aware_and_mouse_ready(self):
         for marker in (
             "devicePixelRatio",
             "ResizeObserver",
-            "touchstart",
-            "touchmove",
-            "pinch",
+            "wheel",
+            "mousedown",
             "this.viewW",
         ):
-            self.assertIn(marker, self.js, f"missing adaptive radar marker: {marker}")
+            self.assertIn(marker, self.js, f"missing desktop radar marker: {marker}")
+        for forbidden in ("touchstart", "touchmove", "pinch"):
+            self.assertNotIn(forbidden, self.js, f"touch path returned: {forbidden}")
 
     def test_polling_and_hotkeys_are_guarded(self):
         for marker in ("refreshInFlight", "visibilitychange", "document.hidden", "isTypingTarget"):

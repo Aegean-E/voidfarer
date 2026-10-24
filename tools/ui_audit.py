@@ -39,10 +39,12 @@ AUDIT_ID = "__ui_audit__"
 VIEWPORTS: Dict[str, Tuple[int, int]] = {
     "desktop": (1920, 1080),
     "ultrawide": (2560, 1080),
-    "tablet": (1024, 768),
-    "phone": (390, 844),
+    "4k": (3840, 2160),
+    "laptop": (1366, 768),
     "short": (1280, 720),
 }
+TABS = ("player", "skills", "crew", "ship", "market", "arsenal", "fleet", "contracts",
+        "mastery", "empire", "quests", "ai", "depot", "messages", "story", "factions", "codex")
 CHROME_X = 24
 CHROME_Y = 92
 BROWSER_CANDIDATES = (
@@ -89,6 +91,7 @@ WRAPPER_JS = r"""
   var viewportHeight = Number(params.get("h")) || 1080;
   var target = params.get("target") || "/";
   var scenario = params.get("scenario") || "cockpit";
+  var tab = params.get("tab") || "";
   var frame = document.getElementById("cockpit");
   var output = document.getElementById("__ui_audit__");
   var started = Date.now();
@@ -152,12 +155,13 @@ WRAPPER_JS = r"""
           return result;
         }
       }
-      if (style.backgroundImage && style.backgroundImage !== "none" && (!result || result.a === 0)) {
-        return null;
-      }
       node = node.parentElement;
     }
-    return result || { r: 5, g: 7, b: 12, a: 1 };
+    var base = result || { r: 5, g: 7, b: 12, a: 1 };
+    if (base.a < 0.999) {
+      base = composite(base, { r: 5, g: 7, b: 12, a: 1 });
+    }
+    return base;
   }
 
   function luminance(color) {
@@ -267,6 +271,38 @@ WRAPPER_JS = r"""
     if (list.length < 25) {
       list.push(value);
     }
+  }
+
+  function clippedByAncestor(element, win, doc) {
+    var rect = element.getBoundingClientRect();
+    var node = element.parentElement;
+    while (node && node !== doc.body) {
+      var style = win.getComputedStyle(node);
+      var clips = style.overflowX === "hidden" || style.overflowX === "clip"
+        || style.overflowY === "hidden" || style.overflowY === "clip"
+        || style.overflowY === "auto" || style.overflowY === "scroll";
+      if (clips) {
+        var box = node.getBoundingClientRect();
+        if (rect.bottom <= box.top || rect.top >= box.bottom
+            || rect.right <= box.left || rect.left >= box.right) {
+          return true;
+        }
+      }
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  function overlayRoot(element, win, doc) {
+    var node = element;
+    while (node && node !== doc.body) {
+      var style = win.getComputedStyle(node);
+      if (style.position === "fixed" && parseInt(style.zIndex || "0", 10) >= 500) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
   }
 
   function audit(win, doc) {
@@ -387,6 +423,12 @@ WRAPPER_JS = r"""
         if (a.element.contains(b.element) || b.element.contains(a.element)) {
           continue;
         }
+        if (clippedByAncestor(a.element, win, doc) || clippedByAncestor(b.element, win, doc)) {
+          continue;
+        }
+        if (overlayRoot(a.element, win, doc) !== overlayRoot(b.element, win, doc)) {
+          continue;
+        }
         if (a.rect.width * a.rect.height > width * height * 0.35
             || b.rect.width * b.rect.height > width * height * 0.35) {
           continue;
@@ -425,9 +467,9 @@ WRAPPER_JS = r"""
       horizontal: doc.documentElement.scrollWidth > width + 1
     };
     report.media = {
-      narrow: win.matchMedia("(max-width: 600px)").matches,
-      tablet: win.matchMedia("(max-width: 1024px)").matches,
-      coarse: win.matchMedia("(pointer: coarse)").matches,
+      compact: win.matchMedia("(max-width: 1440px)").matches,
+      wide: win.matchMedia("(min-width: 2300px)").matches,
+      highdpi: win.matchMedia("(min-resolution: 1.5dppx)").matches,
       reduced: win.matchMedia("(prefers-reduced-motion: reduce)").matches
     };
     report.headings = Array.prototype.slice.call(
@@ -463,14 +505,24 @@ WRAPPER_JS = r"""
     report.outer = { width: window.innerWidth, height: window.innerHeight };
     report.target = target;
     report.scenario = scenario;
+    report.tab = tab;
+    if (win && win.cockpit) {
+      report.activeTab = win.cockpit.activeRightTab || null;
+      var leftPanel = win.document.getElementById("panelLeft");
+      report.leftPanelText = leftPanel ? (leftPanel.innerText || "").slice(0, 300) : null;
+    }
     report.errors = ((win && win.__uiAuditErrors) || []).slice(0, 50);
     output.textContent = JSON.stringify(report);
   }
 
   function prepare(win) {
-    if (scenario !== "cockpit" || !win.cockpit) {
+    if (!win.cockpit || win.__auditPrepared) {
       return;
     }
+    if (scenario === "menu") {
+      return;
+    }
+    win.__auditPrepared = true;
     win.cockpit.gameStarted = true;
     win.cockpit.closeMainMenu();
     if (win.cockpit.fetchGalaxy) {
@@ -479,6 +531,21 @@ WRAPPER_JS = r"""
     if (win.cockpit.refreshState) {
       win.cockpit.refreshState(true);
     }
+    setTimeout(function () {
+      if (scenario === "settings" && win.cockpit.openSettings) {
+        win.cockpit.openSettings();
+      } else if (scenario === "character" && win.cockpit.openCharacterCreation) {
+        win.cockpit.openCharacterCreation();
+      }
+      if (tab && tab !== "player" && win.cockpit.switchRightTab) {
+        try {
+          win.cockpit.switchRightTab(tab);
+        } catch (error) {
+          win.__uiAuditErrors = win.__uiAuditErrors || [];
+          win.__uiAuditErrors.push("tab switch failed: " + String(error));
+        }
+      }
+    }, 700);
   }
 
   function waitForCockpit() {
@@ -534,10 +601,8 @@ def find_browser() -> Optional[Path]:
 
 
 def outer_window(viewport: Tuple[int, int]) -> Tuple[int, int]:
-    """Outer window size that yields the requested inner viewport for wide screens."""
+    """Outer window size that yields the requested inner viewport for Windows desktop sizes."""
     width, height = viewport
-    if width < 500:
-        return (800, height + CHROME_Y)
     return (width + CHROME_X, height + CHROME_Y)
 
 
@@ -596,23 +661,27 @@ def run_browser(browser: Path, url: str, viewport: Tuple[int, int], profile: Pat
 
 
 def audit_viewport(browser: Path, port: int, name: str, viewport: Tuple[int, int],
-                   workdir: Path, out: Path, timeout: int, scenario: str) -> Dict[str, Any]:
+                   workdir: Path, out: Path, timeout: int, scenario: str,
+                   tab: str = "") -> Dict[str, Any]:
     """Capture one viewport and return its parsed audit report."""
     width, height = viewport
+    label = f"{name}-{tab}" if tab else name
     url = (f"http://127.0.0.1:{port}/__ui_audit__.html?w={width}&h={height}"
            f"&target=/&scenario={scenario}")
-    profile = workdir / f"profile-{name}"
-    screenshot = out / f"{name}.png"
+    if tab:
+        url += f"&tab={tab}"
+    profile = workdir / f"profile-{label}"
+    screenshot = out / f"{label}.png"
     stdout, stderr, code = run_browser(browser, url, viewport, profile, screenshot, timeout)
     if code != 0:
-        (out / f"{name}-browser.txt").write_text(stderr[-4000:], encoding="utf-8")
+        (out / f"{label}-browser.txt").write_text(stderr[-4000:], encoding="utf-8")
     try:
         report = parse_audit(stdout)
     except (ValueError, json.JSONDecodeError) as exc:
-        (out / f"{name}-dom.html").write_text(stdout, encoding="utf-8")
-        (out / f"{name}-stderr.txt").write_text(stderr[-4000:], encoding="utf-8")
-        raise RuntimeError(f"{name}: {exc}") from exc
-    report["name"] = name
+        (out / f"{label}-dom.html").write_text(stdout, encoding="utf-8")
+        (out / f"{label}-stderr.txt").write_text(stderr[-4000:], encoding="utf-8")
+        raise RuntimeError(f"{label}: {exc}") from exc
+    report["name"] = label
     report["screenshot"] = screenshot.name
     return report
 
@@ -625,6 +694,7 @@ def summary_line(report: Dict[str, Any]) -> str:
         ("hscroll", int(bool((report.get("scroll") or {}).get("horizontal")))),
         ("clipped", len(report.get("clipped") or [])),
         ("offscreen", len(report.get("offscreen") or [])),
+        ("tiny", len(report.get("tinyText") or [])),
         ("targets", len(report.get("smallTargets") or [])),
         ("contrast", len(report.get("contrast") or [])),
         ("unlabeled", len(report.get("unlabeled") or [])),
@@ -643,7 +713,7 @@ def severe_findings(report: Dict[str, Any]) -> List[str]:
         names.append("console")
     if (report.get("scroll") or {}).get("horizontal"):
         names.append("hscroll")
-    for key in ("clipped", "smallTargets", "contrast", "unlabeled"):
+    for key in ("clipped", "tinyText", "smallTargets", "contrast", "unlabeled"):
         if report.get(key):
             names.append(key)
     return names
@@ -658,8 +728,8 @@ def write_report(reports: Sequence[Dict[str, Any]], out: Path, browser: Optional
     }
     (out / "report.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     lines = ["# VoidFarer UI audit", "", f"Generated: {payload['generated_at']}", ""]
-    lines.append("| Viewport | Size | Errors | H-scroll | Clipped | Offscreen | Targets<24 | Contrast | Unlabeled | Overlaps |")
-    lines.append("|---|---|---|---|---|---|---|---|---|---|")
+    lines.append("| Viewport | Size | Errors | H-scroll | Clipped | Offscreen | Tiny<12px | Targets<24 | Contrast | Unlabeled | Overlaps |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|")
     for report in reports:
         viewport = report.get("viewport") or {}
         lines.append(
@@ -668,13 +738,14 @@ def write_report(reports: Sequence[Dict[str, Any]], out: Path, browser: Optional
             f"| {int(bool((report.get('scroll') or {}).get('horizontal')))} "
             f"| {len(report.get('clipped') or [])} "
             f"| {len(report.get('offscreen') or [])} "
+            f"| {len(report.get('tinyText') or [])} "
             f"| {len(report.get('smallTargets') or [])} "
             f"| {len(report.get('contrast') or [])} "
             f"| {len(report.get('unlabeled') or [])} "
             f"| {len(report.get('overlaps') or [])} |")
     for report in reports:
         lines.extend(["", f"## {report.get('name', '?')}", ""])
-        for key in ("contrast", "smallTargets", "unlabeled", "clipped", "offscreen", "overlaps"):
+        for key in ("tinyText", "contrast", "smallTargets", "unlabeled", "clipped", "offscreen", "overlaps"):
             findings = report.get(key) or []
             if not findings:
                 continue
@@ -691,11 +762,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Headless VoidFarer cockpit UI audit")
     parser.add_argument("--out", default=str(Path(tempfile.gettempdir()) / "voidfarer_ui_audit"),
                         help="directory for screenshots and reports")
-    parser.add_argument("--viewports", default="desktop,tablet,phone",
-                        help="comma-separated viewport names")
+    parser.add_argument("--viewports", default="desktop,laptop,short",
+                        help="comma-separated Windows desktop viewport names")
     parser.add_argument("--browser", default=None, help="edge/chrome executable path")
-    parser.add_argument("--scenario", default="cockpit", choices=("cockpit", "menu"),
-                        help="cockpit resumes the game; menu audits the startup menu")
+    parser.add_argument("--scenario", default="cockpit",
+                        choices=("cockpit", "menu", "settings", "character"),
+                        help="cockpit resumes the game; menu/settings/character audit those overlays")
+    parser.add_argument("--tab", default="", choices=("",) + TABS,
+                        help="open an in-game terminal tab before auditing")
     parser.add_argument("--timeout", type=int, default=120, help="seconds per viewport")
     parser.add_argument("--check", action="store_true", help="exit 1 when severe findings exist")
     args = parser.parse_args(argv)
@@ -731,7 +805,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             viewport = VIEWPORTS[name]
             try:
                 report = audit_viewport(browser, handle.port, name, viewport, workdir, out,
-                                        args.timeout, args.scenario)
+                                        args.timeout, args.scenario, args.tab)
             except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
                 print(f"[FAIL] {name}: {exc}")
                 continue

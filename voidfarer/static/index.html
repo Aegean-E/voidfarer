@@ -17,7 +17,7 @@
     <div class="main-menu-overlay hidden" id="mainMenuOverlay">
         <div class="main-menu-card">
             <div class="main-menu-brand">
-                <span class="main-menu-kicker">DEEP-SPACE COMMAND // PRESS ESC TO TOGGLE</span>
+                <span class="main-menu-kicker">WINDOWS COMMAND AUTHORITY // PRESS ESC TO TOGGLE</span>
                 <h1>VOIDFARER</h1>
                 <p>Autonomous galaxy simulation // tactical cockpit</p>
             </div>
@@ -44,6 +44,16 @@
             </div>
             <div class="main-menu-status" id="mainMenuStatus">QUANTUM LINK ESTABLISHED</div>
         </div>
+
+        <aside class="main-menu-vista" aria-hidden="true">
+            <div class="vista-kicker">COMMAND AUTHORITY // REGISTRY VF-01</div>
+            <div class="vista-emblem">VF</div>
+            <h2>VANGUARD</h2>
+            <p class="vista-ship">Corvette Scout // Commander Astraea</p>
+            <div class="vista-rule"></div>
+            <p class="vista-copy">The void remembers every wake. Choose your command, and write the next one.</p>
+            <div class="vista-status"><span></span> QUANTUM LINK NOMINAL</div>
+        </aside>
     </div>
 
     <!-- Settings Window -->
@@ -51,7 +61,7 @@
         <div class="game-window">
             <div class="game-window-header">
                 <h2>SETTINGS</h2>
-                <button class="window-close" id="btnCloseSettings">×</button>
+                <button class="window-close" id="btnCloseSettings" aria-label="Close settings" data-tooltip="Close settings">×</button>
             </div>
             <div class="game-window-body">
                 <label class="setting-row"><span>Sound effects</span><input type="checkbox" id="settingSound" checked></label>
@@ -81,7 +91,7 @@
         <div class="game-window">
             <div class="game-window-header">
                 <h2>CHARACTER CREATION</h2>
-                <button class="window-close" id="btnCloseCharCreation">×</button>
+                <button class="window-close" id="btnCloseCharCreation" aria-label="Close character creation" data-tooltip="Close character creation">×</button>
             </div>
             <div class="game-window-body">
                 <div class="char-creation-step" id="charStep1">
@@ -151,7 +161,7 @@
             <div class="game-window-header">
                 <h2>PILOT PERKS // BRANCHING SPECIALIZATIONS</h2>
                 <span class="perk-points" id="perksWindowPoints">0 POINTS</span>
-                <button class="window-close" id="btnClosePerks">×</button>
+                <button class="window-close" id="btnClosePerks" aria-label="Close pilot perks" data-tooltip="Close pilot perks">×</button>
             </div>
             <div class="game-window-body">
                 <div class="perks-branches" id="perksBranches"></div>
@@ -161,14 +171,21 @@
 
     <!-- Cockpit Frame -->
     <div class="cockpit-frame" id="cockpitContainer">
-        
+        <!-- Full-Viewport Radar Background (G-004) -->
+        <div class="canvas-radar-container radar-background-layer" id="radarBackgroundLayer">
+            <canvas id="radarCanvas" width="1280" height="720"></canvas>
+            <div class="radar-crosshair"></div>
+            <div class="radar-sweep"></div>
+            <div class="radar-coords" id="radarCoords">COORDS: [0.00, 0.00] // SECTOR 01</div>
+        </div>
+
         <!-- Top Status HUD -->
         <header class="hud-topbar" id="hudTopBar">
             <div class="hud-brand">
                 <div class="hud-logo-icon">VF</div>
                 <div class="hud-title-group">
                     <h1 class="hud-glitch-title" data-text="VOIDFARER">VOIDFARER</h1>
-                    <span class="hud-sub">DEEP-SPACE SIMULATION DECK // v0.2.0</span>
+                    <span class="hud-sub">WINDOWS COMMAND DECK // v0.2.0</span>
                 </div>
             </div>
 
@@ -183,49 +200,49 @@
 
             <!-- Vital Telemetry Meters -->
             <div class="vitals-row">
-                <div class="vital-card" id="vitalHullCard">
+                <div class="vital-card" id="vitalHullCard" data-tooltip="Hull integrity // Hits below zero destroy the command ship.">
                     <div class="vital-label">
-                        <span>HULL INTEGRITY</span>
+                        <span>HULL</span>
                         <strong id="hullVal">100/100</strong>
                     </div>
                     <div class="vital-meter"><div class="meter-fill hull-fill" id="hullBar" style="width: 100%;"></div></div>
                 </div>
 
-                <div class="vital-card" id="vitalShieldCard">
+                <div class="vital-card" id="vitalShieldCard" data-tooltip="Shield capacitance // Absorbs damage before hull and regenerates between hits.">
                     <div class="vital-label">
-                        <span>SHIELD CAPACITANCE</span>
+                        <span>SHIELD</span>
                         <strong id="shieldVal">100/100</strong>
                     </div>
                     <div class="vital-meter"><div class="meter-fill shield-fill" id="shieldBar" style="width: 100%;"></div></div>
                 </div>
 
-                <div class="vital-card" id="vitalFuelCard">
+                <div class="vital-card" id="vitalFuelCard" data-tooltip="Quantum fuel // Spent by jumps, sublight transit and evasive burns.">
                     <div class="vital-label">
-                        <span>QUANTUM FUEL</span>
+                        <span>FUEL</span>
                         <strong id="fuelVal">60/60</strong>
                     </div>
                     <div class="vital-meter"><div class="meter-fill fuel-fill" id="fuelBar" style="width: 100%;"></div></div>
                 </div>
 
-                <div class="vital-card credits-card" id="vitalCreditsCard">
+                <div class="vital-card credits-card" id="vitalCreditsCard" data-tooltip="Treasury // Credits for trade, refits, crew, repairs and shore leave.">
                     <div class="vital-label">
-                        <span>TREASURY</span>
+                        <span>CREDITS</span>
                         <strong class="gold-text" id="creditsVal">2,000 CR</strong>
                     </div>
                     <div class="vital-subtext" id="cargoSummary">HOLD: 15/40</div>
                 </div>
 
-                <div class="vital-card streak-card" id="vitalStreakCard">
+                <div class="vital-card streak-card" id="vitalStreakCard" data-tooltip="Expedition streak // Consecutive jumps and victories raise payouts; fleeing resets it.">
                     <div class="vital-label">
-                        <span>EXPEDITION STREAK</span>
+                        <span>STREAK</span>
                         <strong class="flame-text" id="streakVal">🔥 1 JUMP (x1.00)</strong>
                     </div>
                     <div class="vital-subtext" id="streakSubtext">LOSS AVERSION: FLEE RESETS</div>
                 </div>
 
-                <div class="vital-card mastery-card" id="vitalMasteryCard">
+                <div class="vital-card mastery-card" id="vitalMasteryCard" data-tooltip="Pilot mastery // Experience unlocks levels, perks and stronger contracts.">
                     <div class="vital-label">
-                        <span>PILOT MASTERY</span>
+                        <span>MASTERY</span>
                         <strong class="mastery-text" id="masteryLevelVal">★ LVL 1</strong>
                     </div>
                     <div class="vital-meter"><div class="meter-fill mastery-fill" id="masteryBar" style="width: 0%;"></div></div>
@@ -705,9 +722,9 @@
                         </div>
 
                         <!-- Academy Controls Row -->
-                        <div class="academy-settings-row" style="margin-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 4px;">
-                            <span style="font-size: 0.68rem; color: var(--text-muted); font-family: var(--font-mono);">FLIGHT CADET ACADEMY:</span>
-                            <button class="btn-hud" id="btnResetCadetAcademy" style="font-size: 0.65rem; padding: 4px 10px; border-color: rgba(0, 240, 255, 0.4); color: var(--neon-cyan);">RETAKE CADET ACADEMY</button>
+                        <div class="academy-settings-row" style="margin-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(127, 183, 201, 0.03); border: 1px solid rgba(127, 183, 201, 0.15); border-radius: 4px;">
+                            <span class="academy-settings-label">FLIGHT CADET ACADEMY:</span>
+                            <button class="btn-hud btn-cyan" id="btnResetCadetAcademy">RETAKE CADET ACADEMY</button>
                         </div>
                     </div>
 
@@ -744,11 +761,11 @@
                         <div class="combat-text">
                             <span class="combat-tag">HOSTILE INTERCEPT DETECTED</span>
                             <h3 class="combat-title" id="combatEnemyTitle">Pirate Raider</h3>
-                            <span class="badge-faction" id="combatEnemyFaction" style="font-family: var(--font-mono); font-size: 0.65rem; color: #ffcc00;">FACTION: OUTLAW</span>
+                            <span class="badge-faction" id="combatEnemyFaction" style="font-family: var(--font-mono); font-size: 0.65rem; color: #e2c078;">FACTION: OUTLAW</span>
                         </div>
                     </div>
                     <div class="combat-health-bar-container" id="combatShieldContainer" style="display: none;">
-                        <div class="combat-health-label" style="color: #00f3ff;">
+                        <div class="combat-health-label" style="color: #7fb7c9;">
                             <span>ENEMY DEFLECTOR SHIELD</span>
                             <strong id="combatEnemyShield">0 / 0</strong>
                         </div>
@@ -766,8 +783,8 @@
                     </div>
                     <div class="combat-tactics-grid">
                         <button class="btn-combat btn-red" id="btnCombatFire">🎯 FIRE LASER ARRAY</button>
-                        <button class="btn-combat btn-cyan" id="btnCombatDrone" style="background: rgba(0, 240, 255, 0.2); color: #00f0ff; border-color: rgba(0, 240, 255, 0.5);">🛸 DRONE STRIKE</button>
-                        <button class="btn-combat btn-amber" id="btnCombatTarget" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border-color: rgba(255, 170, 0, 0.5);">⚡ TARGET SUBSYSTEM</button>
+                        <button class="btn-combat btn-cyan" id="btnCombatDrone" style="background: rgba(127, 183, 201, 0.2); color: #7fb7c9; border-color: rgba(127, 183, 201, 0.5);">🛸 DRONE STRIKE</button>
+                        <button class="btn-combat btn-amber" id="btnCombatTarget" style="background: rgba(201, 163, 90, 0.2); color: #c9a35a; border-color: rgba(201, 163, 90, 0.5);">⚡ TARGET SUBSYSTEM</button>
                         <button class="btn-combat btn-blue" id="btnCombatAbsorb">🛡️ SHIELD OVERCHARGE</button>
                         <button class="btn-combat btn-amber" id="btnCombatEvade">🚀 EVASIVE BURN</button>
                         <button class="btn-combat btn-purple" id="btnCombatFlee">⚡ FLEE SECTOR (-8 FUEL)</button>
@@ -796,14 +813,6 @@
                         <h2 class="panel-title" id="radarTitle">SOL SYSTEM ORBITS</h2>
                     </div>
                     <div class="sector-mod-strip" id="sectorModsStrip" title="Active sector map modifiers"></div>
-
-                    <!-- Canvas Radar Display (Full-Viewport Background Layer, G-004) -->
-                    <div class="canvas-radar-container radar-background-layer" id="radarBackgroundLayer">
-                        <canvas id="radarCanvas" width="1280" height="720"></canvas>
-                        <div class="radar-crosshair"></div>
-                        <div class="radar-sweep"></div>
-                        <div class="radar-coords" id="radarCoords">COORDS: [0.00, 0.00] // SECTOR 01</div>
-                    </div>
 
                     <!-- Selected Body / System Card -->
                     <div class="nav-target-card" id="navTargetCard" style="display: none;">
@@ -989,6 +998,8 @@
             </div>
         </footer>
     </div>
+
+    <div class="hud-tooltip" id="hudTooltip" role="tooltip" aria-hidden="true"></div>
 
     <!-- Scripts -->
     <script src="app.js"></script>

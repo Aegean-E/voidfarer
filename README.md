@@ -1,8 +1,8 @@
 # VoidFarer
 
-> **Autonomous Deep-Space Fleet, Procedural Galaxy & Holographic Cockpit Simulator.**
+> **Autonomous Deep-Space Fleet, Procedural Galaxy & Windows Cockpit Simulator.**
 
-VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits, route reactor power, board derelicts, scoop fuel, drill crew, commission autonomous drones, purchase hardware upgrades, fight adaptive hostile AI, trade commodities, and pilot your flagship via an ANSI REPL or a resolution-adaptive HTML5 Canvas cockpit.
+VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits, route reactor power, board derelicts, scoop fuel, drill crew, commission autonomous drones, purchase hardware upgrades, fight adaptive hostile AI, trade commodities, and pilot your flagship via an ANSI REPL or a Windows desktop HTML5 Canvas cockpit.
 
 ---
 
@@ -11,11 +11,11 @@ VoidFarer is a zero-dependency, local-first space flight, fleet management, and 
 ### 🎮 1-Click Instant Game Launch (Windows)
 Double-click or run either batch launcher directly from Windows Explorer or Terminal:
 ```cmd
-play.bat        # Interactive Mission Launcher (defaults to Holographic Web Cockpit & auto-opens browser)
+play.bat        # Interactive Mission Launcher (defaults to Windows Cockpit & auto-opens browser)
 voidfarer.bat   # CLI passthrough launcher (e.g. `voidfarer.bat status`, `voidfarer.bat repl`)
 ```
 
-- **Runtime Prerequisites**: Python 3.10+ (Standard Library only; zero third-party packages required).
+- **Runtime Prerequisites**: Windows 10/11 and Python 3.10+ (Standard Library only; zero third-party packages required).
 - **Canonical Regression Shield Gate**:
   ```bash
   python aikit.py check voidfarer
@@ -51,7 +51,7 @@ voidfarer/
 ├── .gitignore                <- transient state & python caches excluded
 ├── LICENSE                   <- GNU AGPL-3.0 license
 ├── pyproject.toml            <- build and package configuration
-├── play.bat                  <- 1-click interactive Windows launcher (default: Web Cockpit)
+├── play.bat                  <- 1-click interactive Windows launcher (default: Windows Cockpit)
 ├── voidfarer.bat             <- 1-click Windows CLI passthrough launcher
 ├── README.md                 <- living documentation
 ├── voidfarer/                <- core simulation package
@@ -84,7 +84,7 @@ voidfarer/
 │   ├── storage.py            <- crash-safe atomic persistence & shadow backup
 │   ├── server.py             <- zero-dependency HTTP REST & cockpit server
 │   ├── cli.py                <- ANSI terminal interface & interactive REPL
-│   └── static/               <- holographic web cockpit UI
+│   └── static/               <- Windows command console UI
 │       ├── index.html        <- semantic HUD structure & radar canvas
 │       ├── style.css         <- sci-fi glassmorphism design system
 │       ├── app.js            <- radar math, Web Audio synth & REST link
@@ -383,13 +383,13 @@ morale 20 risk resignation, and docked stations offer paid shore leave. Bulk ord
 local stockpile price, and the status deck, CLI, and crew tab show per-tick cash flow. The
 setting begins 01.01.3042 in the Quantum Age with Dyson spheres, wormholes, and ring worlds.
 
-### 19. Holographic Web Cockpit Interface
-Launch the embedded zero-dependency Web Audio & Canvas cockpit:
+### 19. Windows Command Console Cockpit
+Launch the Windows-only Web Audio & Canvas command console:
 ```bash
 python -m voidfarer.cli serve --port 8080
 ```
-Open **`http://127.0.0.1:8080`** in any modern web browser to access:
-- **Top Status Bar & Chronometer (`G-007`, `G-011`)**: Responsive vitals plus the chrono deck, wrapping cleanly on narrow viewports.
+Open **`http://127.0.0.1:8080`** in Edge or Chrome on Windows to access:
+- **Top Status Bar & Chronometer (`G-007`, `G-011`)**: Vitals plus the chrono deck, sized for 1280x720 through 4K.
 - **Background Radar HUD (`G-004`, `G-005`, `G-013`)**: Map, left terminal, and a three-column bottom strip: reactor, skills, separate radar settings above the compact log; circular zoom icons and themed cursors.
 - **Main Menu & Saves (`ESC`)**: Settings plus create, load, list, and delete named save slots.
 - **Planet Inspector**: Gravity, atmosphere, temperature, habitability, orbit distance, moons, resources, and colony tiers.
@@ -404,7 +404,7 @@ Open **`http://127.0.0.1:8080`** in any modern web browser to access:
 - **Player, Skills & Crew Tabs**: PLAYER is a dossier; six icon/hotkey skills live in the bottom strip (`SHIFT+1..6`), while SKILLS holds training and perks. Crew holds bonuses and drills.
 - **Ship Configuration Tab**: Chassis silhouette with five structural slot markers, trade-off catalogue cards, live capacity recomputation, and drydock install/salvage-remove controls through `/api/ship/module`.
 - **Commander Creation & Death Flow**: Name, age, background, and starting-skill allocation wired into new games; a death overlay summarizes the run and offers a fresh commander or save load.
-- **Resolution-Adaptive HUD**: ultrawide/tablet/phone/short-height breakpoints, density and HUD-scale settings, DPR-correct radar, ResizeObserver, touch pan/pinch, reduced motion, and safe-area insets.
+- **Windows High-DPI HUD**: 1280x720 through 4K and ultrawide windows, density and HUD-scale settings, DPR-correct radar, ResizeObserver, keyboard/mouse controls, and reduced-motion support.
 - **Derelict Boarding & Fuel Scooping**: once-per-body salvage that feeds titanium mining contracts; star/gas/ice scoops trade reactor heat for fuel from finite, recharging volatile reservoirs; paid crew training drills.
 - **Captain's Log & Discovery Codex**: career statistics grid, discovery milestones, claim rewards, category filters, and persistent flight log.
 
@@ -434,5 +434,5 @@ See ADR-041 and ADR-042.
 1. **Zero External Dependencies**: Built entirely on standard Python modules (`math`, `random`, `dataclasses`, `http.server`, `json`, `pathlib`).
 2. **Power-Loss Recovery (PRINCIPLE-013)**: State saves use atomic replacement with file descriptor `fsync`, shadow `.bak` backups, and automatic quarantine of corrupt payloads.
 3. **Fast Test Verification**: Comprehensive 496-test suite runs in about 7 seconds (`python -m unittest discover`).
-4. **Platform Parity**: Full native support for Windows, Linux, and macOS with automatic console encoding detection.
+4. **Windows Only**: Windows 10/11, batch launchers, PowerShell-aware console UTF-8, and Windows paths; no Linux/macOS branches or OS-independent claims.
 5. **Realistic Mechanics & Economic Integrity**: Anti-arbitrage dock guards, faction tariffs, cargo-volume refit gates, quantum fuel efficiency and cockpit parity.

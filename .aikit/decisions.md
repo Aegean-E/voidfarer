@@ -527,3 +527,41 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   3. Keep it optional: it is not a runtime dependency, not part of the fast proof and not a hard gate. `--check` is opt-in; human `ui finish --reviewed` remains the closing visual gate.
   4. Support two scenarios: `cockpit` closes the startup menu and marks the game started, while `menu` audits the startup menu. Add helper tests for viewport math, wrapper injection and report parsing.
 - **Consequences**: Layout, contrast, accessibility and responsive regressions become repeatable measured findings, and screenshots remain available for human review. Without Edge or Chrome the tool exits with `Why:`/`Fix:` guidance. The regression suite grows to 496 tests; the audit is deliberately kept outside the fast proof.
+
+### ADR-043: Windows-Only Command Console UI
+- **Date**: 2026-10-23
+- **Status**: Accepted
+- **Context**: The user directed VoidFarer to be a Windows-only game and rejected the previous neon, multi-device cockpit as poor. G-011 still required tablet, phone, touch, safe-area and cross-device behavior, the package metadata claimed OS independence, and the UI used 8-11px text, mobile breakpoints and a tablet/phone responsive layout that does not serve the Windows target. ADR-042's tablet/phone audit viewports are superseded here.
+- **Decision**:
+  1. Make the target explicit: rewrite G-011 for Windows desktop 1280x720 through 4K at 100-200% scaling, add G-014 for Windows-only runtime and documentation, change the package classifier to Microsoft Windows, remove the platform branch from console UTF-8 setup, delete touch pan/pinch and mobile/tablet/safe-area CSS, and keep only Windows desktop breakpoints.
+  2. Replace the neon skin with a command-console design system: near-black navy panels, ivory text, brass rules and accents, Palatino display headings, Segoe UI interface text, Cascadia Mono data, 12px minimum readable labels, keyboard focus rings and measured tooltips.
+  3. Restructure the cockpit for desktop: two-column terminal/radar area with a full-width three-column command dock below it, a fixed target dossier on the radar, a compact chrono deck, a mission-dossier main menu, 28px range hit areas and a 24px minimum interactive target. Move the radar background out of the center panel so fixed positioning fills the Windows viewport without horizontal overflow.
+  4. Keep the layout guidelines: the command dock remains three equal columns from the left edge to the right corner, reactor channels stay Q/W/E/R, skills stay SHIFT+1..6, panel toggles stay P/K/L, and the PLAYER tab does not duplicate the skills strip.
+  5. Point the visual audit at Windows resolutions only: desktop, laptop, short, ultrawide and 4K. Add clipping/overlay-aware overlap detection and composite translucent backgrounds for contrast so the report measures what the player sees. Update the adaptive UI tests to require desktop markers and forbid touch/mobile markers.
+  6. Govern visual review with G-015: `gemma-4-31b` on provider `evren2` (fallback `qwen3-vl-30b`) inspects the Windows screenshots, proves visibility by quoting on-screen text, ranks defects and approves or rejects each pass before any UI work is called complete.
+- **Consequences**: The project no longer supports Linux, macOS, phones, tablets, touch gestures or safe-area layouts. The Windows cockpit is readable, fits 1280x720 without page scroll, and the five-viewport audit reports zero errors, horizontal scroll, clipping, offscreen panels, tiny text, small targets, contrast failures, unlabeled controls or overlaps for the cockpit and the desktop menu. The regression suite remains 496 tests; touch and mobile behavior is intentionally gone.
+
+### ADR-044: In-Game Terminal Dossier Redesign
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: Per-tab capture exposed that the in-game terminal, not the menu, was the weak surface. The contracts tab rendered as a narrow right-aligned strip because `.tab-content` had no explicit flex direction, market trade buttons were 23px tall, ship modules and skills used 8-11px copy, arsenal/ship prices failed contrast, crew morale text clipped, and the first in-game vision pass was rejected for a large empty contract void.
+- **Decision**:
+  1. Make every `.tab-content` an explicit column, keep `.ship-panel` as the one row-wrap exception, give grid containers `width: 100%`, and make tab dossiers sticky with a brass rule.
+  2. Turn market into a ledger: sticky headers, zebra rows, compact ghost BUY/SELL actions (26px), cargo/service blocks, and a 12px category line.
+  3. Turn arsenal, chassis, weapons, contracts, skills and fleet into responsive card grids that fill the terminal column. Contracts become a two-column gallery at 1920 and a single column at 1366/1280.
+  4. Split ship into schematic + statistics + module cards, add breathing room to stat cells, and remove nested scrollboxes so the terminal itself scrolls.
+  5. Raise all panel copy to a 12px minimum, fix semantic contrasts, make crew morale bars 16px with 12px text, enlarge portrait initials to 12px, and remove inline font sizes from the cadet reset row.
+  6. Verify every tab at 1920 and the key tabs at 1366/1280: zero console, overflow, clipping, offscreen, tiny-text, target, contrast, label and overlap findings. The vision reviewer approved market, arsenal, ship, contracts, quests, factions, codex and messages; the remaining tabs and the perks overlay pass the same measured audit.
+- **Consequences**: The in-game terminal now matches the command-console shell in density, hierarchy and controls. Contracts no longer leak outside their column, every panel is readable at Windows laptop and 720p sizes, and the terminal uses one scroll surface instead of nested list scrollboxes. The simulation and test count are unchanged at 496 tests.
+
+### ADR-045: Overlay Dossier Polish and Scenario Capture
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: After the terminal and cockpit redesign, the settings, character-creation and perks overlays still looked like generic dark modals. Per-tab capture also exposed two defects: the audit opened the perks window before `refreshState` finished, and `renderPerksWindow` lacked the catalog fallback used by the mastery tab, leaving the overlay body empty.
+- **Decision**:
+  1. Give every `.game-window` a brass top rule, layered navy chrome, stronger header band and 18px body inset.
+  2. Replace native form controls in settings with 24px custom checkboxes, a custom select arrow, 28px range hit areas, gold/cyan tracks and a readable viewport readout. Raise character labels to 12px and inputs to 32px; raise perk labels and points to 12px.
+  3. Make the perks window a 980px three-column branch layout with filled 230px branch cards.
+  4. Add `settings` and `character` scenarios to the visual audit and delay scenario/tab opening by 700ms so the async state is ready. Add the same talent-catalog fallback to `renderPerksWindow` that the mastery tab already uses.
+  5. Verify settings, character and perks with zero measured findings; the vision reviewer approved all three overlays after the populated perks window was recaptured.
+- **Consequences**: The overlays now match the command-console shell, native browser controls no longer break the theme, and the audit can review overlays as well as tabs. The simulation is untouched and the suite remains 496 tests.

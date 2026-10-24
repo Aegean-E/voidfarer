@@ -10,7 +10,7 @@
 - **Total Classes**: `158`
 - **Total Top-Level Functions**: `193`
 - **Total Class Methods**: `890`
-- **Total Source Lines**: `26088`
+- **Total Source Lines**: `26165`
 
 ---
 
@@ -24,16 +24,16 @@
 ---
 
 ### [`tests/test_adaptive_ui_salvage.py`](tests/test_adaptive_ui_salvage.py)
-> *Regression tests for the resolution-adaptive cockpit, derelict salvage,*
+> *Regression tests for the Windows high-DPI cockpit, derelict salvage,*
 
-**Size**: `204` lines (`8837` bytes)
+**Size**: `207` lines (`9144` bytes)
 
 **Classes:**
 - `class TestAdaptiveCockpitAssets`
   - Method `.setUpClass()`
-  - Method `.test_css_declares_resolution_profiles()`
+  - Method `.test_css_declares_windows_desktop_profiles()`
   - Method `.test_settings_expose_density_and_scale()`
-  - Method `.test_radar_is_dpi_aware_and_touch_ready()`
+  - Method `.test_radar_is_dpi_aware_and_mouse_ready()`
   - Method `.test_polling_and_hotkeys_are_guarded()`
 - `class TestSalvageModelsAndCatalog`
   - Method `.test_legacy_body_payload_defaults_salvage_flag()`
@@ -931,12 +931,12 @@
 ### [`tests/test_ui_audit.py`](tests/test_ui_audit.py)
 > *The headless cockpit audit has deterministic viewport, parsing and wrapper helpers.*
 
-**Size**: `49` lines (`2116` bytes)
+**Size**: `50` lines (`2155` bytes)
 
 **Classes:**
 - `class AuditHelpersTest`
   - Method `.test_wide_viewports_get_only_window_chrome()`
-  - Method `.test_phone_keeps_an_exact_iframe_inside_a_minimum_window()`
+  - Method `.test_laptop_keeps_an_exact_iframe()`
   - Method `.test_parse_audit_reads_an_escaped_payload()`
   - Method `.test_parse_audit_refuses_a_missing_payload()`
   - Method `.test_prepare_static_injects_the_collector_and_wrapper()`
@@ -1015,15 +1015,15 @@
 ### [`tools/ui_audit.py`](tools/ui_audit.py)
 > *Capture VoidFarer cockpit screenshots and a measurable UI audit with headless Edge or Chrome.*
 
-**Size**: `763` lines (`28985` bytes)
+**Size**: `837` lines (`31893` bytes)
 
 **Functions:**
 - `def find_browser()` - *Locate an installed Edge or Chrome executable without a third-party dependency.*
-- `def outer_window(viewport)` - *Outer window size that yields the requested inner viewport for wide screens.*
+- `def outer_window(viewport)` - *Outer window size that yields the requested inner viewport for Windows desktop sizes.*
 - `def prepare_static(source, workdir)` - *Copy the cockpit and add a same-origin viewport wrapper plus an error collector.*
 - `def parse_audit(dom)` - *Read the JSON audit payload out of a dumped wrapper DOM.*
 - `def run_browser(browser, url, viewport, profile, screenshot, timeout)` - *Run one headless capture at a viewport and return stdout, stderr and the exit code.*
-- `def audit_viewport(browser, port, name, viewport, workdir, out, timeout, scenario)` - *Capture one viewport and return its parsed audit report.*
+- `def audit_viewport(browser, port, name, viewport, workdir, out, timeout, scenario, tab)` - *Capture one viewport and return its parsed audit report.*
 - `def summary_line(report)` - *One ASCII-safe console line for a viewport report.*
 - `def severe_findings(report)` - *Names of findings that should fail an explicit audit check.*
 - `def write_report(reports, out, browser)` - *Write the combined JSON and Markdown evidence packet.*
@@ -1082,7 +1082,7 @@
 ### [`voidfarer/cli.py`](voidfarer/cli.py)
 > *Command-line interface and interactive terminal REPL for VoidFarer.*
 
-**Size**: `2586` lines (`132160` bytes)
+**Size**: `2585` lines (`132149` bytes)
 
 **Functions:**
 - `def _get_engine(storage_dir)` - *Initialize or restore simulation engine from disk.*

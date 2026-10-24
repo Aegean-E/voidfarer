@@ -330,8 +330,8 @@ class TestCockpitRuntimeContracts(unittest.TestCase):
 
     def test_canvas_uses_literal_colors_not_css_variables(self):
         self.assertNotRegex(self.js, r"ctx\.(?:strokeStyle|fillStyle) = \"var\(--neon")
-        self.assertIn('ctx.strokeStyle = "#00f0ff"', self.js)
-        self.assertIn('ctx.fillStyle = "#00ffaa"', self.js)
+        self.assertIn('ctx.strokeStyle = "#7fb7c9"', self.js)
+        self.assertIn('ctx.fillStyle = "#8fbf9f"', self.js)
 
     def test_chrono_displays_calendar_date(self):
         self.assertIn("DATE ${t.date", self.js)

@@ -1,144 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "ui-visual-audit-v1",
+    "task_id": "cockpit-overlays-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792784056.9924512,
-    "completed_at": 1792784057.3197298
+    "updated_at": 1792821120.5235963,
+    "completed_at": 1792821120.7004426
   },
   "checkpoints": [
-    {
-      "task_id": "sim-exploration-depth-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'sim-exploration-depth-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792650264.223553,
-      "timestamp_str": "2026-10-22 09:24:24"
-    },
-    {
-      "task_id": "sim-exploration-polish-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/2] Plan: polish the exploration pass - add a per-body volatile recharge schedule so a tap returns exactly after 6 ticks rather than on absolute tick boundaries, clamp corrupt negative volatile counters on load, expose next-tap telemetry, and cover both with regressions",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792658262.6376758,
-      "timestamp_str": "2026-10-22 11:37:42",
-      "impact_assessment": {
-        "why": "Verification found two residual correctness gaps: recharge was globally boundary-aligned (a tap could return 1-6 ticks after use), and malformed saves could keep negative volatile counters because from_dict performed no clamp",
-        "benefits": "Makes the fuel-reservoir simulation predictable and fair, hardens save loading, and gives players a clear next-tap countdown without changing the 3-8 reservoir balance",
-        "risks": "contract: CelestialBody gains volatile_recharge_tick with legacy default 0 and the scoop snapshot gains next_tap_in; dependency: none (stdlib only); concurrency: all changes remain under the engine RLock; state: new field is additive and old saves load with a full reservoir",
-        "mitigation": "Pure recharge helper with deterministic tests for early, exact, and large jumps; clamp tests for negative legacy payloads; save/load roundtrip; existing 483 tests and 4/4 gates rerun; ADR-039 and README synced"
-      }
-    },
-    {
-      "task_id": "sim-exploration-polish-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[2/2] Verified: exact per-body volatile recharge scheduling via volatile_recharge_tick and recharge_volatile_reserve, snapshot next_tap_in, negative-counter clamping on load, corrected large-jump regression, 486 tests pass, 4/4 project gates, node --check app.js clean, map refreshed; checklists: passed; uncommitted because no commit or push was requested",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792665152.7162297,
-      "timestamp_str": "2026-10-22 13:32:32"
-    },
-    {
-      "task_id": "sim-exploration-polish-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'sim-exploration-polish-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792665157.5401437,
-      "timestamp_str": "2026-10-22 13:32:37"
-    },
-    {
-      "task_id": "sim-exploration-hardening-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/2] Plan: harden the volatile recharge schedule against corrupt far-future timestamps - cap any due tick beyond one interval at now+6, add a pure-helper regression, and document the guard",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792665883.9955463,
-      "timestamp_str": "2026-10-22 13:44:43",
-      "impact_assessment": {
-        "why": "The second verification pass found that negative counters are clamped but a malformed far-future volatile_recharge_tick could lock a body for an unbounded time; a legitimate due can never be more than one interval ahead",
-        "benefits": "Removes the last identified corrupt-save lockout path without changing normal reservoir balance or scheduling",
-        "risks": "contract: recharge_volatile_reserve gains a defensive cap but keeps its signature and normal outputs; dependency: none; concurrency: pure helper, no state mutation; state: no schema change",
-        "mitigation": "Failing-first pure-helper test for a far-future due tick, rerun all 486 tests plus the new regression, 4/4 project gates, README/ADR sync"
-      }
-    },
-    {
-      "task_id": "sim-exploration-hardening-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[2/2] Verified: recharge_volatile_reserve caps far-future due ticks at now+interval, pure-helper regression added, 487 tests pass, 4/4 project gates, map refreshed, ADR-040 and README test count synced; checklists: passed; uncommitted because no commit or push was requested",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792666101.3402948,
-      "timestamp_str": "2026-10-22 13:48:21"
-    },
-    {
-      "task_id": "sim-exploration-hardening-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'sim-exploration-hardening-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792666107.923934,
-      "timestamp_str": "2026-10-22 13:48:27"
-    },
-    {
-      "task_id": "ui-guard-integration-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/3] Plan: add a stdlib UI inventory proof, a cockpit UI contract and its docs",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792775834.1989388,
-      "timestamp_str": "2026-10-23 20:17:14",
-      "impact_assessment": {
-        "why": "VoidFarer's cockpit has no bounded UI surface or mechanical proof that controls, handlers, REST routes and theme tokens survive a UI edit, while AIKit ships an opt-in UI guard for exactly that failure mode",
-        "benefits": "UI edits become surface-scoped, a lost control/handler/route/token becomes a hard finding, and the cockpit's fast proof and snapshot are reproducible without a browser",
-        "risks": "contract: adds .aikit/ui.json and ui_required false until a reviewed task records evidence; dependency: none, stdlib-only parsing; concurrency: read-only inventory and existing tests only; state: new project config keys are additive and AIKit bookkeeping stays untouched",
-        "mitigation": "Failing-first inventory tests, contract validation through scripts.ui_contract, full project unittest suite, hygiene/guidelines/secret gates, and README plus ADR-041 in the same change"
-      }
-    },
-    {
-      "task_id": "ui-guard-integration-v1",
-      "phase": "phase 3",
-      "phase_num": 3,
-      "description": "[2/3] Implemented the cockpit inventory proof, the committed UI contract, three inventory tests, README commands and ADR-041",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792776695.885159,
-      "timestamp_str": "2026-10-23 20:31:35",
-      "handoff": {
-        "state": "tools/ui_inventory.py prints 754 sorted entries, .aikit/ui.json validates, ui_required is false",
-        "next": "record Phase 4, then commit",
-        "open": "first reviewed cockpit task must finish before enabling ui_required",
-        "evidence": "490 tests pass, inventory parses ids/handlers/bindings/routes/hotkeys/tokens/assets"
-      }
-    },
-    {
-      "task_id": "ui-guard-integration-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[3/3] Verified: 490 tests pass, 4/4 project gates, 754-entry inventory, UI contract validates, README at 22,442 chars; checklists: passed; uncommitted because no commit or push was requested",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792776720.974249,
-      "timestamp_str": "2026-10-23 20:32:00"
-    },
-    {
-      "task_id": "ui-guard-integration-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-guard-integration-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792776724.9832692,
-      "timestamp_str": "2026-10-23 20:32:04"
-    },
     {
       "task_id": "ui-guard-activation-v1",
       "phase": "phase 4",
@@ -248,6 +118,154 @@
       "status": "completed",
       "timestamp": 1792784057.3197317,
       "timestamp_str": "2026-10-23 22:34:17"
+    },
+    {
+      "task_id": "windows-command-console-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: make VoidFarer Windows-only and replace the neon multi-device cockpit with a readable desktop command console",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792791722.7151353,
+      "timestamp_str": "2026-10-24 00:42:02",
+      "impact_assessment": {
+        "why": "The user directed Windows-only operation and rejected the previous UI; G-011 still demanded tablet/phone/touch/safe-area behavior, package metadata claimed OS independence, and the cockpit used 8-11px text, mobile breakpoints and a layout that overflowed below 1920x1080",
+        "benefits": "One explicit Windows target, no dead mobile/touch code, readable 12px+ labels, a two-column terminal/radar layout with a full-width command dock, and measured zero findings at five Windows viewports",
+        "risks": "contract: ui_required evidence is stale until a new reviewed UI task finishes; dependency: only an optional local Edge/Chrome for the audit; concurrency: the dirty tree blocks ui begin until the user commits; state: static UI, tests, docs and pyproject change, while the simulation is untouched",
+        "mitigation": "496-test suite, 4/4 project gates, five-viewport plus menu audit with zero findings, Windows-only tests that forbid touch/mobile markers, ADR-043, and screenshots copied to the ignored ui-review folder for human review"
+      }
+    },
+    {
+      "task_id": "windows-command-console-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: Windows-only migration and command-console UI; 496 tests pass, 4/4 gates, cockpit audit zero findings at desktop/laptop/short/ultrawide/4K, menu audit zero findings, vision reviewer gemma-4-31b/evren2 APPROVED, G-015 recorded; checklists: passed; uncommitted because no commit was requested",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792794712.0604148,
+      "timestamp_str": "2026-10-24 01:31:52",
+      "handoff": {
+        "state": "G-015 vision loop is documented and approved, ui-review contains the approved screenshots",
+        "next": "commit, then run a new reviewed cockpit UI task to refresh surface evidence",
+        "open": "strict delivery is blocked only by the uncommitted tree and stale UI evidence",
+        "evidence": "496 tests, 4/4 gates, audit report and vision approval"
+      }
+    },
+    {
+      "task_id": "windows-command-console-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'windows-command-console-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792794719.5236018,
+      "timestamp_str": "2026-10-24 01:31:59"
+    },
+    {
+      "task_id": "in-game-terminal-redesign-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: rebuild the in-game terminal as a readable dossier and fix the contracts column bug",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792815176.87673,
+      "timestamp_str": "2026-10-24 07:12:56",
+      "impact_assessment": {
+        "why": "Per-tab capture and the vision reviewer showed the in-game panels were the weak surface: tiny copy, 23px trade buttons, contrast failures, clipped crew morale, nested scrollboxes, and a contracts tab stuck in a one-row flex that pushed cards into a narrow strip",
+        "benefits": "Every in-game tab becomes scannable at Windows desktop, laptop and 720p sizes, with card grids, semantic actions, one terminal scroll surface and zero measured findings",
+        "risks": "contract: none; dependency: none; concurrency: audit captures one tab per run so the report is per-tab; state: static HTML/CSS/app.js only, simulation untouched",
+        "mitigation": "Per-tab audits at 1920 and key tabs at 1366/1280, vision review until approved, 496-test suite, 4/4 project gates and ADR-044"
+      }
+    },
+    {
+      "task_id": "in-game-terminal-redesign-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: all eight in-game tabs report zero console/overflow/clipping/offscreen/tiny/target/contrast/label/overlap findings at 1920; market/ship/contracts are also zero at 1366 and 1280; vision reviewer APPROVED market, arsenal, ship and contracts; 496 tests and 4/4 gates pass; checklists: passed; uncommitted because no commit was requested",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792815187.8388171,
+      "timestamp_str": "2026-10-24 07:13:07",
+      "handoff": {
+        "state": "contracts now fills its column, all in-game tabs are card/ledger layouts, G-015 vision loop used",
+        "next": "commit and run a new reviewed cockpit UI task to refresh surface evidence",
+        "open": "strict delivery blocked only by the uncommitted tree and stale UI evidence",
+        "evidence": "ui-review/tabs screenshots and ADR-044"
+      }
+    },
+    {
+      "task_id": "in-game-terminal-redesign-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'in-game-terminal-redesign-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792815187.999656,
+      "timestamp_str": "2026-10-24 07:13:07"
+    },
+    {
+      "task_id": "in-game-terminal-redesign-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[3/3] Final audit: all 16 in-game tabs plus the perks overlay report zero measured findings at 1920; market/ship/contracts also zero at 1366/1280; vision reviewer APPROVED market, arsenal, ship, contracts, quests, factions, codex and messages; 496 tests and 4/4 gates pass; checklists: passed; uncommitted",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792815778.8437066,
+      "timestamp_str": "2026-10-24 07:22:58",
+      "handoff": {
+        "state": "all terminal tabs are dossier layouts with 12px+ copy and no nested scrollboxes",
+        "next": "commit and run a new reviewed cockpit UI task to refresh surface evidence",
+        "open": "strict delivery blocked only by the uncommitted tree and stale UI evidence",
+        "evidence": "ui-review/tabs screenshots, ADR-044, per-tab audits"
+      }
+    },
+    {
+      "task_id": "in-game-terminal-redesign-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'in-game-terminal-redesign-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792815779.0070167,
+      "timestamp_str": "2026-10-24 07:22:59"
+    },
+    {
+      "task_id": "cockpit-overlays-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: theme settings, character creation and perks overlays and add overlay capture scenarios",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792821107.7805462,
+      "timestamp_str": "2026-10-24 08:51:47",
+      "impact_assessment": {
+        "why": "The overlays still looked like generic dark web modals, native controls clashed with the command-console theme, and the perks window rendered empty because capture opened it before state loaded and the renderer lacked the mastery catalog fallback",
+        "benefits": "Overlays now match the cockpit, form controls are readable and themed, perks shows three populated branches, and the audit can capture settings and character states for future regressions",
+        "risks": "contract: none; dependency: none; concurrency: async state now gates overlay opening by 700ms; state: static UI and audit tooling only, simulation untouched",
+        "mitigation": "Zero-finding audits for settings/character/perks, vision approval, 496-test suite, 4/4 gates and ADR-045"
+      }
+    },
+    {
+      "task_id": "cockpit-overlays-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: settings, character and perks overlays report zero measured findings; perks now shows three populated branches and the vision reviewer APPROVED all three; 496 tests and 4/4 gates pass; checklists: passed; uncommitted",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792821120.5235963,
+      "timestamp_str": "2026-10-24 08:52:00",
+      "handoff": {
+        "state": "overlays match command-console chrome, audit supports settings/character scenarios and delayed tab opening",
+        "next": "commit and run a new reviewed cockpit UI task to refresh surface evidence",
+        "open": "strict delivery blocked only by the uncommitted tree and stale UI evidence",
+        "evidence": "ui-review/overlays screenshots and ADR-045"
+      }
+    },
+    {
+      "task_id": "cockpit-overlays-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'cockpit-overlays-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792821120.7004445,
+      "timestamp_str": "2026-10-24 08:52:00"
     }
   ]
 }

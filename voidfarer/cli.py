@@ -9,15 +9,14 @@ import threading
 from pathlib import Path
 from typing import Sequence
 
-# Enable UTF-8 streams on Windows consoles
-if sys.platform == "win32":
-    try:
-        if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        if hasattr(sys.stderr, "reconfigure"):
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except (ValueError, OSError):  # hygiene: allow non-reconfigurable stdio streams in test harnesses
-        pass
+# Windows consoles default to a legacy code page; force UTF-8 for the cockpit and REPL.
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (ValueError, OSError):  # hygiene: allow non-reconfigurable stdio streams in test harnesses
+    pass
 
 from voidfarer.engine import SimulationEngine
 from voidfarer.factions import (

@@ -255,8 +255,6 @@ class CockpitApp {
         this.uiDensity = "auto";
         this.uiScale = 1;
         this.drawerUserToggled = false;
-        this.touchPan = null;
-        this.pinchStart = null;
 
         // Canvas radar state
         this.canvas = document.getElementById("radarCanvas");
@@ -279,6 +277,7 @@ class CockpitApp {
 
         this.initDOMElements();
         this.bindEvents();
+        this.initTooltips();
         this.applyViewportProfile();
         this.startAnimationLoop();
         this.fetchGalaxy();
@@ -908,45 +907,6 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.zoom = Math.max(0.4, Math.min(2.5, this.zoom + delta));
         }, { passive: false });
 
-        // Touch: one-finger pan and two-finger pinch zoom for tablets/phones.
-        this.canvas.addEventListener("touchstart", (e) => {
-            if (e.touches.length === 1) {
-                const point = this.pointerToCanvas(e.touches[0]);
-                this.touchPan = { x: point.x, y: point.y, panX: this.panX, panY: this.panY };
-                this.touchMoved = false;
-            } else if (e.touches.length === 2) {
-                const [a, b] = e.touches;
-                this.pinchStart = {
-                    distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
-                    zoom: this.zoom,
-                };
-            }
-        }, { passive: false });
-
-        this.canvas.addEventListener("touchmove", (e) => {
-            if (e.touches.length === 1 && this.touchPan) {
-                e.preventDefault();
-                const point = this.pointerToCanvas(e.touches[0]);
-                this.panX = this.touchPan.panX + (point.x - this.touchPan.x);
-                this.panY = this.touchPan.panY + (point.y - this.touchPan.y);
-                this.touchMoved = true;
-            } else if (e.touches.length === 2 && this.pinchStart) {
-                e.preventDefault();
-                const [a, b] = e.touches;
-                const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-                if (this.pinchStart.distance > 8) {
-                    this.zoom = Math.max(0.4, Math.min(2.5, this.pinchStart.zoom * (distance / this.pinchStart.distance)));
-                }
-                this.touchMoved = true;
-            }
-        }, { passive: false });
-
-        this.canvas.addEventListener("touchend", () => {
-            if (this.touchMoved) this.suppressClick = true;
-            this.touchPan = null;
-            this.pinchStart = null;
-        });
-
         this.canvas.addEventListener("click", (e) => this.handleCanvasClick(e));
 
         // Clear Log
@@ -1066,8 +1026,8 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const scalePercent = Math.max(85, Math.min(120, Number(this.uiScale || 1) * 100));
         let density = this.uiDensity || "auto";
         if (density === "auto") {
-            if (width < 760 || height < 720) density = "compact";
-            else if (width >= 2200) density = "comfortable";
+            if (width < 1440) density = "compact";
+            else if (width >= 2300) density = "comfortable";
             else density = "standard";
         }
         document.documentElement.dataset.density = density;
@@ -1075,15 +1035,6 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const readout = document.getElementById("viewportReadout");
         if (readout) {
             readout.textContent = `${width}x${height} @${(window.devicePixelRatio || 1).toFixed(1)}x // ${density.toUpperCase()}`;
-        }
-        if (!this.drawerUserToggled && this.panelLeft) {
-            const shouldCollapse = width < 980;
-            this.panelLeft.classList.toggle("drawer-collapsed", shouldCollapse);
-            if (shouldCollapse) {
-                this.activeRightTab = null;
-                this.panelLeft.querySelectorAll(".deck-tab-btn").forEach(btn => btn.classList.remove("active"));
-                this.panelLeft.querySelectorAll(".tab-content").forEach(content => { content.style.display = "none"; });
-            }
         }
         this.resizeRadarCanvas();
     }
@@ -2047,7 +1998,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             const holdCount = cargo[q.commodity_id] || 0;
 
             tr.innerHTML = `
-                <td><strong>${this.escapeHtml(q.name)}</strong><br><small style="color:var(--text-muted);">${this.escapeHtml(q.category)}</small></td>
+                <td><strong class="commodity-name">${this.escapeHtml(q.name)}</strong><br><small class="commodity-category">${this.escapeHtml(q.category)}</small></td>
                 <td class="td-buy">${q.buy_price} cr</td>
                 <td class="td-sell">${q.sell_price} cr</td>
                 <td class="td-hold">${holdCount}</td>
@@ -2362,11 +2313,11 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         const shipClass = String(ship.ship_class || "Corvette Scout");
         const silhouettes = {
-            standard: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#00f0ff;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#0080ff;stop-opacity:0.6"/></linearGradient></defs><path d="M280,60 L20,10 L20,110 Z" fill="url(#shipGrad)" stroke="#00f0ff" stroke-width="2"/><circle cx="260" cy="60" r="8" fill="#ffaa00" opacity="0.8"/><rect x="20" y="40" width="60" height="40" fill="#1a2a4a" stroke="#00f0ff" stroke-width="1" rx="4"/></svg>`,
-            freighter: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ffaa00;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#ff8800;stop-opacity:0.6"/></linearGradient></defs><path d="M260,55 L20,10 L20,110 L260,65 Z" fill="url(#shipGrad)" stroke="#ffaa00" stroke-width="2"/><rect x="30" y="25" width="200" height="70" fill="#2a2a1a" stroke="#ffaa00" stroke-width="1" rx="6"/><circle cx="240" cy="60" r="10" fill="#00f0ff" opacity="0.8"/></svg>`,
-            fighter: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#ff3355;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#cc0033;stop-opacity:0.6"/></linearGradient></defs><path d="M290,60 L20,10 L20,110 Z" fill="url(#shipGrad)" stroke="#ff3355" stroke-width="2"/><path d="M270,60 L290,70 L270,80 Z" fill="#ff3355" opacity="0.8"/><rect x="20" y="45" width="40" height="30" fill="#3a1a1a" stroke="#ff3355" stroke-width="1" rx="3"/></svg>`,
-            explorer: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#c77dff;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#7209b7;stop-opacity:0.6"/></linearGradient></defs><path d="M270,60 L30,15 L30,105 Z" fill="url(#shipGrad)" stroke="#c77dff" stroke-width="2"/><ellipse cx="30" cy="60" rx="20" ry="15" fill="#2a1a3a" stroke="#c77dff" stroke-width="1"/><circle cx="250" cy="60" r="6" fill="#00ffaa" opacity="0.8"/></svg>`,
-            stealth: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#444;stop-opacity:0.9"/><stop offset="100%" style="stop-color:#111;stop-opacity:0.7"/></linearGradient></defs><path d="M280,60 L30,10 L30,110 Z" fill="url(#shipGrad)" stroke="#666" stroke-width="1.5"/><path d="M260,60 L270,65 L260,70" fill="none" stroke="#00ffaa" stroke-width="2" opacity="0.6"/></svg>`
+            standard: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#7fb7c9;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#0080ff;stop-opacity:0.6"/></linearGradient></defs><path d="M280,60 L20,10 L20,110 Z" fill="url(#shipGrad)" stroke="#7fb7c9" stroke-width="2"/><circle cx="260" cy="60" r="8" fill="#c9a35a" opacity="0.8"/><rect x="20" y="40" width="60" height="40" fill="#1a2a4a" stroke="#7fb7c9" stroke-width="1" rx="4"/></svg>`,
+            freighter: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#c9a35a;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#ff8800;stop-opacity:0.6"/></linearGradient></defs><path d="M260,55 L20,10 L20,110 L260,65 Z" fill="url(#shipGrad)" stroke="#c9a35a" stroke-width="2"/><rect x="30" y="25" width="200" height="70" fill="#2a2a1a" stroke="#c9a35a" stroke-width="1" rx="6"/><circle cx="240" cy="60" r="10" fill="#7fb7c9" opacity="0.8"/></svg>`,
+            fighter: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#c96b5a;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#cc0033;stop-opacity:0.6"/></linearGradient></defs><path d="M290,60 L20,10 L20,110 Z" fill="url(#shipGrad)" stroke="#c96b5a" stroke-width="2"/><path d="M270,60 L290,70 L270,80 Z" fill="#c96b5a" opacity="0.8"/><rect x="20" y="45" width="40" height="30" fill="#3a1a1a" stroke="#c96b5a" stroke-width="1" rx="3"/></svg>`,
+            explorer: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#a98bbd;stop-opacity:0.8"/><stop offset="100%" style="stop-color:#7209b7;stop-opacity:0.6"/></linearGradient></defs><path d="M270,60 L30,15 L30,105 Z" fill="url(#shipGrad)" stroke="#a98bbd" stroke-width="2"/><ellipse cx="30" cy="60" rx="20" ry="15" fill="#2a1a3a" stroke="#a98bbd" stroke-width="1"/><circle cx="250" cy="60" r="6" fill="#8fbf9f" opacity="0.8"/></svg>`,
+            stealth: `<svg viewBox="0 0 300 120" class="ship-silhouette"><defs><linearGradient id="shipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#444;stop-opacity:0.9"/><stop offset="100%" style="stop-color:#111;stop-opacity:0.7"/></linearGradient></defs><path d="M280,60 L30,10 L30,110 Z" fill="url(#shipGrad)" stroke="#666" stroke-width="1.5"/><path d="M260,60 L270,65 L260,70" fill="none" stroke="#8fbf9f" stroke-width="2" opacity="0.6"/></svg>`
         };
         const silhouette = /freight|cargo/i.test(shipClass) ? "freighter"
             : /fighter|intercept/i.test(shipClass) ? "fighter"
@@ -2490,7 +2441,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         if (this.crewCashFlow && cashFlow) {
             const net = cashFlow.net_per_tick;
-            const netColor = net >= 0 ? "var(--neon-green, #00f088)" : "var(--neon-red, #ff3355)";
+            const netColor = net >= 0 ? "var(--neon-green, #00f088)" : "var(--neon-red, #c96b5a)";
             this.crewCashFlow.innerHTML = `
                 <span class="cashflow-label">CASH FLOW / TICK</span>
                 <span class="cashflow-value">UPKEEP <strong>-${cashFlow.upkeep_per_tick}</strong> CR</span>
@@ -2583,13 +2534,13 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
     }
 
     portraitAvatar(portraitId, name, size = 40) {
-        const palette = ["#00f0ff", "#ffaa00", "#cc66ff", "#00ff99", "#ff6677", "#66aaff"];
+        const palette = ["#7fb7c9", "#c9a35a", "#a98bbd", "#8fbf9f", "#c96b5a", "#66aaff"];
         const key = String(portraitId || name || "crew");
         let hash = 0;
         for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
         const color = palette[Math.abs(hash) % palette.length];
         const initials = String(name || "?").split(/\s+/).map(p => p[0] || "").slice(0, 2).join("").toUpperCase();
-        const fontSize = Math.max(6, size * 0.2);
+        const fontSize = Math.max(12, size * 0.3);
         return `<svg viewBox="0 0 40 40" width="${size}" height="${size}" role="img" aria-label="${this.escapeHtml(name || "portrait")}">
             <circle cx="20" cy="20" r="18" fill="rgba(0,0,0,.55)" stroke="${color}" stroke-width="1.5"></circle>
             <circle cx="20" cy="15" r="6" fill="${color}" opacity="0.8"></circle>
@@ -2816,7 +2767,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const drones = this.state.ship.fleet_drones || [];
 
         if (drones.length === 0) {
-            this.fleetRoster.innerHTML = `<p style="padding:12px;font-size:0.75rem;color:var(--text-muted);text-align:center;">No fleet drones active. Commission a drone below to start harvesting.</p>`;
+            this.fleetRoster.innerHTML = `<p class="fleet-empty">No fleet drones active. Commission a drone below to start harvesting.</p>`;
             return;
         }
 
@@ -2829,7 +2780,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                     <strong class="drone-name">${this.escapeHtml(d.name)}</strong>
                     <span class="drone-sub">${this.escapeHtml(d.drone_type.toUpperCase())} // ${this.escapeHtml(d.assigned_system_id.toUpperCase())} [${this.escapeHtml(d.status.toUpperCase())}]</span>
                 </div>
-                <div class="drone-stats" style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);margin:6px 0;">
+                <div class="drone-stats">
                     LVL ${d.level ?? 1} // EFF ${(d.efficiency ?? 1).toFixed(2)} // INTEGRITY ${d.integrity ?? 100}% // SORTIES ${d.sorties ?? 0}${d.specialty ? " // " + this.escapeHtml(d.specialty.toUpperCase()) : ""}
                 </div>
                 <div class="drone-yield-badge">
@@ -2901,7 +2852,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                         <span class="reward-pill xp">+${c.reward_xp} XP</span>
                         ${relicBadge}
                     </div>
-                    ${c.completed ? `<button class="btn-claim-contract" data-id="${this.escapeHtml(c.id)}">CLAIM REWARD</button>` : `<span style="font-size:0.65rem;color:var(--text-muted);font-family:var(--font-mono);">IN PROGRESS</span>`}
+                    ${c.completed ? `<button class="btn-claim-contract" data-id="${this.escapeHtml(c.id)}">CLAIM REWARD</button>` : `<span class="contract-status">IN PROGRESS</span>`}
                 </div>
             `;
 
@@ -3739,7 +3690,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         // Draw tactical radar grid rings
         ctx.save();
-        ctx.strokeStyle = "rgba(0, 240, 255, 0.08)";
+        ctx.strokeStyle = "rgba(127, 183, 201, 0.08)";
         ctx.lineWidth = 1;
         for (let r = 40; r < Math.max(w, h); r += 45 * this.zoom) {
             ctx.beginPath();
@@ -3766,7 +3717,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const auScale = 45 * this.zoom * this.radarScale();
 
         if (this.radarGrid) {
-            ctx.strokeStyle = "rgba(0, 240, 255, 0.06)";
+            ctx.strokeStyle = "rgba(127, 183, 201, 0.06)";
             ctx.lineWidth = 1;
             for (let radius = 60; radius < Math.max(this.viewW, this.viewH); radius += 60) {
                 ctx.beginPath();
@@ -3809,8 +3760,8 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             ctx.beginPath();
             ctx.arc(cx, cy, orbitR, 0, Math.PI * 2);
             ctx.strokeStyle = (this.selectedTarget && this.selectedTarget.id === b.id)
-                ? `rgba(0, 240, 255, ${Math.min(0.85, orbitFade * 4.0).toFixed(3)})`
-                : `rgba(0, 240, 255, ${orbitFade.toFixed(3)})`;
+                ? `rgba(127, 183, 201, ${Math.min(0.85, orbitFade * 4.0).toFixed(3)})`
+                : `rgba(127, 183, 201, ${orbitFade.toFixed(3)})`;
             ctx.lineWidth = 1;
             ctx.setLineDash([4, 4]);
             ctx.stroke();
@@ -3834,7 +3785,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             if (b.body_type === "black_hole") {
                 ctx.beginPath();
                 ctx.arc(bx, by, bodyRadius * 2.2, 0, Math.PI * 2);
-                ctx.strokeStyle = "rgba(255,170,0,0.55)";
+                ctx.strokeStyle = "rgba(201, 163, 90,0.55)";
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
                 ctx.beginPath();
@@ -3845,13 +3796,13 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             } else if (b.body_type === "ring_world") {
                 ctx.beginPath();
                 ctx.ellipse(bx, by, bodyRadius * 2.5, bodyRadius * 0.6, 0.35, 0, Math.PI * 2);
-                ctx.strokeStyle = "rgba(199,125,255,0.65)";
+                ctx.strokeStyle = "rgba(169, 139, 189,0.65)";
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
             }
 
             if (this.selectedTarget && this.selectedTarget.id === b.id) {
-                ctx.strokeStyle = "#00f0ff";
+                ctx.strokeStyle = "#7fb7c9";
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(bx - bodyRadius - 5, by - bodyRadius - 5, (bodyRadius + 5) * 2, (bodyRadius + 5) * 2);
             }
@@ -3860,16 +3811,16 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             if (ship.orbiting_body_id === b.id && !activeTravel && !this.travelAnimation) {
                 ctx.beginPath();
                 ctx.arc(bx + bodyRadius + 8, by - bodyRadius - 8, 3.5, 0, Math.PI * 2);
-                ctx.fillStyle = "#00ffaa";
+                ctx.fillStyle = "#8fbf9f";
                 ctx.fill();
                 ctx.font = "9px 'Share Tech Mono'";
-                ctx.fillStyle = "#00ffaa";
+                ctx.fillStyle = "#8fbf9f";
                 ctx.fillText("VF-FLAGSHIP", bx + bodyRadius + 14, by - bodyRadius - 4);
             }
 
             if (this.radarLabels) {
                 ctx.font = "10px 'Rajdhani'";
-                ctx.fillStyle = "#e6f1ff";
+                ctx.fillStyle = "#ece4d4";
                 ctx.fillText(b.name, bx + bodyRadius + 6, by + 3);
             }
         });
@@ -3886,7 +3837,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         const scale = 8.0 * this.zoom * this.radarScale();  // Increased from 2.8 for much bigger galaxy
 
-        ctx.strokeStyle = "rgba(0, 240, 255, 0.25)";
+        ctx.strokeStyle = "rgba(127, 183, 201, 0.25)";
         ctx.lineWidth = 1;
         const drawnPairs = new Set();
 
@@ -3919,8 +3870,8 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
             ctx.beginPath();
             ctx.arc(sx, sy, isCurrent ? 14 : 10, 0, Math.PI * 2);  // Increased from 7/5 to 14/10
-            ctx.fillStyle = s.color || "#00f0ff";
-            ctx.shadowColor = s.color || "#00f0ff";
+            ctx.fillStyle = s.color || "#7fb7c9";
+            ctx.shadowColor = s.color || "#7fb7c9";
             ctx.shadowBlur = 16;  // Increased from 10
             ctx.fill();
             ctx.shadowBlur = 0;
@@ -3928,19 +3879,19 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             if (isCurrent) {
                 ctx.beginPath();
                 ctx.arc(sx, sy, 24, 0, Math.PI * 2);  // Increased from 12
-                ctx.strokeStyle = "#00ffaa";
+                ctx.strokeStyle = "#8fbf9f";
                 ctx.lineWidth = 2;  // Increased from 1.5
                 ctx.stroke();
             }
 
             if (isSelected) {
-                ctx.strokeStyle = "#00f0ff";
+                ctx.strokeStyle = "#7fb7c9";
                 ctx.lineWidth = 2;
                 ctx.strokeRect(sx - 14, sy - 14, 28, 28);  // Increased from 10/20
             }
 
             ctx.font = "13px 'Rajdhani'";  // Increased from 11px
-            ctx.fillStyle = isCurrent ? "#00ffaa" : "#e6f1ff";
+            ctx.fillStyle = isCurrent ? "#8fbf9f" : "#ece4d4";
             ctx.fillText(s.name, sx + 16, sy + 4);  // Adjusted offset
         });
     }
@@ -4093,7 +4044,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         }[ch]));
     }
 
-    safeColor(value, fallback = "#00f0ff") {
+    safeColor(value, fallback = "#7fb7c9") {
         return /^#[0-9a-fA-F]{6}$/.test(String(value || "")) ? value : fallback;
     }
 
@@ -4194,6 +4145,68 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const overlay = document.getElementById("mainMenuOverlay");
         if (overlay) overlay.classList.add("hidden");
         this.sound.playBeep(640, 0.04);
+    }
+
+    initTooltips() {
+        if (this.tooltipBound) return;
+        const tooltip = document.getElementById("hudTooltip");
+        if (!tooltip) return;
+        this.tooltipBound = true;
+        this.tooltipTarget = null;
+        this.tooltipTimer = null;
+        const hide = () => {
+            clearTimeout(this.tooltipTimer);
+            if (this.tooltipTarget) this.tooltipTarget.removeAttribute("aria-describedby");
+            this.tooltipTarget = null;
+            tooltip.classList.remove("visible");
+            tooltip.setAttribute("aria-hidden", "true");
+        };
+        const show = (target) => {
+            const text = target.getAttribute("data-tooltip") || target.getAttribute("title");
+            if (!text) return;
+            if (!target.hasAttribute("data-tooltip")) {
+                target.setAttribute("data-tooltip", text);
+                target.removeAttribute("title");
+            }
+            if (!target.getAttribute("aria-label")) target.setAttribute("aria-label", text);
+            this.tooltipTarget = target;
+            target.setAttribute("aria-describedby", "hudTooltip");
+            tooltip.textContent = text;
+            tooltip.setAttribute("aria-hidden", "false");
+            tooltip.classList.add("visible");
+            const rect = target.getBoundingClientRect();
+            const box = tooltip.getBoundingClientRect();
+            const left = Math.max(8, Math.min(rect.left + rect.width / 2 - box.width / 2,
+                window.innerWidth - box.width - 8));
+            const above = rect.top - box.height - 10;
+            const below = Math.min(rect.bottom + 10, window.innerHeight - box.height - 8);
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${above >= 8 ? above : below}px`;
+        };
+        const schedule = (target, delay) => {
+            clearTimeout(this.tooltipTimer);
+            this.tooltipTimer = setTimeout(() => show(target), delay);
+        };
+        const find = (event) => event.target instanceof Element
+            ? event.target.closest("[data-tooltip], [title]") : null;
+        document.addEventListener("mouseover", (event) => {
+            const target = find(event);
+            if (!target || target === this.tooltipTarget) return;
+            hide();
+            schedule(target, 350);
+        });
+        document.addEventListener("mouseout", (event) => {
+            const target = find(event);
+            if (target && event.relatedTarget && target.contains(event.relatedTarget)) return;
+            hide();
+        });
+        document.addEventListener("focusin", (event) => {
+            const target = find(event);
+            if (target) schedule(target, 120);
+        });
+        document.addEventListener("focusout", hide);
+        window.addEventListener("scroll", hide, true);
+        document.addEventListener("click", hide);
     }
 
     getSelectedSaveSlot() {
@@ -4325,7 +4338,13 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const specs = mastery.specializations || [];
         if (pointsEl) pointsEl.textContent = `${mastery.talent_points || 0} POINTS`;
 
-        const talents = Object.values(this.state.catalog_talents || {});
+        const talentCatalog = this.state.catalog_talents || {
+            "void_cartographer": { id: "void_cartographer", name: "Void Cartographer", category: "exploration", description: "+30% sensor scan research credits and +20% Precursor Relic resonance detection." },
+            "dreadnought_tactics": { id: "dreadnought_tactics", name: "Dreadnought Tactician", category: "combat", description: "+25% tactical laser damage and +25 MW shield overcharge absorption." },
+            "swarm_commander": { id: "swarm_commander", name: "Swarm Fleet Overlord", category: "fleet", description: "+50% autonomous fleet drone harvest yields across all deployed systems." },
+            "quantum_smuggler": { id: "quantum_smuggler", name: "Quantum Smuggler", category: "trade", description: "-25% hyperlane jump fuel burn and +20% commodity market profit margins." }
+        };
+        const talents = Object.values(talentCatalog);
         const branches = {};
         talents.forEach(t => {
             const branch = t.branch || (t.category || "OTHER").toUpperCase();
@@ -4576,7 +4595,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         }
         this.eventPopupContainer.style.display = "flex";
         this.eventPopupContainer.innerHTML = events.slice(-3).map(evt => `
-            <div class="event-popup-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;margin-bottom:6px;background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.35);border-radius:6px;">
+            <div class="event-popup-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;margin-bottom:6px;background:rgba(127, 183, 201,0.08);border:1px solid rgba(127, 183, 201,0.35);border-radius:6px;">
                 <div>
                     <div style="font-size:0.65rem;color:var(--neon-cyan);font-family:var(--font-mono);">[${this.escapeHtml(String(evt.kind || "system").toUpperCase())} // TICK #${Number(evt.tick || 0)}]</div>
                     <strong style="font-size:0.82rem;color:#fff;">${this.escapeHtml(evt.title || "")}</strong>
@@ -4689,7 +4708,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(tx, ty);
-        ctx.strokeStyle = "rgba(0, 240, 255, 0.45)";
+        ctx.strokeStyle = "rgba(127, 183, 201, 0.45)";
         ctx.lineWidth = 1.25;
         ctx.setLineDash([5, 4]);
         ctx.stroke();
@@ -4697,13 +4716,13 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
 
         ctx.beginPath();
         ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = "#00f0ff";
-        ctx.shadowColor = "#00f0ff";
+        ctx.fillStyle = "#7fb7c9";
+        ctx.shadowColor = "#7fb7c9";
         ctx.shadowBlur = 18;
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.font = "9px 'Share Tech Mono'";
-        ctx.fillStyle = "#00f0ff";
+        ctx.fillStyle = "#7fb7c9";
         if (activeTravel) {
             const remTicks = Math.max(1, (activeTravel.arrival_tick || anim.arrivalTick) - (this.state?.time?.tick || 0));
             const remAu = Math.max(0.05, (anim.distanceAu || 1.0) * (1 - eased)).toFixed(2);

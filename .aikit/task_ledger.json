@@ -1,55 +1,14 @@
 {
   "version": 1,
   "active_task": {
-    "task_id": "browser-ui-review-v1",
+    "task_id": "galaxy-map-v1",
     "last_phase": "phase 4",
     "active_phase": 5,
     "status": "completed",
-    "updated_at": 1792844291.43159,
-    "completed_at": 1792844291.593052
+    "updated_at": 1792851852.212303,
+    "completed_at": 1792851852.4650648
   },
   "checkpoints": [
-    {
-      "task_id": "ui-visual-audit-v1",
-      "phase": "phase 2",
-      "phase_num": 2,
-      "description": "[1/2] Plan: add an optional headless visual audit and screenshot harness for the cockpit",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792784039.2510884,
-      "timestamp_str": "2026-10-23 22:33:59",
-      "impact_assessment": {
-        "why": "The inventory guard proves controls and tests but cannot see contrast, target size, overflow or console regressions in the rendered cockpit, and screenshots alone are not measurable evidence",
-        "benefits": "Repeatable viewport screenshots plus measured layout, contrast, tap-target, label, overlap and console findings without touching the runtime or installing a Python dependency",
-        "risks": "contract: none; dependency: optional Edge/Chrome executable only, no Python package; concurrency: one in-process server and per-viewport browser profile, no shared state; state: writes only to a temp workdir and the user-supplied output directory, never to the cockpit surface",
-        "mitigation": "stdlib-only wrapper and parser tests, exact iframe viewports, decorative/overflow filters, opt-in --check, Why/Fix exit paths, ADR-042 and documentation; no static or server changes"
-      }
-    },
-    {
-      "task_id": "ui-visual-audit-v1",
-      "phase": "phase 4",
-      "phase_num": 4,
-      "description": "[2/2] Verified: 496 tests pass, 4/4 gates, visual audit works at five viewports; baseline has 25 contrast and 18-25 small-target findings, phone horizontal scroll, and tablet/short below-fold panels; checklists: passed",
-      "files_affected": [],
-      "status": "in_progress",
-      "timestamp": 1792784056.9924512,
-      "timestamp_str": "2026-10-23 22:34:16",
-      "handoff": {
-        "state": "tools/ui_audit.py is optional and outside the fast proof, screenshots and reports default to the system temp",
-        "next": "use the audit to drive a Paradox-inspired cockpit pass",
-        "open": "phone horizontal overflow from the cadet banner and below-fold bottom strip at tablet/short",
-        "evidence": "ADR-042, tests/test_ui_audit.py, report.md in the audit output"
-      }
-    },
-    {
-      "task_id": "ui-visual-audit-v1",
-      "phase": "completed",
-      "phase_num": 5,
-      "description": "Task 'ui-visual-audit-v1' completed successfully.",
-      "status": "completed",
-      "timestamp": 1792784057.3197317,
-      "timestamp_str": "2026-10-23 22:34:17"
-    },
     {
       "task_id": "windows-command-console-v1",
       "phase": "phase 2",
@@ -279,6 +238,47 @@
       "status": "completed",
       "timestamp": 1792844291.5930533,
       "timestamp_str": "2026-10-24 15:18:11"
+    },
+    {
+      "task_id": "galaxy-map-v1",
+      "phase": "phase 2",
+      "phase_num": 2,
+      "description": "[1/2] Plan: fit, sharpen and label the galaxy map while removing the center backdrop blur",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792851814.3827057,
+      "timestamp_str": "2026-10-24 17:23:34",
+      "impact_assessment": {
+        "why": "Galaxy mode rendered as a blurred empty field because panel-center inherited a 16px backdrop blur, the galaxy used a fixed scale, hit testing used a different scale, and atmosphere overlays washed out the nodes",
+        "benefits": "All 15 systems, hyperlane links and labels fit at every Windows viewport; orbital mode is crisp; drawing and click hit testing share one transform; galaxy mode has repeatable Playwright evidence",
+        "risks": "contract: none; dependency: Playwright remains dev-only; concurrency: the browser driver starts and stops its own server per run; state: static UI and tooling only, no simulation changes",
+        "mitigation": "Real-browser captures at desktop/laptop/short/ultrawide/4K, galaxy node pixel checks, free-vision approval, 496 tests, 4/4 gates and ADR-048"
+      }
+    },
+    {
+      "task_id": "galaxy-map-v1",
+      "phase": "phase 4",
+      "phase_num": 4,
+      "description": "[2/2] Verified: galaxy mode fits all 15 systems with hyperlanes and labels at desktop/laptop/short/ultrawide/4K; orbital mode is crisp after removing the panel-center backdrop blur; drawing and hit testing share galaxyTransform; the free vision reviewer approved both maps; zero console/hscroll/tiny findings; 496 tests and 4/4 gates pass; checklists: passed; uncommitted pending commit",
+      "files_affected": [],
+      "status": "in_progress",
+      "timestamp": 1792851852.212303,
+      "timestamp_str": "2026-10-24 17:24:12",
+      "handoff": {
+        "state": "galaxy-view class, fit transform, label backing, crisp radar",
+        "next": "commit and refresh the cockpit evidence",
+        "open": "none in the UI, only delivery bookkeeping",
+        "evidence": "ui-review galaxy/cockpit screenshots, ADR-048, Playwright galaxy scenario"
+      }
+    },
+    {
+      "task_id": "galaxy-map-v1",
+      "phase": "completed",
+      "phase_num": 5,
+      "description": "Task 'galaxy-map-v1' completed successfully.",
+      "status": "completed",
+      "timestamp": 1792851852.4650662,
+      "timestamp_str": "2026-10-24 17:24:12"
     }
   ]
 }

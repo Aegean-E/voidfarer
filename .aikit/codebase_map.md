@@ -10,7 +10,7 @@
 - **Total Classes**: `158`
 - **Total Top-Level Functions**: `197`
 - **Total Class Methods**: `890`
-- **Total Source Lines**: `26489`
+- **Total Source Lines**: `26502`
 
 ---
 
@@ -1034,7 +1034,7 @@
 ### [`tools/ui_browser.py`](tools/ui_browser.py)
 > *Drive the real VoidFarer cockpit in Edge through Playwright.*
 
-**Size**: `300` lines (`13490` bytes)
+**Size**: `313` lines (`13925` bytes)
 
 **Functions:**
 - `def _open_cockpit(page, scenario, tab, timeout)` - *Wait for the cockpit and move it into the requested review state.*

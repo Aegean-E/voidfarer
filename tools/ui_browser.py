@@ -31,7 +31,7 @@ from voidfarer.server import VoidFarerHandler, start_background_server  # noqa: 
 from voidfarer.storage import StorageManager  # noqa: E402
 from tools.ui_audit import TABS, VIEWPORTS  # noqa: E402
 
-SCENARIOS = ("cockpit", "menu", "settings", "character", "target", "event", "combat")
+SCENARIOS = ("cockpit", "menu", "settings", "character", "target", "event", "combat", "galaxy")
 TAB_IDS = {
     "player": "tabBtnPlayer",
     "skills": "tabBtnSkills",
@@ -106,6 +106,19 @@ def _open_cockpit(page: Any, scenario: str, tab: str, timeout: int) -> None:
             }"""
         )
         page.wait_for_timeout(500)
+    elif scenario == "galaxy":
+        page.evaluate(
+            """() => {
+                const button = document.getElementById("viewGalaxyBtn");
+                if (button) {
+                    button.click();
+                } else {
+                    window.cockpit.viewMode = "GALAXY";
+                    window.cockpit.drawRadar();
+                }
+            }"""
+        )
+        page.wait_for_timeout(900)
     elif scenario == "combat":
         page.evaluate(
             """() => {

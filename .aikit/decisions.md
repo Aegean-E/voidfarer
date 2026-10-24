@@ -589,3 +589,14 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   3. Declare Playwright as a development-only optional extra. The shipped game remains stdlib-only.
   4. Restore a transparent `.panel-center` so the full-viewport radar is visible, then add visible nebula/dust/starfield layers, outliner glyphs, Stellaris-framed event and combat cards, 12.5px target values, roomier market rows, and an empty favicon link to remove the browser 404.
 - **Consequences**: Visual review now uses true Edge frames and all review states are reproducible; the central map shows a starfield instead of a covered panel; event and combat overlays are measurable and reviewable. The final real-browser pass reports zero console errors, horizontal scroll or tiny text at all Windows sizes. The suite remains 496 tests and all layout rules remain intact.
+
+### ADR-048: Fit and Sharpen the Galaxy Map
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: Galaxy mode changed the map-mode label but appeared as a blurred empty field. The actual causes were `.panel-center` inheriting `backdrop-filter: blur(16px)` from `.deck-panel`, which blurred the full-viewport radar, plus a fixed galaxy scale and a different scale in the click hit test. The atmosphere overlay also washed out the system nodes.
+- **Decision**:
+  1. Remove all backdrop filters from `.panel-center` so the full-viewport radar is composited without blur.
+  2. Add one `galaxyTransform` used by drawing, hover hit testing and click hit testing. It fits the complete galaxy bounds into 78% width and 68% height at zoom 1, centers the bounds, and scales node radius, labels and hit radius with the radar scale.
+  3. Add a `galaxy-view` body class on the GALAXY button and remove it on ORBITS. Galaxy mode hides the extra atmosphere overlay, lowers the grid/scanline opacity, and brightens the canvas.
+  4. Draw a dark backing behind each system label so names remain readable over the nebula, and add a Playwright `galaxy` scenario for repeatable evidence.
+- **Consequences**: The galaxy map now shows all 15 system nodes, hyperlane connections and labels at desktop, laptop, 720p, ultrawide and 4K; orbital mode is crisp instead of blurred; hit testing and drawing share one transform. The free vision reviewer approved both maps. Runtime remains zero-dependency and all 496 tests pass.

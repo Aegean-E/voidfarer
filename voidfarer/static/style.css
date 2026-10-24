@@ -7096,3 +7096,19 @@ body.cockpit-theme .panel-center {
     box-shadow: none;
     outline: none;
 }
+
+/* Galaxy mode: keep the hyperlane nodes above the atmosphere layer. */
+body.galaxy-view .radar-background-layer::after { opacity: 0.16; }
+body.galaxy-view .radar-background-layer::before { opacity: 0.28; }
+body.galaxy-view #radarCanvas { filter: saturate(1.05) brightness(1.12); }
+
+/* Galaxy mode: the canvas carries atmosphere; keep the node network clear. */
+body.galaxy-view .radar-background-layer::after { display: none; }
+body.galaxy-view .radar-background-layer::before { opacity: 0.16; }
+body.galaxy-view .scanline-overlay { opacity: 0.35; }
+
+/* The center overlay must never filter the full-viewport radar behind it. */
+body.cockpit-theme .panel-center {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}

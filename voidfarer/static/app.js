@@ -591,6 +591,7 @@ class CockpitApp {
             this.sound.init();
             this.sound.playBeep(700);
             this.viewMode = "ORBITS";
+            document.body.classList.remove("galaxy-view");
             this.viewOrbitBtn.classList.add("active");
             this.viewGalaxyBtn.classList.remove("active");
             this.selectedTarget = null;
@@ -601,6 +602,7 @@ class CockpitApp {
             this.sound.init();
             this.sound.playBeep(700);
             this.viewMode = "GALAXY";
+            document.body.classList.add("galaxy-view");
             this.viewGalaxyBtn.classList.add("active");
             this.viewOrbitBtn.classList.remove("active");
             this.selectedTarget = null;
@@ -3906,6 +3908,30 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         this.drawTravelAnimation(ctx, cx, cy, auScale);
     }
 
+    galaxyTransform(cx, cy) {
+        const systems = Object.values(this.galaxySystems);
+        const nodeScale = this.radarScale();
+        if (!systems.length) {
+            return { scale: 8.0 * this.zoom * nodeScale, cx, cy, nodeScale };
+        }
+        const xs = systems.map(s => s.x);
+        const ys = systems.map(s => s.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const scale = Math.min(
+            (this.viewW * 0.78) / Math.max(1, maxX - minX),
+            (this.viewH * 0.68) / Math.max(1, maxY - minY)
+        ) * this.zoom;
+        return {
+            scale,
+            cx: cx - ((minX + maxX) / 2) * scale,
+            cy: cy - ((minY + maxY) / 2) * scale,
+            nodeScale,
+        };
+    }
+
     drawGalaxyView(cx, cy) {
         if (!this.state) return;
         const ctx = this.ctx;
@@ -3913,24 +3939,27 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         const systems = Object.values(this.galaxySystems);
         if (!systems.length) return;
 
-        const scale = 8.0 * this.zoom * this.radarScale();  // Increased from 2.8 for much bigger galaxy
+        const transform = this.galaxyTransform(cx, cy);
+        const scale = transform.scale;
+        const gx = transform.cx;
+        const gy = transform.cy;
+        const nodeScale = transform.nodeScale;
 
-        ctx.strokeStyle = "rgba(127, 183, 201, 0.25)";
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(111, 195, 215, 0.38)";
+        ctx.lineWidth = Math.max(1, nodeScale * 0.8);
         const drawnPairs = new Set();
 
         systems.forEach(s1 => {
-            const x1 = cx + s1.x * scale;
-            const y1 = cy + s1.y * scale;
-
+            const x1 = gx + s1.x * scale;
+            const y1 = gy + s1.y * scale;
             s1.connections.forEach(connId => {
                 const pairKey = [s1.id, connId].sort().join("-");
                 if (!drawnPairs.has(pairKey)) {
                     drawnPairs.add(pairKey);
                     const s2 = this.galaxySystems[connId];
                     if (s2) {
-                        const x2 = cx + s2.x * scale;
-                        const y2 = cy + s2.y * scale;
+                        const x2 = gx + s2.x * scale;
+                        const y2 = gy + s2.y * scale;
                         ctx.beginPath();
                         ctx.moveTo(x1, y1);
                         ctx.lineTo(x2, y2);
@@ -3941,36 +3970,43 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         });
 
         systems.forEach(s => {
-            const sx = cx + s.x * scale;
-            const sy = cy + s.y * scale;
+            const sx = gx + s.x * scale;
+            const sy = gy + s.y * scale;
             const isCurrent = (s.id === curSys.id);
             const isSelected = (this.selectedTarget && this.selectedTarget.id === s.id);
+            const radius = (isCurrent ? 14 : 10) * nodeScale;
 
             ctx.beginPath();
-            ctx.arc(sx, sy, isCurrent ? 14 : 10, 0, Math.PI * 2);  // Increased from 7/5 to 14/10
-            ctx.fillStyle = s.color || "#7fb7c9";
-            ctx.shadowColor = s.color || "#7fb7c9";
-            ctx.shadowBlur = 16;  // Increased from 10
+            ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = s.color || "#6fc3d7";
+            ctx.shadowColor = s.color || "#6fc3d7";
+            ctx.shadowBlur = 12 * nodeScale;
             ctx.fill();
             ctx.shadowBlur = 0;
 
             if (isCurrent) {
                 ctx.beginPath();
-                ctx.arc(sx, sy, 24, 0, Math.PI * 2);  // Increased from 12
+                ctx.arc(sx, sy, 22 * nodeScale, 0, Math.PI * 2);
                 ctx.strokeStyle = "#8fbf9f";
-                ctx.lineWidth = 2;  // Increased from 1.5
+                ctx.lineWidth = 2 * nodeScale;
                 ctx.stroke();
             }
-
             if (isSelected) {
-                ctx.strokeStyle = "#7fb7c9";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(sx - 14, sy - 14, 28, 28);  // Increased from 10/20
+                ctx.strokeStyle = "#6fc3d7";
+                ctx.lineWidth = 2 * nodeScale;
+                ctx.strokeRect(sx - 13 * nodeScale, sy - 13 * nodeScale,
+                    26 * nodeScale, 26 * nodeScale);
             }
 
-            ctx.font = "13px 'Segoe UI'";  // Increased from 11px
+            const fontSize = 13 * nodeScale;
+            ctx.font = `${fontSize}px 'Segoe UI'`;
+            const label = s.name;
+            const labelWidth = ctx.measureText(label).width;
+            ctx.fillStyle = "rgba(4, 9, 19, 0.78)";
+            ctx.fillRect(sx + 14 * nodeScale, sy - 11 * nodeScale,
+                labelWidth + 8 * nodeScale, 18 * nodeScale);
             ctx.fillStyle = isCurrent ? "#8fbf9f" : "#ece4d4";
-            ctx.fillText(s.name, sx + 16, sy + 4);  // Adjusted offset
+            ctx.fillText(label, sx + 18 * nodeScale, sy + 4 * nodeScale);
         });
     }
 
@@ -3998,12 +4034,12 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 }
             }
         } else if (this.viewMode === "GALAXY") {
-            const scale = 2.8 * this.zoom * this.radarScale();
+            const transform = this.galaxyTransform(cx, cy);
+            const hitRadius = 18 * Math.max(1, transform.nodeScale);
             for (const s of Object.values(this.galaxySystems)) {
-                const sx = cx + s.x * scale;
-                const sy = cy + s.y * scale;
-                const dist = Math.hypot(mx - sx, my - sy);
-                if (dist < 15) {
+                const sx = transform.cx + s.x * transform.scale;
+                const sy = transform.cy + s.y * transform.scale;
+                if (Math.hypot(mx - sx, my - sy) < hitRadius) {
                     hit = { item: s, type: "system" };
                     break;
                 }
@@ -4044,11 +4080,12 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
                 }
             }
         } else if (this.viewMode === "GALAXY") {
-            const scale = 2.8 * this.zoom * this.radarScale();
+            const transform = this.galaxyTransform(cx, cy);
+            const hitRadius = 18 * Math.max(1, transform.nodeScale);
             for (const s of Object.values(this.galaxySystems)) {
-                const sx = cx + s.x * scale;
-                const sy = cy + s.y * scale;
-                if (Math.hypot(mx - sx, my - sy) < 15) {
+                const sx = transform.cx + s.x * transform.scale;
+                const sy = transform.cy + s.y * transform.scale;
+                if (Math.hypot(mx - sx, my - sy) < hitRadius) {
                     this.selectedTarget = s;
                     this.selectedType = "system";
                     this.sound.playBeep(1000);

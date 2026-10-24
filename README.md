@@ -1,5 +1,7 @@
 # VoidFarer
 
+[![Built with AIKit](https://img.shields.io/badge/built%20with-AIKit-6f42c1)](https://github.com/Aegean-E/AIKit)
+
 > **Autonomous Deep-Space Fleet, Procedural Galaxy & Windows Cockpit Simulator.**
 
 VoidFarer is a zero-dependency, local-first space flight, fleet management, and exploration simulation engine. Navigate procedural star systems, establish orbits, route reactor power, board derelicts, scoop fuel, drill crew, commission autonomous drones, purchase hardware upgrades, fight adaptive hostile AI, trade commodities, and pilot your flagship via an ANSI REPL or a Windows desktop HTML5 Canvas cockpit.

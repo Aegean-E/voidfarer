@@ -7187,3 +7187,63 @@ body.cockpit-theme .panel-center {
     background: var(--console-green);
     box-shadow: none;
 }
+
+/* Defeat screen in the same Stellaris console language. */
+#deathOverlay .death-window {
+    width: min(560px, 92vw);
+    max-width: 560px;
+    border: 1px solid rgba(201, 107, 90, 0.55);
+    border-top: 2px solid var(--console-red);
+    border-radius: 0;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(201, 107, 90, 0.14), transparent 46%),
+        linear-gradient(160deg, #0f1724, #070b12);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.68);
+    animation: none;
+}
+#deathOverlay .game-window-header {
+    padding: 13px 18px;
+    border-bottom: 1px solid rgba(201, 107, 90, 0.28);
+    background: rgba(201, 107, 90, 0.05);
+}
+#deathOverlay .game-window-header h2 {
+    color: var(--console-red);
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: 0.14em;
+}
+#deathOverlay .game-window-body { padding: 18px; }
+.death-content { gap: 14px; padding: 6px 0; }
+.death-icon { font-size: 2.8rem; color: var(--console-red); animation: none; filter: none; }
+.death-title {
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    color: var(--console-red);
+    letter-spacing: 0.08em;
+    text-shadow: none;
+    margin: 0;
+}
+.death-message {
+    max-width: 430px;
+    color: var(--console-text);
+    font-family: var(--console-ui);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.death-stats {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    padding: 0;
+    border: 1px solid rgba(201, 107, 90, 0.24);
+    border-radius: 0;
+    background: #08111f;
+}
+.death-stat { padding: 10px 12px; border-right: 1px solid rgba(201, 107, 90, 0.12); border-bottom: 1px solid rgba(201, 107, 90, 0.12); }
+.death-stat:nth-child(2n) { border-right: 0; }
+.death-stat:nth-last-child(-n+2) { border-bottom: 0; }
+.death-stat-label { color: var(--console-muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+.death-stat-value { color: var(--console-gold-bright); font-family: var(--font-mono); font-size: 14px; font-weight: 600; }
+.death-options { gap: 8px; flex-wrap: wrap; }
+.death-options .btn-hud { min-width: 150px; min-height: 32px; }

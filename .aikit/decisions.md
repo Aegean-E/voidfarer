@@ -611,3 +611,14 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   3. Widen the window to 760px, add an active gold rail marker, reset the active category and scroll position when opening, and add a local-profile status footer.
   4. Verify the overlay with the Playwright browser driver at desktop, laptop and 720p; the free vision reviewer approved the grouped console after quoting its labels and groups.
 - **Consequences**: Settings now matches the Stellaris-inspired command console, all controls keep their behavior, and the overlay reports zero console, horizontal-scroll or tiny-text findings. The suite remains 496 tests.
+
+### ADR-050: Defeat Screen Console Treatment
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The defeat overlay was the last unreviewed surface. It still used a pulsing neon-red card, rounded stat box, 9.6px labels, an emoji icon and a generic modal composition that did not match the Stellaris-inspired command console.
+- **Decision**:
+  1. Rebuild the defeat window as a sharp 560px console card: red/gold top rule, dark emergency gradient, serif header, red text glyph, 13px message, framed actions and no pulse or glow.
+  2. Present six expedition statistics in a bordered 2x3 ledger with 12px uppercase labels and 14px gold monospace values.
+  3. Preserve the randomized title/message, all stat sources and the New Commander / Load Save / Main Menu actions.
+  4. Add a Playwright `death` scenario and verify the overlay at desktop, laptop and 720p. The free vision reviewer approved the final screen after quoting the title, stat labels and actions.
+- **Consequences**: The defeat screen now closes the game in the same visual language as the cockpit, menus and settings; navigation behavior is unchanged and the browser pass reports zero console, horizontal-scroll or tiny-text findings. The suite remains 496 tests.

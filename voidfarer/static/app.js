@@ -3685,6 +3685,84 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         ctx.setTransform(this.dpr || 1, 0, 0, this.dpr || 1, 0, 0);
         ctx.clearRect(0, 0, w, h);
 
+        const mapBase = ctx.createRadialGradient(w * 0.5, h * 0.45, 0,
+            w * 0.5, h * 0.45, Math.max(w, h) * 0.75);
+        mapBase.addColorStop(0, "rgba(21, 42, 74, 1)");
+        mapBase.addColorStop(0.55, "rgba(11, 24, 45, 1)");
+        mapBase.addColorStop(1, "rgba(4, 9, 19, 1)");
+        ctx.fillStyle = mapBase;
+        ctx.fillRect(0, 0, w, h);
+        const starCount = Math.max(600, Math.round((this.starDensity || 220) * 5));
+        if (!this.radarStars || this.radarStars.length !== starCount) {
+            this.radarStars = [];
+            let seed = 1337;
+            const random = () => {
+                seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+                return seed / 4294967296;
+            };
+            for (let index = 0; index < starCount; index += 1) {
+                this.radarStars.push({
+                    x: random(),
+                    y: random(),
+                    size: 1.0 + random() * 2.6,
+                    alpha: 0.42 + random() * 0.55,
+                    warm: random() > 0.86,
+                    bright: random() > 0.93,
+                });
+            }
+        }
+        const nebula = ctx.createRadialGradient(w * 0.72, h * 0.32, 0,
+            w * 0.72, h * 0.32, Math.max(w, h) * 0.65);
+        nebula.addColorStop(0, "rgba(58, 104, 160, 0.46)");
+        nebula.addColorStop(0.45, "rgba(38, 64, 110, 0.24)");
+        nebula.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = nebula;
+        ctx.fillRect(0, 0, w, h);
+        const goldHaze = ctx.createRadialGradient(w * 0.28, h * 0.7, 0,
+            w * 0.28, h * 0.7, Math.max(w, h) * 0.42);
+        goldHaze.addColorStop(0, "rgba(201, 163, 90, 0.10)");
+        goldHaze.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = goldHaze;
+        ctx.fillRect(0, 0, w, h);
+        const dust = ctx.createLinearGradient(0, h * 0.1, w, h * 0.9);
+        dust.addColorStop(0, "rgba(70, 110, 160, 0)");
+        dust.addColorStop(0.42, "rgba(70, 110, 160, 0.12)");
+        dust.addColorStop(0.66, "rgba(120, 80, 150, 0.10)");
+        dust.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = dust;
+        ctx.fillRect(0, 0, w, h);
+        ctx.save();
+        ctx.translate(w * 0.72, h * 0.3);
+        ctx.rotate(-0.35);
+        const galaxy = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(w, h) * 0.16);
+        galaxy.addColorStop(0, "rgba(180, 210, 240, 0.16)");
+        galaxy.addColorStop(0.5, "rgba(110, 150, 190, 0.06)");
+        galaxy.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = galaxy;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, Math.max(w, h) * 0.16, Math.max(w, h) * 0.055, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        this.radarStars.forEach(star => {
+            const x = star.x * w;
+            const y = star.y * h;
+            if (star.bright) {
+                ctx.fillStyle = star.warm
+                    ? "rgba(236, 204, 142, 0.98)"
+                    : "rgba(244, 249, 255, 0.98)";
+                ctx.beginPath();
+                ctx.arc(x, y, 1.8 + star.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+                ctx.fillRect(x, y, 1, 1);
+            } else {
+                ctx.fillStyle = star.warm
+                    ? `rgba(201, 163, 90, ${star.alpha})`
+                    : `rgba(233, 240, 247, ${star.alpha})`;
+                ctx.fillRect(x, y, star.size, star.size);
+            }
+        });
+
         const cx = w / 2 + this.panX;
         const cy = h / 2 + this.panY;
 
@@ -4054,7 +4132,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.radarGrid = saved.radarGrid !== false;
             this.radarLabels = saved.radarLabels !== false;
             this.travelAnimationEnabled = saved.travelAnimation !== false;
-            this.starDensity = Number(saved.starDensity || 140);
+            this.starDensity = Number(saved.starDensity || 220);
             this.uiDensity = saved.uiDensity || "auto";
             this.uiScale = Number(saved.uiScale || 1);
             if (saved.sound === false) {
@@ -4066,7 +4144,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
             this.radarGrid = true;
             this.radarLabels = true;
             this.travelAnimationEnabled = true;
-            this.starDensity = 140;
+            this.starDensity = 220;
             this.uiDensity = "auto";
             this.uiScale = 1;
         }
@@ -4090,7 +4168,7 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         this.radarGrid = document.getElementById("settingGrid")?.checked !== false;
         this.radarLabels = document.getElementById("settingLabels")?.checked !== false;
         this.travelAnimationEnabled = document.getElementById("settingAnimation")?.checked !== false;
-        this.starDensity = Number(document.getElementById("settingStarDensity")?.value || 140);
+        this.starDensity = Number(document.getElementById("settingStarDensity")?.value || 220);
         this.uiDensity = document.getElementById("settingDensity")?.value || "auto";
         this.uiScale = Number(document.getElementById("settingUiScale")?.value || 100) / 100;
         const audioIcon = document.getElementById("audioIcon");
@@ -4595,11 +4673,11 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         }
         this.eventPopupContainer.style.display = "flex";
         this.eventPopupContainer.innerHTML = events.slice(-3).map(evt => `
-            <div class="event-popup-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;margin-bottom:6px;background:rgba(127, 183, 201,0.08);border:1px solid rgba(127, 183, 201,0.35);border-radius:6px;">
-                <div>
-                    <div style="font-size:0.65rem;color:var(--neon-cyan);font-family:var(--font-mono);">[${this.escapeHtml(String(evt.kind || "system").toUpperCase())} // TICK #${Number(evt.tick || 0)}]</div>
-                    <strong style="font-size:0.82rem;color:#fff;">${this.escapeHtml(evt.title || "")}</strong>
-                    <div style="font-size:0.75rem;color:var(--text-muted);">${this.escapeHtml(evt.message || "")}</div>
+            <div class="event-popup-card">
+                <div class="event-popup-body">
+                    <div class="event-popup-meta">[${this.escapeHtml(String(evt.kind || "system").toUpperCase())} // TICK #${Number(evt.tick || 0)}]</div>
+                    <strong class="event-popup-title">${this.escapeHtml(evt.title || "")}</strong>
+                    <div class="event-popup-message">${this.escapeHtml(evt.message || "")}</div>
                 </div>
                 <button class="btn-hud btn-cyan" data-dismiss-event="${this.escapeHtml(evt.id)}">DISMISS</button>
             </div>

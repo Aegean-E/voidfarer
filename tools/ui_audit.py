@@ -536,6 +536,30 @@ WRAPPER_JS = r"""
         win.cockpit.openSettings();
       } else if (scenario === "character" && win.cockpit.openCharacterCreation) {
         win.cockpit.openCharacterCreation();
+      } else if (scenario === "target" && win.cockpit.state) {
+        var bodies = (win.cockpit.state.current_system && win.cockpit.state.current_system.bodies) || [];
+        var body = null;
+        for (var index = 0; index < bodies.length; index += 1) {
+          if (bodies[index].body_type !== "star") {
+            body = bodies[index];
+            break;
+          }
+        }
+        body = body || bodies[0];
+        if (body) {
+          win.cockpit.selectedTarget = body;
+          win.cockpit.selectedType = "body";
+          win.cockpit.updateTargetCard();
+        }
+      } else if (scenario === "event" && win.cockpit.state) {
+        win.cockpit.state.undismissed_events = [
+          { id: "audit-signal", kind: "exploration", tick: 0, title: "Anomalous Signal Detected", message: "A harmonic pulse repeats beneath the quantum noise in the outer system." },
+          { id: "audit-contract", kind: "trade", tick: 0, title: "Commodity Contract Fulfilled", message: "Sol Logistics confirms the titanium delivery. Payment is ready at the exchange." }
+        ];
+        win.cockpit.renderEventPopups();
+      } else if (scenario === "combat") {
+        var combat = win.document.getElementById("combatCard");
+        if (combat) combat.style.display = "flex";
       }
       if (tab && tab !== "player" && win.cockpit.switchRightTab) {
         try {
@@ -766,8 +790,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         help="comma-separated Windows desktop viewport names")
     parser.add_argument("--browser", default=None, help="edge/chrome executable path")
     parser.add_argument("--scenario", default="cockpit",
-                        choices=("cockpit", "menu", "settings", "character"),
-                        help="cockpit resumes the game; menu/settings/character audit those overlays")
+                        choices=("cockpit", "menu", "settings", "character", "target", "event", "combat"),
+                        help="cockpit resumes the game; menu/settings/character/target/event/combat audit those states")
     parser.add_argument("--tab", default="", choices=("",) + TABS,
                         help="open an in-game terminal tab before auditing")
     parser.add_argument("--timeout", type=int, default=120, help="seconds per viewport")

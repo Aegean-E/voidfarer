@@ -93,7 +93,8 @@ voidfarer/
 │       └── cursor-crosshair.svg <- themed radar crosshair cursor
 ├── tools/                    <- developer proofs
 │   ├── __init__.py           <- package marker
-│   ├── ui_audit.py           <- screenshots + layout audit
+│   ├── ui_audit.py           <- layout metrics
+│   ├── ui_browser.py         <- real browser review
 │   └── ui_inventory.py       <- cockpit inventory proof
 └── tests/                    <- unit & integration test suite (30 suites)
 ```
@@ -423,9 +424,9 @@ New System Surveyor and Sector Cartographer milestones track full-system sweeps,
 
 ### 21. UI Guard & Visual Audit
 `.aikit/ui.json` bounds cockpit work to `voidfarer/static/**` and `voidfarer/server.py`.
-`ui_required` is true: tests are the fast proof, `python tools/ui_inventory.py` is the snapshot,
-and `python tools/ui_audit.py --out <dir>` captures screenshots, layout, contrast and targets.
-See ADR-041 and ADR-042.
+`ui_required` is true: tests are the fast proof, `tools/ui_inventory.py` is the snapshot,
+`tools/ui_audit.py` measures layout, and `tools/ui_browser.py` drives real Edge screenshots.
+See ADR-041, ADR-042 and ADR-047.
 
 ---
 

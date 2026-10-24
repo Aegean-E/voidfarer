@@ -578,3 +578,14 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   5. Add restrained materiality: gold corner brackets, 2px module shells, 1px internal rules, soft black shadows, inner top highlights, a low-opacity starfield/nebula/grid over the radar and a subtle film-grain scanline. No neon bloom.
   6. Preserve every layout and control rule: full-viewport radar, vertical terminal, chrono upper-right, 44px vital cells, three-column command strip, Q/W/E/R, SHIFT+1..6 and P/K/L.
 - **Consequences**: The cockpit now reads as a Stellaris-inspired grand-strategy interface and the vision reviewer approved the final cockpit, resource strip, map, market, ship, contracts and menu. Layout and mechanics are unchanged; all 16 terminal tabs and the overlays still report zero measured findings, and the suite remains 496 tests.
+
+### ADR-047: Real Browser Review Driver and Radar Reveal
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The iframe audit was not a proper visual review: it wrapped the game in a synthetic viewport, its 1-second live poll wiped event popups before capture, and the Stellaris `.deck-panel` gradient was applied to `.panel-center`, covering the full-viewport radar and making the map look like a dead vacuum. Playwright is available with system Edge, so the review can use the real page.
+- **Decision**:
+  1. Add `tools/ui_browser.py`: Playwright with the system Edge channel, an in-process real server, exact viewports, true page screenshots, console/page/HTTP-error capture, tiny-text and scroll metrics, and cockpit states for target, event and combat. Freeze live polling after injecting event/combat states so the overlay remains visible for evidence.
+  2. Keep `tools/ui_audit.py` for iframe layout metrics and inventory proof, but use the browser driver for visual review. Update G-015 to require the real browser, with gemma-4-31b on evren2-5 or NVIDIA Nemotron 3.5 Super VL (free) on Kilo as the vision fallback.
+  3. Declare Playwright as a development-only optional extra. The shipped game remains stdlib-only.
+  4. Restore a transparent `.panel-center` so the full-viewport radar is visible, then add visible nebula/dust/starfield layers, outliner glyphs, Stellaris-framed event and combat cards, 12.5px target values, roomier market rows, and an empty favicon link to remove the browser 404.
+- **Consequences**: Visual review now uses true Edge frames and all review states are reproducible; the central map shows a starfield instead of a covered panel; event and combat overlays are measurable and reviewable. The final real-browser pass reports zero console errors, horizontal scroll or tiny text at all Windows sizes. The suite remains 496 tests and all layout rules remain intact.

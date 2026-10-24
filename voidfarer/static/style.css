@@ -6946,3 +6946,153 @@ input[type="text"], input[type="number"], select, textarea { min-height: 30px; b
         radial-gradient(circle at 78% 62%, rgba(111, 195, 215, 0.22) 0 1px, transparent 1.6px),
         radial-gradient(ellipse at center, transparent 46%, rgba(0, 0, 0, 0.6) 100%);
 }
+
+/* Browser-reviewed notification and combat layers. */
+.event-popup-container {
+    position: fixed;
+    top: 88px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: min(560px, 52vw);
+    pointer-events: none;
+}
+.event-popup-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(201, 163, 90, 0.3);
+    border-left: 3px solid var(--console-gold);
+    border-radius: 0;
+    background: #08111f;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
+    pointer-events: auto;
+}
+.event-popup-body { min-width: 0; }
+.event-popup-meta { font-family: var(--font-mono); font-size: 12px; color: var(--console-cyan); }
+.event-popup-title { display: block; margin-top: 2px; font-family: var(--font-display); font-size: 14px; color: var(--console-ivory); }
+.event-popup-message { margin-top: 2px; font-size: 12.5px; color: var(--console-text); line-height: 1.4; }
+.event-popup-card .btn-hud { min-height: 30px; }
+
+.combat-alert-card {
+    position: fixed;
+    top: 88px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9;
+    width: min(460px, 48vw);
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    padding: 12px 14px;
+    border: 1px solid rgba(201, 107, 90, 0.5);
+    border-top: 2px solid var(--console-red);
+    border-radius: 0;
+    background: #08111f;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5);
+    animation: none;
+}
+.combat-header { gap: 8px; }
+.combat-icon { font-size: 1.4rem; color: var(--console-red); }
+.combat-tag { font-family: var(--font-mono); font-size: 12px; color: var(--console-red); letter-spacing: 0.08em; }
+.combat-title { font-family: var(--font-display); font-size: 17px; color: var(--console-ivory); }
+.badge-faction { font-family: var(--font-mono); font-size: 12px; color: var(--console-gold-bright); }
+.combat-health-bar-container { gap: 3px; }
+.combat-health-label { font-size: 12px; color: var(--console-text); font-family: var(--font-mono); }
+.combat-meter { height: 6px; border-radius: 0; background: rgba(201, 107, 90, 0.12); border: 1px solid rgba(201, 107, 90, 0.2); }
+.combat-meter-fill { border-radius: 0; background: var(--console-red); box-shadow: none; }
+.combat-telegraph-banner { border-radius: 0; background: rgba(201, 163, 90, 0.08); border: 1px solid rgba(201, 163, 90, 0.3); color: var(--console-gold-bright); font-size: 12px; padding: 6px 8px; }
+.combat-tactics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.btn-combat { min-height: 34px; padding: 6px 8px; border-radius: 0; border: 1px solid rgba(201, 107, 90, 0.35); background: #0a1424; color: var(--console-text); font-family: var(--font-ui); font-size: 12px; box-shadow: none; }
+.btn-combat:hover { border-color: var(--console-gold); background: rgba(201, 163, 90, 0.1); color: var(--console-ivory); }
+.btn-combat.btn-red { border-color: rgba(201, 107, 90, 0.55); color: #f3c0b5; }
+.btn-combat.btn-cyan { border-color: rgba(111, 195, 215, 0.45); color: var(--console-cyan); }
+.btn-combat.btn-amber { border-color: rgba(201, 163, 90, 0.45); color: var(--console-gold-bright); }
+.btn-combat.btn-blue { border-color: rgba(91, 141, 184, 0.5); color: #a9c8e8; }
+.btn-combat.btn-purple { border-color: rgba(169, 139, 189, 0.5); color: var(--console-purple); }
+.btn-combat:disabled { opacity: 0.45; }
+.combat-combo-badge { border-radius: 0; border-top: 1px solid rgba(201, 163, 90, 0.2); padding-top: 6px; color: var(--console-gold-bright); font-size: 12px; }
+.crit-ready-text { color: var(--console-green); }
+
+.anomaly-alert-card { position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 9; width: min(460px, 48vw); padding: 12px 14px; border: 1px solid rgba(201, 107, 90, 0.45); border-top: 2px solid var(--console-red); border-radius: 0; background: #08111f; box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5); animation: none; }
+.anomaly-header { gap: 8px; }
+.alert-icon { font-size: 1.4rem; color: var(--console-red); }
+.alert-tag { font-family: var(--font-mono); font-size: 12px; color: var(--console-red); }
+.alert-title { font-family: var(--font-display); font-size: 16px; color: var(--console-ivory); }
+.anomaly-desc { font-size: 12.5px; color: var(--console-text); line-height: 1.4; }
+.anomaly-choice-btn { border-radius: 0; background: #0a1424; border: 1px solid rgba(201, 107, 90, 0.35); color: var(--console-text); font-family: var(--console-ui); font-size: 12px; min-height: 30px; }
+
+@media (max-width: 1599px) {
+    .event-popup-container, .combat-alert-card, .anomaly-alert-card { top: 150px; }
+}
+
+.target-info-grid strong { font-size: 12.5px; }
+
+/* Outliner glyph rail and calmer market rhythm. */
+.panel-left .deck-tab-btn::before {
+    content: "◇";
+    display: inline-block;
+    width: 14px;
+    margin-right: 7px;
+    color: var(--console-gold);
+    font-family: "Segoe UI Symbol", var(--console-ui);
+    font-size: 12px;
+    text-align: center;
+}
+#tabBtnPlayer::before { content: "◉"; }
+#tabBtnSkills::before { content: "✦"; color: var(--console-purple); }
+#tabBtnCrew::before { content: "◇"; color: var(--console-green); }
+#tabBtnShip::before { content: "⬢"; color: var(--console-cyan); }
+#tabBtnMarket::before { content: "¤"; }
+#tabBtnArsenal::before { content: "◆"; color: var(--console-cyan); }
+#tabBtnFleet::before { content: "▲"; color: var(--console-green); }
+#tabBtnContracts::before { content: "▤"; }
+#tabBtnMastery::before { content: "★"; color: var(--console-purple); }
+#tabBtnEmpire::before { content: "◈"; color: var(--console-cyan); }
+#tabBtnQuests::before { content: "?"; }
+#tabBtnAI::before { content: "⬡"; color: var(--console-cyan); }
+#tabBtnDepot::before { content: "▣"; color: var(--console-muted); }
+#tabBtnMessages::before { content: "✉"; color: var(--console-gold-bright); }
+#tabBtnStory::before { content: "❖"; color: var(--console-purple); }
+#tabBtnFactions::before { content: "⚑"; color: var(--console-gold); }
+#tabBtnCodex::before { content: "▥"; color: var(--console-muted); }
+.market-table th { padding-top: 9px; padding-bottom: 9px; }
+.market-table td { padding-top: 9px; padding-bottom: 9px; }
+
+/* Visible map atmosphere: nebula clouds, bright stars and a soft vignette above the canvas. */
+.canvas-radar-container.radar-background-layer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.96;
+    background:
+        radial-gradient(ellipse at 32% 38%, rgba(58, 112, 170, 0.30), transparent 42%),
+        radial-gradient(ellipse at 70% 62%, rgba(125, 82, 160, 0.22), transparent 46%),
+        radial-gradient(ellipse at 52% 18%, rgba(201, 163, 90, 0.10), transparent 38%),
+        radial-gradient(circle at 12% 22%, rgba(244, 249, 255, 0.8) 0 1px, transparent 2px),
+        radial-gradient(circle at 44% 14%, rgba(244, 249, 255, 0.7) 0 1px, transparent 2px),
+        radial-gradient(circle at 66% 36%, rgba(111, 195, 215, 0.8) 0 1px, transparent 2px),
+        radial-gradient(circle at 86% 28%, rgba(244, 249, 255, 0.7) 0 1px, transparent 2px),
+        radial-gradient(circle at 22% 76%, rgba(236, 204, 142, 0.8) 0 1px, transparent 2px),
+        radial-gradient(circle at 58% 82%, rgba(244, 249, 255, 0.75) 0 1px, transparent 2px),
+        radial-gradient(circle at 78% 62%, rgba(111, 195, 215, 0.7) 0 1px, transparent 2px),
+        radial-gradient(circle at 36% 58%, rgba(244, 249, 255, 0.55) 0 1px, transparent 2px),
+        radial-gradient(circle at 90% 82%, rgba(236, 204, 142, 0.6) 0 1px, transparent 2px),
+        radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.55) 100%);
+}
+#radarCanvas { filter: saturate(0.9) brightness(1.08); }
+
+/* The center surface must stay transparent so the full-viewport radar is visible. */
+body.cockpit-theme .panel-center {
+    background: transparent;
+    background-image: none;
+    border: 0;
+    box-shadow: none;
+    outline: none;
+}

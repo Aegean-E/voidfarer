@@ -64,24 +64,45 @@
                 <h2>SETTINGS</h2>
                 <button class="window-close" id="btnCloseSettings" aria-label="Close settings" data-tooltip="Close settings">×</button>
             </div>
-            <div class="game-window-body">
-                <label class="setting-row"><span>Sound effects</span><input type="checkbox" id="settingSound" checked></label>
-                <label class="setting-row"><span>Radar grid</span><input type="checkbox" id="settingGrid" checked></label>
-                <label class="setting-row"><span>Orbit labels</span><input type="checkbox" id="settingLabels" checked></label>
-                <label class="setting-row"><span>Travel animation</span><input type="checkbox" id="settingAnimation" checked></label>
-                <label class="setting-row"><span>Starfield density</span><input type="range" id="settingStarDensity" min="40" max="280" value="220"></label>
-                <label class="setting-row"><span>HUD density (auto adapts to resolution)</span>
-                    <select id="settingDensity">
-                        <option value="auto">Auto (resolution-aware)</option>
-                        <option value="compact">Compact</option>
-                        <option value="standard">Standard</option>
-                        <option value="comfortable">Comfortable</option>
-                    </select>
-                </label>
-                <label class="setting-row"><span>HUD scale</span><input type="range" id="settingUiScale" min="85" max="120" step="5" value="100"></label>
-                <div class="setting-row viewport-readout-row">
-                    <span>Viewport</span>
-                    <strong id="viewportReadout">--</strong>
+            <div class="game-window-body settings-body">
+                <nav class="settings-nav" aria-label="Settings categories">
+                    <a class="settings-nav-item active" href="#settingsDisplay">DISPLAY</a>
+                    <a class="settings-nav-item" href="#settingsAudio">AUDIO</a>
+                    <a class="settings-nav-item" href="#settingsGameplay">GAMEPLAY</a>
+                    <a class="settings-nav-item" href="#settingsSystem">SYSTEM</a>
+                </nav>
+                <div class="settings-content">
+                    <section class="settings-group" id="settingsDisplay">
+                        <h3 class="settings-group-title">DISPLAY <span>// visual telemetry</span></h3>
+                        <label class="setting-row"><span>Radar grid</span><input type="checkbox" id="settingGrid" checked></label>
+                        <label class="setting-row"><span>Orbit labels</span><input type="checkbox" id="settingLabels" checked></label>
+                        <label class="setting-row"><span>Starfield density</span><input type="range" id="settingStarDensity" min="40" max="280" value="220"></label>
+                        <label class="setting-row"><span>HUD density (auto adapts to resolution)</span>
+                            <select id="settingDensity">
+                                <option value="auto">Auto (resolution-aware)</option>
+                                <option value="compact">Compact</option>
+                                <option value="standard">Standard</option>
+                                <option value="comfortable">Comfortable</option>
+                            </select>
+                        </label>
+                        <label class="setting-row"><span>HUD scale</span><input type="range" id="settingUiScale" min="85" max="120" step="5" value="100"></label>
+                    </section>
+                    <section class="settings-group" id="settingsAudio">
+                        <h3 class="settings-group-title">AUDIO <span>// bridge signals</span></h3>
+                        <label class="setting-row"><span>Sound effects</span><input type="checkbox" id="settingSound" checked></label>
+                    </section>
+                    <section class="settings-group" id="settingsGameplay">
+                        <h3 class="settings-group-title">GAMEPLAY <span>// simulation</span></h3>
+                        <label class="setting-row"><span>Travel animation</span><input type="checkbox" id="settingAnimation" checked></label>
+                    </section>
+                    <section class="settings-group" id="settingsSystem">
+                        <h3 class="settings-group-title">SYSTEM <span>// local profile</span></h3>
+                        <div class="setting-row viewport-readout-row">
+                            <span>Viewport</span>
+                            <strong id="viewportReadout">--</strong>
+                        </div>
+                    </section>
+                    <div class="settings-footer"><span></span> CONFIGURATION SYNCED // LOCAL PROFILE</div>
                 </div>
             </div>
         </div>

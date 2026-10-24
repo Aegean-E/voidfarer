@@ -734,6 +734,12 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         ["settingSound", "settingGrid", "settingLabels", "settingAnimation", "settingStarDensity", "settingDensity", "settingUiScale"].forEach(id => {
             document.getElementById(id)?.addEventListener("input", () => this.applySettingsFromUI());
         });
+        document.querySelectorAll(".settings-nav-item").forEach(link => {
+            link.addEventListener("click", () => {
+                document.querySelectorAll(".settings-nav-item").forEach(item => item.classList.remove("active"));
+                link.classList.add("active");
+            });
+        });
         this.btnSkipCadet.addEventListener("click", () => this.handleSkipCadet());
         if (this.btnResetCadetAcademy) {
             this.btnResetCadetAcademy.addEventListener("click", () => this.handleResetCadet());
@@ -4232,6 +4238,11 @@ if (this.tabBtnMessages) this.tabBtnMessages.addEventListener("click", () => thi
         this.applyViewportProfile();
         const overlay = document.getElementById("settingsOverlay");
         if (overlay) overlay.style.display = "flex";
+        const settingsContent = document.querySelector(".settings-content");
+        if (settingsContent) settingsContent.scrollTop = 0;
+        document.querySelectorAll(".settings-nav-item").forEach((item, index) => {
+            item.classList.toggle("active", index === 0);
+        });
     }
 
     closeSettings() {

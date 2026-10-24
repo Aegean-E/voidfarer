@@ -7112,3 +7112,78 @@ body.cockpit-theme .panel-center {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
 }
+
+/* Settings as a Stellaris-style system console. */
+#settingsOverlay .game-window { width: min(760px, 92vw); }
+#settingsOverlay .game-window-body.settings-body {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 16px;
+    min-height: 420px;
+    padding: 16px;
+}
+.settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 10px;
+    border-right: 1px solid rgba(201, 163, 90, 0.2);
+}
+.settings-nav-item {
+    display: block;
+    padding: 9px 10px;
+    border-left: 2px solid transparent;
+    color: var(--console-muted);
+    font-family: var(--console-ui);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+}
+.settings-nav-item:hover { background: rgba(201, 163, 90, 0.06); color: var(--console-ivory); }
+.settings-nav-item.active { border-left-color: var(--console-gold); background: rgba(201, 163, 90, 0.1); color: var(--console-ivory); }
+.settings-content {
+    min-width: 0;
+    max-height: 56vh;
+    overflow-y: auto;
+    padding-right: 6px;
+    scroll-behavior: smooth;
+}
+.settings-group {
+    scroll-margin-top: 8px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(201, 163, 90, 0.14);
+}
+.settings-group:last-of-type { border-bottom: 0; }
+.settings-group-title {
+    margin: 0 0 8px;
+    color: var(--console-gold-bright);
+    font-family: var(--font-display);
+    font-size: 14px;
+    letter-spacing: 0.1em;
+}
+.settings-group-title span {
+    color: var(--console-muted);
+    font-family: var(--console-ui);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+}
+.settings-footer {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(201, 163, 90, 0.2);
+    color: var(--console-green);
+    font-family: var(--console-ui);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+}
+.settings-footer span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--console-green);
+    box-shadow: none;
+}

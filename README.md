@@ -392,7 +392,7 @@ python -m voidfarer.cli serve --port 8080
 Open **`http://127.0.0.1:8080`** in Edge or Chrome on Windows to access:
 - **Top Status Bar & Chronometer (`G-007`, `G-011`)**: Vitals plus the chrono deck, sized for 1280x720 through 4K.
 - **Background Radar HUD (`G-004`, `G-005`, `G-013`)**: Map, left terminal, and a three-column bottom strip: reactor, skills, separate radar settings above the compact log; circular zoom icons and themed cursors.
-- **Main Menu & Saves (`ESC`)**: Settings plus create, load, list, and delete named save slots.
+- **Main Menu & Saves (`ESC`)**: Categorized settings console plus create, load, list and delete saves.
 - **Planet Inspector**: Gravity, atmosphere, temperature, habitability, orbit distance, moons, resources, and colony tiers.
 - **Transit, Landing & Fleet**: Tick-synchronized sublight/quantum transit, surface survey rewards, and drone/mercenary commands.
 - **Living Galaxy**: Procedural worlds, AI traders, dynamic markets, faction perks, and reputation.

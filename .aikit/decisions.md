@@ -600,3 +600,14 @@ contract, a dependency, a data format or the architecture; IDs are consecutive a
   3. Add a `galaxy-view` body class on the GALAXY button and remove it on ORBITS. Galaxy mode hides the extra atmosphere overlay, lowers the grid/scanline opacity, and brightens the canvas.
   4. Draw a dark backing behind each system label so names remain readable over the nebula, and add a Playwright `galaxy` scenario for repeatable evidence.
 - **Consequences**: The galaxy map now shows all 15 system nodes, hyperlane connections and labels at desktop, laptop, 720p, ultrawide and 4K; orbital mode is crisp instead of blurred; hit testing and drawing share one transform. The free vision reviewer approved both maps. Runtime remains zero-dependency and all 496 tests pass.
+
+### ADR-049: Categorized Settings Console
+- **Date**: 2026-10-24
+- **Status**: Accepted
+- **Context**: The vision reviewer called settings the weakest overlay: a sparse single list of toggles and sliders that did not carry the layered console language of the cockpit, menu, character creation or perks.
+- **Decision**:
+  1. Restructure the settings body into a 150px category rail (DISPLAY / AUDIO / GAMEPLAY / SYSTEM) plus a grouped, scrollable content pane with gold section rules and `//` subtitles.
+  2. Keep every existing control ID and binding, but group radar grid/labels, starfield density, HUD density and HUD scale under DISPLAY; sound under AUDIO; travel animation under GAMEPLAY; viewport readout under SYSTEM.
+  3. Widen the window to 760px, add an active gold rail marker, reset the active category and scroll position when opening, and add a local-profile status footer.
+  4. Verify the overlay with the Playwright browser driver at desktop, laptop and 720p; the free vision reviewer approved the grouped console after quoting its labels and groups.
+- **Consequences**: Settings now matches the Stellaris-inspired command console, all controls keep their behavior, and the overlay reports zero console, horizontal-scroll or tiny-text findings. The suite remains 496 tests.
